@@ -77,17 +77,33 @@ void parse_cmd(char *str, char *s[])
 	return;
 }
 
-void exec_cmd(const char *buf, char *const argv[])
+void exec_cmd(const char *buf, char *argv[])
 {
 	size_t p_pid = getpid();
 
-	if (!str_cmp("exit", buf))
+	if (!str_cmp("exit", buf)) {
+		/* TO DO : This might be problematic as the shell wont exit untill the child completes
+		 * 	   would even not allow to input any command to shell as it is stuck here. 
+		 */
+		waitpid(0, NULL, 0);
 		exit(EXIT_SUCCESS);
-	else if (!str_cmp("cd", buf)) {
+	} else if (!str_cmp("cd", buf)) {
 		if (!chdir(argv[1]))
 			return;
 	} else
 		;
+
+	/* bg flag is used to check if a background process is requested. */
+	size_t i = 0, bg = 0;
+	/* -=2  signifies that the loop is at NULL + 1 after it exits. */
+	while (argv[i++]); i -= 2;
+
+	/* Assumed that & is always at the end of the complete command. */
+	if (!str_cmp(argv[i], "&")) {
+		/* Remove & from the parameter char* array. */
+		argv[i] = NULL;
+		bg = 1;
+	}
 
 	size_t c_pid = fork();
 
@@ -103,7 +119,10 @@ void exec_cmd(const char *buf, char *const argv[])
 	}
 
 	int status;
-	waitpid(c_pid, &status, 0);
+	if (bg)
+		waitpid(c_pid, &status, WNOHANG);
+	else
+		waitpid(c_pid, &status, 0);
 }
 
 int main(int argc, char* argv[])
