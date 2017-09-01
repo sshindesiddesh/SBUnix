@@ -21,7 +21,7 @@ size_t str_len(const char *buf)
 }
 
 /* Get Line from Input */
-size_t get_line(char *buf)
+size_t get_line(FILE *fp, char *buf)
 {
 
 	if (!buf)
@@ -31,7 +31,7 @@ size_t get_line(char *buf)
 	int x = EOF;
 
 	do {
-		buf[pos++] = x = getchar();
+		buf[pos++] = x = fgetc(fp);
 
 	} while (x != EOF && x != '\n');
 
@@ -89,7 +89,7 @@ void exec_cmd(const char *buf, char *const argv[], char *const envp[])
 	} else
 		;
 
-	fork();
+	size_t c_pid = fork();
 
 	if (getpid() != p_pid) {
 		char *env_args[50] = { "/usr/bin/", "/bin/", (char*)NULL };
@@ -103,21 +103,52 @@ void exec_cmd(const char *buf, char *const argv[], char *const envp[])
 	}
 
 	int status;
-	waitpid(p_pid, &status, 0);
+	waitpid(c_pid, &status, 0);
 }
 
 int main(int argc, char* argv[])
 {
+	if (argc >= 2) {
+		size_t tmp = 0;
+		FILE *f = fopen(argv[1], "r");
+		char line[MAX_IN_BUF_SIZE];
+		int bufsize = 1;
+
+		while (bufsize > 0) {
+			bufsize = get_line(f, line);
+
+			if (!tmp) {
+				str_cmp(line, "!#/bin/sbush" );
+				tmp = 1;
+				continue;
+			}
+
+			char *s[MAX_PARAM_SUPP];
+
+			parse_cmd(line, s);
+
+			if (bufsize > 0)
+				exec_cmd(line, s, NULL);
+
+			/* terminate the string for safety */
+			line[0] = '\0';
+		}
+		fclose(f);
+		exit(EXIT_SUCCESS);
+		return 0;
+	}
+
 	puts("sbush#");
 
 	char line[MAX_IN_BUF_SIZE];
 	int bufsize= 0;
 
 	while (1) {
-		bufsize = get_line(line);
+		bufsize = get_line(stdin, line);
 		putchar('#');
 
         	char *s[MAX_PARAM_SUPP];
+
 		parse_cmd(line, s);
 
 		if (bufsize > 0)
