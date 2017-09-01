@@ -68,6 +68,15 @@ char *str_cat(char *dst, const char* src)
        return dst;
 }
 
+void parse_cmd(char *str, char *s[])
+{
+        size_t i = 0;
+        s[i] = strtok(str, " ");
+        while (s[i])
+                s[++i] = strtok(NULL, " ");
+	return;
+}
+
 void exec_cmd(const char *buf, char *const argv[], char *const envp[])
 {
 	size_t p_pid = getpid();
@@ -83,28 +92,18 @@ void exec_cmd(const char *buf, char *const argv[], char *const envp[])
 	fork();
 
 	if (getpid() != p_pid) {
-		char cmd_buffer[MAX_CMD_BUF_SIZE] = "/bin/";
-		char *cmd_buf = cmd_buffer;
-		char *env_args[] = { (char*)0 };
+		char *env_args[50] = { "/usr/bin/", "/bin/", (char*)NULL };
 
-		cmd_buf = str_cat(cmd_buf, buf);
 		/* execve(cmd_buf, argv, env_args); */
-		execvpe(cmd_buf, argv, env_args);
+		execvpe(buf, argv, env_args);
+		/* This can be use once you have the path variable in place. */
+		/* execvp(cmd_buf, argv) */
+
 		exit(EXIT_SUCCESS);
 	}
 
 	int status;
 	waitpid(p_pid, &status, 0);
-}
-
-
-void parse_cmd(char *str, char *s[])
-{
-        size_t i = 0;
-        s[i] = strtok(str, " ");
-        while (s[i])
-                s[++i] = strtok(NULL, " ");
-	return;
 }
 
 int main(int argc, char* argv[])
