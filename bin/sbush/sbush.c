@@ -6,7 +6,7 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 
-#define MAX_IN_BUF_SIZE	200
+#define MAX_IN_BUF_SIZE		200
 #define MAX_CMD_BUF_SIZE	200
 
 /* Returns Length of the String */
@@ -18,14 +18,14 @@ size_t str_len(const char *buf)
 }
 
 /* Get Line from Input */
-size_t get_line(char *buf, int size)
+size_t get_line(char *buf)
 {
 
 	if (!buf)
 		return 0;
 
 	size_t pos = 0;
-	char x = EOF;
+	int x = EOF;
 
 	do {
 		buf[pos++] = x = getchar();
@@ -109,10 +109,11 @@ int main(int argc, char* argv[])
 	int bufsize= 0;
 
 	while (1) {
-		bufsize = get_line(line, bufsize);
+		bufsize = get_line(line);
 		putchar('#');
 
-		exec_cmd(line, NULL, NULL);
+		if (bufsize > 0)
+			exec_cmd(line, NULL, NULL);
 
 		/* terminate the string for safety */
 		line[0] = '\0';
