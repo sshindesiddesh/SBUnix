@@ -6,8 +6,11 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 
+#include <string.h>
+
 #define MAX_IN_BUF_SIZE		200
 #define MAX_CMD_BUF_SIZE	200
+#define MAX_PARAM_SUPP		50
 
 /* Returns Length of the String */
 size_t str_len(const char *buf)
@@ -86,19 +89,26 @@ EXEC:
 	if (getpid() != p_pid) {
 		char cmd_buffer[MAX_CMD_BUF_SIZE] = "/bin/";
 		char *cmd_buf = cmd_buffer;
-		char *args[2];
 		char *env_args[] = { (char*)0 };
 
 		cmd_buf = str_cat(cmd_buf, buf);
-		args[0] = cmd_buf;
-		args[1] = NULL;
-		/* execve(cmd_buf, args, env_args); */
-		execvpe(cmd_buf, args, env_args);
+		/* execve(cmd_buf, argv, env_args); */
+		execvpe(cmd_buf, argv, env_args);
 		exit(EXIT_SUCCESS);
 	}
 
 	int status;
 	waitpid(p_pid, &status, 0);
+}
+
+
+void parse_cmd(char *str, char *s[])
+{
+        size_t i = 0;
+        s[i] = strtok(str, " ");
+        while (s[i])
+                s[++i] = strtok(NULL, " ");
+	return;
 }
 
 int main(int argc, char* argv[])
@@ -112,12 +122,15 @@ int main(int argc, char* argv[])
 		bufsize = get_line(line);
 		putchar('#');
 
+        	char *s[MAX_PARAM_SUPP];
+		parse_cmd(line, s);
+
 		if (bufsize > 0)
-			exec_cmd(line, NULL, NULL);
+			exec_cmd(line, s, NULL);
 
 		/* terminate the string for safety */
 		line[0] = '\0';
 	}
 
-return 0;
+	return 0;
 }
