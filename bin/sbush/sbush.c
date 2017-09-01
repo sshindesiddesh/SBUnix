@@ -125,10 +125,23 @@ void exec_cmd(const char *buf, char *argv[])
 		waitpid(c_pid, &status, 0);
 }
 
+/* This function returns the number of commands with pipes.
+ * No pipe means just one command.
+ */
+size_t collect_pipe_cmds(char *str, char *s[])
+{
+        size_t i = 0;
+        s[i] = strtok(str, "|");
+        while (s[i])
+                s[++i] = strtok(NULL, " ");
+	return i;
+}
+
 int main(int argc, char* argv[])
 {
+	/* This is for executing a shell script. */
 	if (argc >= 2) {
-		/* This is used to check if the input file starts with #!/bin/sbush
+		/* This is used to check if the input file starts with #!sbush
 		 * Only then we will execute the file.
 		 */
 		size_t tmp = 0;
@@ -141,9 +154,9 @@ int main(int argc, char* argv[])
 
 			if (!tmp) {
 				tmp = 1;
-				if (str_cmp(line, "!#/bin/sbush" )) {
+				if (str_cmp(line, "#!sbush")) {
 					/* TO DO : Do not use printf. use exec cmd for echo. */
-					printf("The File you provided does not begin with #! \n");
+					printf("The File you provided does not begin with #!sbush \n");
 					return 0;
 				}
 			}
@@ -163,6 +176,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
+	/*  Normal shell prompt here. */
 	puts("sbush#");
 
 	char line[MAX_IN_BUF_SIZE];
