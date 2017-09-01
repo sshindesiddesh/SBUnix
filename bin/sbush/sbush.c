@@ -128,6 +128,9 @@ void exec_cmd(const char *buf, char *argv[])
 int main(int argc, char* argv[])
 {
 	if (argc >= 2) {
+		/* This is used to check if the input file starts with #!/bin/sbush
+		 * Only then we will execute the file.
+		 */
 		size_t tmp = 0;
 		FILE *f = fopen(argv[1], "r");
 		char line[MAX_IN_BUF_SIZE];
@@ -137,9 +140,12 @@ int main(int argc, char* argv[])
 			bufsize = get_line(f, line);
 
 			if (!tmp) {
-				str_cmp(line, "!#/bin/sbush" );
 				tmp = 1;
-				continue;
+				if (str_cmp(line, "!#/bin/sbush" )) {
+					/* TO DO : Do not use printf. use exec cmd for echo. */
+					printf("The File you provided does not begin with #! \n");
+					return 0;
+				}
 			}
 
 			char *s[MAX_PARAM_SUPP];
