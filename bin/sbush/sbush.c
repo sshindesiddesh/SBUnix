@@ -72,14 +72,15 @@ void exec_cmd(const char *buf, char *const argv[], char *const envp[])
 {
 	size_t p_pid = getpid();
 
-	if (!str_cmp("ls", buf))
+	if (!str_cmp("exit", buf))
+		exit(EXIT_SUCCESS);
+	else if (!str_cmp("ls", buf))
 		goto EXEC;
 	else if (!str_cmp("clear", buf))
 		goto EXEC;
 	else if (!str_cmp("cd", buf)) {
-		if (!chdir("libc"));
-			printf("chdir Successfull");
-		return;
+		if (!chdir(argv[1]))
+			return;
 	} else
 		return;
 EXEC:
