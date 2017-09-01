@@ -77,7 +77,7 @@ void parse_cmd(char *str, char *s[])
 	return;
 }
 
-void exec_cmd(const char *buf, char *const argv[], char *const envp[])
+void exec_cmd(const char *buf, char *const argv[])
 {
 	size_t p_pid = getpid();
 
@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
 			parse_cmd(line, s);
 
 			if (bufsize > 0)
-				exec_cmd(line, s, NULL);
+				exec_cmd(line, s);
 
 			/* terminate the string for safety */
 			line[0] = '\0';
@@ -152,7 +152,7 @@ int main(int argc, char* argv[])
 		parse_cmd(line, s);
 
 		if (bufsize > 0)
-			exec_cmd(line, s, NULL);
+			exec_cmd(line, s);
 
 		/* terminate the string for safety */
 		line[0] = '\0';
