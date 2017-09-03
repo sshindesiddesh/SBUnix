@@ -271,7 +271,9 @@ int pros_pipes(char *s[])
 
 	exec_cmd(s[cmd_no], ls);
 
-	/* TODO : Add an exec_cmd to remove the .sbush.tmp file. */
+	char cmd[] = "rm";
+	char *param[5] = {"rm", ".sbush.tmp"};
+	exec_cmd(cmd, param);
         return 0;
 }
 
