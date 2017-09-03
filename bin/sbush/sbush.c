@@ -246,6 +246,9 @@ int pros_pipes(char *s[])
 			close(fd[1]);
 			close(fd[0]);
 
+			/* Remove extra spaces */
+			s[cmd_no] = strtok(s[cmd_no], " ");
+
 			execvpe(s[cmd_no], ls, env_args);
 			exit(EXIT_SUCCESS);
 		}
@@ -278,6 +281,9 @@ int pros_pipes(char *s[])
 	while (ls[++i]);
 	ls[i] = ".sbush.tmp";
 	ls[i + 1] = NULL;
+
+	/* Remove extra spaces */
+	s[cmd_no] = strtok(s[cmd_no], " ");
 
 	exec_cmd(s[cmd_no], ls);
 
