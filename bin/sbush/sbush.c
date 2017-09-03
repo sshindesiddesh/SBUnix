@@ -332,9 +332,6 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	/*  Normal shell prompt here. */
-	put_s("sbush#");
-
 	int bufsize= 0;
 
 	while (1) {

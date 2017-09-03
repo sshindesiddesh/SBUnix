@@ -1,10 +1,5 @@
 include Makefile.config
 
-#To Do : Remove this target
-run : all
-	./rootfs/bin/sbush
-
-
 CC=gcc
 CFLAGS=-O1 -std=c99 -Wall -Werror -fPIC -march=amdfam10 -g3 -Wno-deprecated-declarations -D_XOPEN_SOURCE=600
 CFLAGS_FULL=-nostdinc -Iinclude -msoft-float -mno-sse -mno-red-zone -fno-builtin -fno-stack-protector
