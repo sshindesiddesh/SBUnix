@@ -35,7 +35,7 @@ ifneq "$(ASSIGNMENT)" "wp1p1"
 CFLAGS+= $(CFLAGS_FULL)
 endif
 
-wp1: rootfs/bin/sbush
+wp1: $(BINS)
 
 wp2: project
 
