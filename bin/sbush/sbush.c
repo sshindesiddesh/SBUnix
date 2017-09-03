@@ -194,6 +194,13 @@ void exec_cmd(const char *buf, char *argv[])
 		waitpid(c_pid, &status, 0);
 }
 
+void put_s(char *str)
+{
+	size_t i = 0;
+	while (str[i])
+		putc(str[i++], stdout);
+}
+
 /* This function returns the number of commands with pipes.
  * No pipe means just one command.
  */
@@ -320,12 +327,12 @@ int main(int argc, char* argv[])
 	}
 
 	/*  Normal shell prompt here. */
-	puts("sbush#");
+	put_s("sbush#");
 
 	int bufsize= 0;
 
 	while (1) {
-		puts(prompt_name);
+		put_s(prompt_name);
 
 		bufsize = get_line(stdin, line);
 
