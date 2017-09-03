@@ -86,6 +86,17 @@ void parse_cmd(char *str, char *s[])
         while (s[i])
                 s[++i] = strtok(NULL, " ");
 
+	/* Replace all the dollar parameters with their values */
+	i = 0;
+	char par[40];
+	char *p_par = par;
+	while (s[i]) {
+		if (*(s[i]) == '$') {
+			p_par = strtok(s[i], "$");
+			s[i] = getenv(p_par);
+		}
+		i++;
+	}
 	return;
 }
 
@@ -99,10 +110,11 @@ void parse_env_var(char *str, char *s[])
 	return;
 }
 
+char env_key[20];
+char env_val[200];
+
 void exec_cmd(const char *buf, char *argv[])
 {
-	size_t p_pid = getpid();
-
 	if (!str_cmp("exit", buf)) {
 		/* TO DO : This might be problematic as the shell wont exit untill the child completes
 		 * 	   would even not allow to input any command to shell as it is stuck here. 
@@ -118,6 +130,33 @@ void exec_cmd(const char *buf, char *argv[])
 		parse_env_var(argv[1], ls);
 	        if (!str_cmp("PS1", ls[0]))
 			prompt_name = ls[1];
+		/* Any other env variable user is trying to set/update */
+	        else {
+			/* TODO : export $PATH=$PATH:$VAR will not work ini current scenario. */
+			/* If the env variable already exists */
+			if (getenv(ls[0])) {
+				char *env_k = env_key;
+				char *env_v;
+				char *env_t = env_val;
+				env_k = strtok(ls[1], ":");
+				/* If user is trying to append some existing variable */
+				if (env_k && env_k[0] == '$') {
+					env_t = strtok(NULL, ":");
+					env_t = strcat(env_t, ":");
+					env_k = strtok(env_k, "$");
+					env_v = getenv(env_k);
+					env_t = strcat(env_t, env_v);
+					setenv(env_k, env_t, 1);
+				/* No other env variable in the path */
+				} else {
+					setenv(env_k, ls[1], 1);
+
+				}
+			/* If the env variable does not exist. The overwrite is zero here. */
+			} else
+				setenv(ls[0], ls[1], 0);
+			return;
+		}
 	} else
 		;
 
@@ -135,7 +174,7 @@ void exec_cmd(const char *buf, char *argv[])
 
 	size_t c_pid = fork();
 
-	if (getpid() != p_pid) {
+	if (c_pid == 0) {
 
 		/* execve(cmd_buf, argv, env_args); */
 		execvpe(buf, argv, env_args);
@@ -238,6 +277,8 @@ int pros_pipes(char *s[])
 
 int main(int argc, char* argv[])
 {
+	/* Set default environment with known system paths */
+
 	/* This is for executing a shell script. */
 	if (argc >= 2) {
 		/* This is used to check if the input file starts with #!sbush
