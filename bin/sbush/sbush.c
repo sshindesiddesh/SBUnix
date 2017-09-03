@@ -13,6 +13,12 @@
 /* Maximum parameters supported in a command including arguments */
 #define MAX_PARAM_SUPP		50
 
+char line[MAX_IN_BUF_SIZE];
+
+char *s[MAX_PARAM_SUPP];
+
+char *env_args[50] = { "/usr/bin/", "/bin/", (char*)NULL };
+
 /* Returns Length of the String */
 size_t str_len(const char *buf)
 {
@@ -75,6 +81,7 @@ void parse_cmd(char *str, char *s[])
         s[i] = strtok(str, " ");
         while (s[i])
                 s[++i] = strtok(NULL, " ");
+
 	return;
 }
 
@@ -109,7 +116,6 @@ void exec_cmd(const char *buf, char *argv[])
 	size_t c_pid = fork();
 
 	if (getpid() != p_pid) {
-		char *env_args[50] = { "/usr/bin/", "/bin/", (char*)NULL };
 
 		/* execve(cmd_buf, argv, env_args); */
 		execvpe(buf, argv, env_args);
@@ -129,18 +135,73 @@ void exec_cmd(const char *buf, char *argv[])
 /* This function returns the number of commands with pipes.
  * No pipe means just one command.
  */
-size_t collect_pipe_cmds(char *str, char *s[])
+size_t collect_pipe_cmds(const char *str, char *s[])
 {
-        size_t i = 0;
-        s[i] = strtok(str, "|");
-        while (s[i])
-                s[++i] = strtok(NULL, " ");
+	char line[MAX_IN_BUF_SIZE];
+	strcpy(line, str);
+	size_t i = 0;
+	s[i] = strtok(line, "|");
+	while (s[i])
+		s[++i] = strtok(NULL, "|");
+
 	return i;
 }
 
-char line[MAX_IN_BUF_SIZE];
+char pipe_buf[4000];
 
-char *s[MAX_PARAM_SUPP];
+int pros_pipes(char *s[])
+{
+	/* This is local for this function as this is only
+	 * consumed by  params in commands that are in pipes. */
+	char *ls[MAX_PARAM_SUPP];
+	size_t i = 0;
+	int status;
+	int fd[2];
+
+	parse_cmd(s[0], ls);
+
+	if (pipe(fd) != 0)
+		return 0;
+
+	size_t c_pid = fork();
+        /* Child */
+        if (c_pid == 0) {
+		while (dup2(fd[1], STDOUT_FILENO) == -1);
+		close(fd[1]);
+		close(fd[0]);
+		execvpe(s[0], ls, env_args);
+		exit(EXIT_SUCCESS);
+        }
+
+	/* Wait for the child process to get executed. */
+	waitpid(c_pid, &status, 0);
+
+	close(fd[1]);
+
+	FILE *fd_tmp = fopen(".sbush.tmp", "w");
+
+	while (1) {
+		size_t cnt = read(fd[0], pipe_buf, sizeof(pipe_buf));
+		if (cnt == 0)
+			break;
+		i = 0;
+		while (i < cnt)
+			putc(pipe_buf[i++], fd_tmp);
+	}
+
+	fclose(fd_tmp);
+
+	parse_cmd(s[1], ls);
+
+	i = 0;
+	while (ls[++i]);
+	ls[i] = ".sbush.tmp";
+	ls[i + 1] = NULL;
+
+	exec_cmd(s[1], ls);
+
+        return 0;
+}
 
 int main(int argc, char* argv[])
 {
@@ -187,6 +248,12 @@ int main(int argc, char* argv[])
 		bufsize = get_line(stdin, line);
 
 		putchar('#');
+
+		/* Support for piping */
+		if (collect_pipe_cmds(line, s) > 1) {
+			pros_pipes(s);
+			continue;
+		}
 
 		parse_cmd(line, s);
 
