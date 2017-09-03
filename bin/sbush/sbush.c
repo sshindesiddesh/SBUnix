@@ -21,6 +21,8 @@ char *env_args[50] = { "/usr/bin/", "/bin/", (char*)NULL };
 
 char pipe_buf[4000];
 
+char *prompt_name = "sbush#";
+
 /* Returns Length of the String */
 size_t str_len(const char *buf)
 {
@@ -87,6 +89,16 @@ void parse_cmd(char *str, char *s[])
 	return;
 }
 
+void parse_env_var(char *str, char *s[])
+{
+        size_t i = 0;
+        s[i] = strtok(str, "=");
+        while (s[i])
+                s[++i] = strtok(NULL, "=");
+
+	return;
+}
+
 void exec_cmd(const char *buf, char *argv[])
 {
 	size_t p_pid = getpid();
@@ -100,6 +112,12 @@ void exec_cmd(const char *buf, char *argv[])
 	} else if (!str_cmp("cd", buf)) {
 		if (!chdir(argv[1]))
 			return;
+	} else if (!str_cmp("export", buf)) {
+		/* Use of export to change PATH or PS1 var */
+		char *ls[MAX_PARAM_SUPP];
+		parse_env_var(argv[1], ls);
+	        if (!str_cmp("PS1", ls[0]))
+			prompt_name = ls[1];
 	} else
 		;
 
@@ -120,7 +138,6 @@ void exec_cmd(const char *buf, char *argv[])
 	if (getpid() != p_pid) {
 
 		/* execve(cmd_buf, argv, env_args); */
-		printf("cmd : %s\n", buf);
 		execvpe(buf, argv, env_args);
 		/* This can be use once you have the path variable in place. */
 		/* execvp(cmd_buf, argv) */
@@ -144,11 +161,8 @@ size_t collect_pipe_cmds(const char *str, char *s[])
 	strcpy(line, str);
 	size_t i = 0;
 	s[i] = strtok(line, "|");
-	while (s[i]) {
-		printf("%s \n", s[i]);
+	while (s[i])
 		s[++i] = strtok(NULL, "|");
-	}
-
 	return i;
 }
 
@@ -264,9 +278,10 @@ int main(int argc, char* argv[])
 	int bufsize= 0;
 
 	while (1) {
+		puts(prompt_name);
+
 		bufsize = get_line(stdin, line);
 
-		putchar('#');
 
 		/* Support for piping */
 		if (collect_pipe_cmds(line, s) > 1) {
