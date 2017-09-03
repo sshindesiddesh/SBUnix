@@ -257,6 +257,7 @@ int main(int argc, char* argv[])
 					printf("The File you provided does not begin with #!sbush \n");
 					return 0;
 				}
+				continue;
 			}
 
 			parse_cmd(line, s);
