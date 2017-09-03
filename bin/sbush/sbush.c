@@ -8,8 +8,9 @@
 
 #include <string.h>
 
+/* Buffer size for max chars in input command */
 #define MAX_IN_BUF_SIZE		200
-#define MAX_CMD_BUF_SIZE	200
+/* Maximum parameters supported in a command including arguments */
 #define MAX_PARAM_SUPP		50
 
 /* Returns Length of the String */
@@ -137,6 +138,10 @@ size_t collect_pipe_cmds(char *str, char *s[])
 	return i;
 }
 
+char line[MAX_IN_BUF_SIZE];
+
+char *s[MAX_PARAM_SUPP];
+
 int main(int argc, char* argv[])
 {
 	/* This is for executing a shell script. */
@@ -146,7 +151,6 @@ int main(int argc, char* argv[])
 		 */
 		size_t tmp = 0;
 		FILE *f = fopen(argv[1], "r");
-		char line[MAX_IN_BUF_SIZE];
 		int bufsize = 1;
 
 		while (bufsize > 0) {
@@ -160,8 +164,6 @@ int main(int argc, char* argv[])
 					return 0;
 				}
 			}
-
-			char *s[MAX_PARAM_SUPP];
 
 			parse_cmd(line, s);
 
@@ -179,14 +181,12 @@ int main(int argc, char* argv[])
 	/*  Normal shell prompt here. */
 	puts("sbush#");
 
-	char line[MAX_IN_BUF_SIZE];
 	int bufsize= 0;
 
 	while (1) {
 		bufsize = get_line(stdin, line);
-		putchar('#');
 
-        	char *s[MAX_PARAM_SUPP];
+		putchar('#');
 
 		parse_cmd(line, s);
 
