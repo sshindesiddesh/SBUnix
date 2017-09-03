@@ -95,6 +95,7 @@ void parse_env_var(char *str, char *s[])
         s[i] = strtok(str, "=");
         while (s[i])
                 s[++i] = strtok(NULL, "=");
+
 	return;
 }
 
