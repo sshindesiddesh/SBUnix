@@ -19,6 +19,8 @@ char *s[MAX_PARAM_SUPP];
 
 char *env_args[50] = { "/usr/bin/", "/bin/", (char*)NULL };
 
+char pipe_buf[4000];
+
 /* Returns Length of the String */
 size_t str_len(const char *buf)
 {
@@ -118,6 +120,7 @@ void exec_cmd(const char *buf, char *argv[])
 	if (getpid() != p_pid) {
 
 		/* execve(cmd_buf, argv, env_args); */
+		printf("cmd : %s\n", buf);
 		execvpe(buf, argv, env_args);
 		/* This can be use once you have the path variable in place. */
 		/* execvp(cmd_buf, argv) */
@@ -141,65 +144,81 @@ size_t collect_pipe_cmds(const char *str, char *s[])
 	strcpy(line, str);
 	size_t i = 0;
 	s[i] = strtok(line, "|");
-	while (s[i])
+	while (s[i]) {
+		printf("%s \n", s[i]);
 		s[++i] = strtok(NULL, "|");
+	}
 
 	return i;
 }
-
-char pipe_buf[4000];
 
 int pros_pipes(char *s[])
 {
 	/* This is local for this function as this is only
 	 * consumed by  params in commands that are in pipes. */
 	char *ls[MAX_PARAM_SUPP];
-	size_t i = 0;
+	size_t i = 0, cmd_no = 0;
 	int status;
 	int fd[2];
 
-	parse_cmd(s[0], ls);
+	/* Process all the commands but last in the loop */
+	while (s[cmd_no] && s[cmd_no + 1]) {
+		parse_cmd(s[cmd_no], ls);
 
-	if (pipe(fd) != 0)
-		return 0;
+		/* Do not append the output of previous command to the first command */
+		if (cmd_no != 0) {
+			i = 0;
+			while (ls[++i]);
+			ls[i] = ".sbush.tmp";
+			ls[i + 1] = NULL;
+		}
 
-	size_t c_pid = fork();
-        /* Child */
-        if (c_pid == 0) {
-		while (dup2(fd[1], STDOUT_FILENO) == -1);
+		if (pipe(fd) != 0)
+			return 0;
+
+		size_t c_pid = fork();
+		/* Child */
+		if (c_pid == 0) {
+			while (dup2(fd[1], STDOUT_FILENO) == -1);
+			close(fd[1]);
+			close(fd[0]);
+
+			execvpe(s[cmd_no], ls, env_args);
+			exit(EXIT_SUCCESS);
+		}
+
+		/* Wait for the child process to get executed. */
+		waitpid(c_pid, &status, 0);
+
 		close(fd[1]);
+
+		FILE *fd_tmp = fopen(".sbush.tmp", "w");
+
+		while (1) {
+			size_t cnt = read(fd[0], pipe_buf, sizeof(pipe_buf));
+			if (cnt == 0)
+				break;
+			i = 0;
+			while (i < cnt)
+				putc(pipe_buf[i++], fd_tmp);
+		}
+
 		close(fd[0]);
-		execvpe(s[0], ls, env_args);
-		exit(EXIT_SUCCESS);
-        }
-
-	/* Wait for the child process to get executed. */
-	waitpid(c_pid, &status, 0);
-
-	close(fd[1]);
-
-	FILE *fd_tmp = fopen(".sbush.tmp", "w");
-
-	while (1) {
-		size_t cnt = read(fd[0], pipe_buf, sizeof(pipe_buf));
-		if (cnt == 0)
-			break;
-		i = 0;
-		while (i < cnt)
-			putc(pipe_buf[i++], fd_tmp);
+		fclose(fd_tmp);
+		cmd_no++;
 	}
 
-	fclose(fd_tmp);
-
-	parse_cmd(s[1], ls);
+	/* Process last command seperately because the output is redirected to the console.*/
+	parse_cmd(s[cmd_no], ls);
 
 	i = 0;
 	while (ls[++i]);
 	ls[i] = ".sbush.tmp";
 	ls[i + 1] = NULL;
 
-	exec_cmd(s[1], ls);
+	exec_cmd(s[cmd_no], ls);
 
+	/* TODO : Add an exec_cmd to remove the .sbush.tmp file. */
         return 0;
 }
 
