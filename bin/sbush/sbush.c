@@ -21,7 +21,9 @@ char *env_args[50] = { "/usr/bin/", "/bin/", (char*)NULL };
 
 char pipe_buf[4000];
 
-char *prompt_name = "sbush#";
+/* This character array stores prompt name. */
+char p_name[50] = "sbush#";
+char *prompt_name = p_name;
 
 /* Returns Length of the String */
 size_t str_len(const char *buf)
@@ -128,10 +130,11 @@ void exec_cmd(const char *buf, char *argv[])
 		/* Use of export to change PATH or PS1 var */
 		char *ls[MAX_PARAM_SUPP];
 		parse_env_var(argv[1], ls);
-	        if (!str_cmp("PS1", ls[0]))
-			prompt_name = ls[1];
+	        if (!str_cmp("PS1", ls[0])) {
+			prompt_name = strcpy(prompt_name, ls[1]);
+			return;
 		/* Any other env variable user is trying to set/update */
-	        else {
+	        } else {
 			/* TODO : export $PATH=$PATH:$VAR will not work ini current scenario. */
 			/* If the env variable already exists */
 			if (getenv(ls[0])) {
