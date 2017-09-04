@@ -3,10 +3,11 @@
 
 #include <sys/defs.h>
 
+size_t write(int fd, const void *buf, size_t count);
+size_t read(int fd, void *buf, size_t count);
+#if 0
 int open(const char *pathname, int flags);
 int close(int fd);
-ssize_t read(int fd, void *buf, size_t count);
-ssize_t write(int fd, const void *buf, size_t count);
 int unlink(const char *pathname);
 
 int chdir(const char *path);
@@ -28,5 +29,6 @@ int mkdir(const char *pathname, mode_t mode);
 
 // OPTIONAL: implement for ``signals and pipes (+10 pts)''
 int pipe(int pipefd[2]);
+#endif
 
 #endif
