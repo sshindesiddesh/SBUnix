@@ -58,3 +58,102 @@ char *strcat(char *dst, const char* src)
 
        return dst;
 }
+
+char* strcpy(char *dst, const char *src)
+{
+	char *temp = dst;
+	if(!src) {
+		*temp = '\0';
+		return dst;
+	}
+	while(*src) {
+		*temp = *src;
+		temp++;
+		src++;
+	}
+	*temp = *src;
+	return dst;
+}
+
+char *mystrtok_r(char *bstr, char *delim, char **save)
+{
+	char *temp = bstr;
+	if(temp == NULL)
+	{
+		if(*save == NULL)
+		{
+			return NULL;
+		}
+		temp = *save;
+	}
+	else
+	{
+		*save = NULL;
+	}
+
+	// Find a non delimiter character
+	while(*temp)
+	{
+		const char *temp2 = delim;
+		while(*temp2)
+		{
+			if(*temp == *temp2)
+			{
+				// This is a delimiter character
+				*temp = '\0';
+				break;
+			}
+			*temp2++;
+		}
+		if(*temp != '\0')
+		{
+			// Found the non delimiter character
+			break;
+		}
+		temp++;
+	}
+	if(*temp == '\0')
+	{
+		// No token found in remaining string.
+		*save = NULL;
+		return NULL;
+	}
+
+	// Find a delimiter character
+	char *retval = temp;
+	while(*temp)
+	{
+		const char *temp2 = delim;
+		while(*temp2)
+		{
+			if(*temp == *temp2)
+			{
+				// This is a delimiter character
+				*save = temp + 1;
+				*temp = '\0';
+				break;
+			}
+			*temp2++;
+		}
+		if(*save > temp)
+		{
+			// Found a delimiter character, stop searching for remaining occurrences
+			break;
+		}
+		temp++;
+	}
+	if(*save <= temp)
+	{
+		// Reached the end of original string, but no delimiter character found.
+		// Mark save as NULL so that function can return NULL in next call, indicating the end of tokens in given string.
+		*save = NULL;
+	}
+
+	return retval;
+}
+
+char *mystrtok(char *bstr, char *delim)
+{ 
+	static char *save = NULL;
+	return mystrtok_r(bstr, delim, &save);
+}
