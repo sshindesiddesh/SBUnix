@@ -3,7 +3,6 @@
 
 #include <stdio.h>
 #include <unistd.h>
-#include <sys/wait.h>
 #include <stdlib.h>
 
 #include <string.h>
@@ -25,61 +24,9 @@ char pipe_buf[4000];
 char p_name[50] = "sbush#";
 char *prompt_name = p_name;
 
-/* Returns Length of the String */
-size_t str_len(const char *buf)
-{
-	size_t len = 0;
-	while (*buf++ != '\0') len++;
-	return len;
-}
+char *getenv(const char *name) {return NULL;}
 
-/* Get Line from Input */
-size_t get_line(FILE *fp, char *buf)
-{
-
-	if (!buf)
-		return 0;
-
-	size_t pos = 0;
-	int x = EOF;
-
-	do {
-		buf[pos++] = x = fgetc(fp);
-
-	} while (x != EOF && x != '\n');
-
-	buf[pos - 1] = '\0';
-
-	return str_len(buf);
-}
-
-size_t str_cmp(const char *s1, const char *s2)
-{
-	if (!s1 || !s2)
-		return -1;
-
-	if (str_len(s1) != str_len(s2))
-		return -1;
-
-	size_t cnt = 0, len = str_len(s1);
-
-	while (len--)
-		if (*s1++ != *s2++)
-			cnt++;
-	return cnt;
-}
-
-char *str_cat(char *dst, const char* src)
-{
-       size_t dst_len = str_len(dst);
-       size_t i;
-
-       for (i = 0; src[i] != '\0'; i++)
-	   dst[dst_len + i] = src[i];
-       dst[dst_len + i] = '\0';
-
-       return dst;
-}
+int setenv(const char *name, const char *value, int overwrite){ return 0;};
 
 void parse_cmd(char *str, char *s[])
 {
@@ -117,20 +64,20 @@ char env_val[200];
 
 void exec_cmd(const char *buf, char *argv[])
 {
-	if (!str_cmp("exit", buf)) {
+	if (!strcmp("exit", buf)) {
 		/* TO DO : This might be problematic as the shell wont exit untill the child completes
 		 * 	   would even not allow to input any command to shell as it is stuck here. 
 		 */
 		waitpid(0, NULL, 0);
 		exit(EXIT_SUCCESS);
-	} else if (!str_cmp("cd", buf)) {
+	} else if (!strcmp("cd", buf)) {
 		if (!chdir(argv[1]))
 			return;
-	} else if (!str_cmp("export", buf)) {
+	} else if (!strcmp("export", buf)) {
 		/* Use of export to change PATH or PS1 var */
 		char *ls[MAX_PARAM_SUPP];
 		parse_env_var(argv[1], ls);
-	        if (!str_cmp("PS1", ls[0])) {
+	        if (!strcmp("PS1", ls[0])) {
 			prompt_name = strcpy(prompt_name, ls[1]);
 			return;
 		/* Any other env variable user is trying to set/update */
@@ -169,7 +116,7 @@ void exec_cmd(const char *buf, char *argv[])
 	while (argv[i++]); i -= 2;
 
 	/* Assumed that & is always at the end of the complete command. */
-	if (!str_cmp(argv[i], "&")) {
+	if (!strcmp(argv[i], "&")) {
 		/* Remove & from the parameter char* array. */
 		argv[i] = NULL;
 		bg = 1;
@@ -258,7 +205,7 @@ int pros_pipes(char *s[])
 
 		close(fd[1]);
 
-		FILE *fd_tmp = fopen(".sbush.tmp", "w");
+		FILE fd_tmp = open(".sbush.tmp", O_CREAT|O_RDWR);
 
 		while (1) {
 			size_t cnt = read(fd[0], pipe_buf, sizeof(pipe_buf));
@@ -270,7 +217,7 @@ int pros_pipes(char *s[])
 		}
 
 		close(fd[0]);
-		fclose(fd_tmp);
+		close(fd_tmp);
 		cmd_no++;
 	}
 
@@ -303,17 +250,17 @@ int main(int argc, char* argv[])
 		 * Only then we will execute the file.
 		 */
 		size_t tmp = 0;
-		FILE *f = fopen(argv[1], "r");
+		FILE f = open(argv[1], O_RDONLY);
 		int bufsize = 1;
 
 		while (bufsize > 0) {
-			bufsize = get_line(f, line);
+			bufsize = getline(f, line);
 
 			if (!tmp) {
 				tmp = 1;
-				if (str_cmp(line, "#!sbush")) {
+				if (strcmp(line, "#!sbush")) {
 					/* TO DO : Do not use printf. use exec cmd for echo. */
-					printf("The File you provided does not begin with #!sbush \n");
+					print("The File you provided does not begin with #!sbush \n");
 					return 0;
 				}
 				continue;
@@ -327,7 +274,7 @@ int main(int argc, char* argv[])
 			/* terminate the string for safety */
 			line[0] = '\0';
 		}
-		fclose(f);
+		close(f);
 		exit(EXIT_SUCCESS);
 		return 0;
 	}
@@ -337,7 +284,7 @@ int main(int argc, char* argv[])
 	while (1) {
 		put_s(prompt_name);
 
-		bufsize = get_line(stdin, line);
+		bufsize = getline(stdin, line);
 
 
 		/* Support for piping */
