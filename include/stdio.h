@@ -1,6 +1,7 @@
 #ifndef _STDIO_H
 #define _STDIO_H
 
+#include <sys/defs.h>
 #define	stdout	(void *)1
 #define	stdin	(void *)0
 static const int EOF = -1;
