@@ -13,7 +13,7 @@ int open(const char *pathname, int flags)
 		/* Param 2 */
 		"movq %2, %%rsi\n"
 		/* Param 3 */
-		"movq $444, %%rdx\n"
+		"movq $777, %%rdx\n"
 #if 0
 		/* Param 4 */
 		"movq %1, %%rcx\n"
