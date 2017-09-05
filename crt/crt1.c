@@ -5,19 +5,17 @@
 #include <sys/tarfs.h>
 #include <sys/ahci.h>
 
-void _start(void) {
-	__asm(
+void _start() {
 	/* Move value pointed by rsp to rdi which is the first argument to a funcion */
-		"movq (%%rsp), %%rdi\n"
-	/* Move address in rsp + 8 to rsi which is the second argument to a funcion */
-		"movq 8(%%rsp), %%rsi\n"
+	__asm("movq (%rsp), %rdi");
+	/* Move value in rsp to rsi which is the second argument to a funcion */
+	__asm("movq %rsp, %rsi");
+	/* Add 8 to RSP and store it in RSI */
+	__asm("movq $8, %rax");
+	__asm("addq %rax, %rsi");
 	/* Main function */
-		"call main\n"
+	__asm("call main");
 	/* Exit system call */
-		"movq $60, %%rax\n"
-		"syscall\n"
-		:
-		:
-		: "rdi", "rsi", "rsp", "rax"
-	);
+	__asm("movq $60, %rax");
+	__asm("syscall");
 }
