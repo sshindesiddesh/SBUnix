@@ -12,9 +12,9 @@ int open(const char *pathname, int flags)
 		"movq %1, %%rdi\n"
 		/* Param 2 */
 		"movq %2, %%rsi\n"
-#if 0
 		/* Param 3 */
-		"movq %3, %%rdx\n"
+		"movq $444, %%rdx\n"
+#if 0
 		/* Param 4 */
 		"movq %1, %%rcx\n"
 		/* Param 5 */
@@ -30,7 +30,7 @@ int open(const char *pathname, int flags)
 		: /* input parameters mapped to %0 and %1, repsectively */
 		"m" (pathname), "m" (flags)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rdi", "rsi"
+		"rax", "rdi", "rsi", "rdx"
 	);
 	return out;
 }
