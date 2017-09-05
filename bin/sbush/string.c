@@ -152,8 +152,14 @@ char *mystrtok_r(char *bstr, char *delim, char **save)
 	return retval;
 }
 
-char *mystrtok(char *bstr, char *delim)
+char *strtok(char *bstr, char *delim)
 { 
 	static char *save = NULL;
 	return mystrtok_r(bstr, delim, &save);
+}
+
+void print(char *s)
+{
+	while (*s != '\0')
+		putc(*s++, stdout);
 }
