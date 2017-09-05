@@ -103,7 +103,7 @@ char *mystrtok_r(char *bstr, char *delim, char **save)
 				*temp = '\0';
 				break;
 			}
-			*temp2++;
+			temp2++;
 		}
 		if(*temp != '\0')
 		{
@@ -133,7 +133,7 @@ char *mystrtok_r(char *bstr, char *delim, char **save)
 				*temp = '\0';
 				break;
 			}
-			*temp2++;
+			temp2++;
 		}
 		if(*save > temp)
 		{
