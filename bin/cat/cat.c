@@ -2,6 +2,7 @@
 
 int main(int argc, char *argv[])
 {
+#if 0
 	int x = 0;
 	if (argc == 2) {
 		
@@ -13,5 +14,6 @@ int main(int argc, char *argv[])
 			putc(x, stdout);
 		}
 	}
+#endif
         return 0;
 }

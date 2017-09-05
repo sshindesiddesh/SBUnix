@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <unistd.h>
-
+#if 0
 void print(char *s)
 {
 	while (*s != '\0')
@@ -21,11 +21,14 @@ void printdir(char *path)
 		print(ep->d_name);
 		putc('\t', stdout);
 	}
+	closedir(dir);
 
 }
 
+#endif
 int main(int argc, char *argv[])
 {
+#if 0
 	char buf[256];
 	char *dir = buf;
 
@@ -37,5 +40,6 @@ int main(int argc, char *argv[])
 		printdir(argv[1]);
 	}
 	putc('\n', stdout);
+#endif
 	return 0;
 }

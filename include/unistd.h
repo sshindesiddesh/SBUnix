@@ -8,14 +8,18 @@ size_t read(int fd, void *buf, size_t count);
 int open(const char *pathname, int flags);
 int close(int fd);
 pid_t fork();
+int execvpe(const char *file, char *const argv[], char *const envp[]);
+// OPTIONAL: implement for ``signals and pipes (+10 pts)''
+int pipe(int pipefd[2]);
+int chdir(const char *path);
+char *getcwd(char *buf, size_t size);
+void exit(int status);
+int dup2(int oldfd, int newfd);
 
 #if 0
 int unlink(const char *pathname);
 
-int chdir(const char *path);
-char *getcwd(char *buf, size_t size);
 
-int execvpe(const char *file, char *const argv[], char *const envp[]);
 pid_t wait(int *status)
 int waitpid(int pid, int *status);
 
@@ -28,8 +32,6 @@ pid_t getppid(void);
 off_t lseek(int fd, off_t offset, int whence);
 int mkdir(const char *pathname, mode_t mode);
 
-// OPTIONAL: implement for ``signals and pipes (+10 pts)''
-int pipe(int pipefd[2]);
 #endif
 
 #endif
