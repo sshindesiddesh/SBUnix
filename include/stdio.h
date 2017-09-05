@@ -2,8 +2,10 @@
 #define _STDIO_H
 
 #include <sys/defs.h>
+
 #define	stdout	1
 #define	stdin	0
+#define WNOHANG	1
 
 #define	O_RDONLY	0000		/* open for reading only */
 #define	O_WRONLY	0001		/* open for writing only */
