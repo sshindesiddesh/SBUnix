@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-int getc(void *fd)
+int getc(int fd)
 {
 	int c = 0, ret = -1;
 

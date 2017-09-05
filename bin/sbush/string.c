@@ -12,7 +12,7 @@ size_t strlen(const char *buf)
 }
 
 /* Get Line from Input */
-size_t getline(FILE *fp, char *buf)
+size_t getline(FILE fp, char *buf)
 {
 
 	if (!buf)

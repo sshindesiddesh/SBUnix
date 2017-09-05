@@ -7,7 +7,7 @@ pid_t fork()
 	size_t out;
 	__asm__ (
 		/* System Call Number */
-		"movq $1, %%rax\n"
+		"movq $57, %%rax\n"
 #if 0
 		/* Param 1 */
 		"movq %1, %%rdi\n"
