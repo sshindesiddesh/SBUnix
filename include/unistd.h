@@ -15,13 +15,14 @@ int chdir(const char *path);
 char *getcwd(char *buf, size_t size);
 void exit(int status);
 int dup2(int oldfd, int newfd);
+pid_t waitpid(pid_t pid, int *status, int options);
 
 #if 0
 int unlink(const char *pathname);
+int waitpid(int pid, int *status);
 
 
 pid_t wait(int *status)
-int waitpid(int pid, int *status);
 
 unsigned int sleep(unsigned int seconds);
 
