@@ -96,7 +96,9 @@ void set_env_param(char *env[])
 	}
         i = 0;
         p = strtok(path, ":");
-	strcpy(env_p[i], p);
+	/* 5 is added to eliminate PATH from first variable
+	 * as it is tokenised using : */
+	strcpy(env_p[i], p + 5);
 	while (p) {
 		p = strtok(NULL, ":");
 		strcpy(env_p[++i], p);
@@ -266,7 +268,7 @@ int pros_pipes(char *s[])
 			/* Remove extra spaces */
 			s[cmd_no] = strtok(s[cmd_no], " ");
 
-			execvpe(s[cmd_no], ls, NULL);
+			execvpe(ls[0], ls, NULL);
 			exit(EXIT_SUCCESS);
 		}
 
@@ -315,9 +317,10 @@ int pros_pipes(char *s[])
 
 int main(int argc, char* argv[], char *envp[])
 {
+	/* Set env pointer */
 	set_ep(envp);
-	set_env_param(envp);
 	/* Set default environment with known system paths */
+	set_env_param(envp);
 
 	/* This is for executing a shell script. */
 	if (argc >= 2) {
