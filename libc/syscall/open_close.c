@@ -13,7 +13,7 @@ int open(const char *pathname, int flags)
 		/* Param 2 */
 		"movq %2, %%rsi\n"
 		/* Param 3 */
-		"movq $777, %%rdx\n"
+		"movq $444, %%rdx\n"
 #if 0
 		/* Param 4 */
 		"movq %1, %%rcx\n"
@@ -34,6 +34,8 @@ int open(const char *pathname, int flags)
 	);
 	return out;
 }
+
+extern int __eof;
 
 int close(int fd)
 {
@@ -65,6 +67,9 @@ int close(int fd)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax", "rdi"
 	);
+
+	__eof = 0;
+
 	return out;
 
 }
