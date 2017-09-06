@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
-int execvpe(const char *file, char *const argv[], char *const envp[])
+extern char env_p[30][100];
+
+int execve(const char *file, char *const argv[], char *const envp[])
 {
 	size_t out;
 	__asm__ (
@@ -33,4 +36,20 @@ int execvpe(const char *file, char *const argv[], char *const envp[])
 		"rax", "rdi", "rsi", "rdx"
 	);
 	return out;
+}
+
+int execvpe(const char *file, char *const argv[], char *const envp[])
+{
+	char cmd[100];
+	size_t k = 0;
+	int ret = -1;
+	/* TODO : check if this can be checked against pointer. */
+	while (env_p[k][0]) {
+		strcpy(cmd, env_p[k]);
+		strcat(cmd, "/");
+		strcat(cmd, file);
+		ret = execve(cmd, argv, NULL);
+		k++;
+	}
+	return ret;
 }
