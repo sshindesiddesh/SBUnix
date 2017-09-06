@@ -43,6 +43,9 @@ int execvpe(const char *file, char *const argv[], char *const envp[])
 	char cmd[100];
 	size_t k = 0;
 	int ret = -1;
+	/* Execute without addding any path. */
+	execve(file, argv, NULL);
+	/* Execute with appending paths */
 	/* TODO : check if this can be checked against pointer. */
 	while (env_p[k][0]) {
 		strcpy(cmd, env_p[k]);
