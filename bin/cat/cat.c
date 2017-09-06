@@ -1,12 +1,11 @@
 #include <stdio.h>
+#include <unistd.h>
 
 int main(int argc, char *argv[])
 {
-#if 0
 	int x = 0;
 	if (argc == 2) {
-		
-		FILE *f = fopen(argv[1], "r");
+		FILE f = open(argv[1], O_RDWR);
 		if (!f)
 			return 0;
 		while (x != EOF) {
@@ -14,6 +13,5 @@ int main(int argc, char *argv[])
 			putc(x, stdout);
 		}
 	}
-#endif
         return 0;
 }
