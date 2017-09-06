@@ -16,7 +16,7 @@ char line[MAX_IN_BUF_SIZE];
 
 char *s[MAX_PARAM_SUPP];
 
-char *env_args[50] = { "/usr/bin/", "/bin/", (char*)NULL };
+char env_p[30][100];
 
 char pipe_buf[4000];
 
@@ -27,6 +27,28 @@ char *prompt_name = p_name;
 char *getenv(const char *name) {return NULL;}
 
 int setenv(const char *name, const char *value, int overwrite){ return 0;};
+
+void set_env_param(char *env[])
+{
+	size_t i = 0;
+	char *p;
+	char path[200];
+
+	while (env[i]) {
+		if (!strcmpn(env[i], "PATH", 4)) {
+			strcpy(path, env[i]);
+			break;
+		}
+		i++;
+	}
+        i = 0;
+        p = strtok(path, ":");
+	strcpy(env_p[i], p);
+	while (p) {
+		p = strtok(NULL, ":");
+		strcpy(env_p[++i], p);
+	}
+}
 
 void parse_cmd(char *str, char *s[])
 {
@@ -125,12 +147,7 @@ void exec_cmd(const char *buf, char *argv[])
 	size_t c_pid = fork();
 
 	if (c_pid == 0) {
-
-		/* execve(cmd_buf, argv, env_args); */
-		execvpe(buf, argv, env_args);
-		/* This can be use once you have the path variable in place. */
-		/* execvp(cmd_buf, argv) */
-
+		execvpe(buf, argv, NULL);
 		exit(EXIT_SUCCESS);
 	}
 
@@ -196,7 +213,7 @@ int pros_pipes(char *s[])
 			/* Remove extra spaces */
 			s[cmd_no] = strtok(s[cmd_no], " ");
 
-			execvpe(s[cmd_no], ls, env_args);
+			execvpe(s[cmd_no], ls, NULL);
 			exit(EXIT_SUCCESS);
 		}
 
@@ -240,8 +257,9 @@ int pros_pipes(char *s[])
         return 0;
 }
 
-int main(int argc, char* argv[])
+int main(int argc, char* argv[], char *envp[])
 {
+	set_env_param(envp);
 	/* Set default environment with known system paths */
 
 	/* This is for executing a shell script. */
