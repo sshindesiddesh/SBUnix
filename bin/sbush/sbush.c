@@ -16,17 +16,70 @@ char line[MAX_IN_BUF_SIZE];
 
 char *s[MAX_PARAM_SUPP];
 
+/* All paths present in PATH variable are copied here. */
 char env_p[30][100];
 
-char pipe_buf[4000];
+/* Buffer for copying in files from pipes. */
+char pipe_buf[40];
+
+/* Pointer to environment variable from stack. */
+char **ep;
 
 /* This character array stores prompt name. */
 char p_name[50] = "sbush#";
 char *prompt_name = p_name;
 
-char *getenv(const char *name) {return NULL;}
+/* Buffer to store user defined env variables */
+char usr_env[10][200];
+int usr_env_cnt = 0;
 
-int setenv(const char *name, const char *value, int overwrite){ return 0;};
+char *getenv(char *name)
+{
+	int i = 0;
+	/*  Check in system variables. */
+	while (ep[i]) {
+		if (!strcmpn(ep[i], name, strlen(name)))
+			/* This only returns pointer to path and not starting
+			 * from the name of the variable. */
+			return (ep[i] + strlen(name) + 1);
+		i++;
+	}
+	return NULL;
+}
+
+int setenv(char *name, char *value, int overwrite)
+{
+	int i = 0;
+	/* The variable exists */
+	if (overwrite == 1) {
+		while (ep[i]) {
+			if (!strcmpn(ep[i], name, strlen(name))) {
+				strcpy(ep[i] + strlen(name) + 1, value);
+				break;
+			}
+			i++;
+		}
+	/* Create a variable */
+	} else if (overwrite == 0) {
+		i = 0;
+		strcpy(usr_env[usr_env_cnt] + i, name);
+		i += strlen(name);
+		strcpy(usr_env[usr_env_cnt] + i, "=");
+		i += 1;
+		strcpy(usr_env[usr_env_cnt] + i, value);
+		i = 0;
+		while(ep[++i]);
+		ep[i++] = usr_env[usr_env_cnt++];
+		ep[i] = NULL;
+	}
+	return 0;
+};
+
+/* Set the Environment Variable ponter from stack */
+void set_ep(char *env[])
+{
+	ep = env;
+}
 
 void set_env_param(char *env[])
 {
@@ -262,6 +315,7 @@ int pros_pipes(char *s[])
 
 int main(int argc, char* argv[], char *envp[])
 {
+	set_ep(envp);
 	set_env_param(envp);
 	/* Set default environment with known system paths */
 
