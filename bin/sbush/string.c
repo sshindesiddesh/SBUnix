@@ -47,6 +47,19 @@ size_t strcmp(const char *s1, const char *s2)
 	return cnt;
 }
 
+size_t strcmpn(const char *s1, const char *s2, int len)
+{
+	if (!s1 || !s2)
+		return -1;
+
+	size_t cnt = 0;
+
+	while (len--)
+		if (*s1++ != *s2++)
+			cnt++;
+	return cnt;
+}
+
 char *strcat(char *dst, const char* src)
 {
        size_t dst_len = strlen(dst);
@@ -63,7 +76,7 @@ char* strcpy(char *dst, const char *src)
 {
 	char *temp = dst;
 	if(!src) {
-		*temp = '\0';
+		*dst = '\0';
 		return dst;
 	}
 	while(*src) {

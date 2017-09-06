@@ -8,6 +8,7 @@
 size_t strlen(const char *buf);
 size_t getline(FILE fp, char *buf);
 size_t strcmp(const char *s1, const char *s2);
+size_t strcmpn(const char *s1, const char *s2, int len);
 char *strcpy(char *dst, const char *src);
 char *strcat(char *dst, const char *src);
 char *strtok(char *str, char *delim);
