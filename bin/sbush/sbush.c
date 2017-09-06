@@ -249,7 +249,10 @@ int pros_pipes(char *s[])
 	/* Remove extra spaces */
 	s[cmd_no] = strtok(s[cmd_no], " ");
 
-	exec_cmd(s[cmd_no], ls);
+	/* TODO: Check if s[cmd_no] has spaces */
+	/* exec_cmd(s[cmd_no], ls); */
+	/* s[cmd_no] had few issues that is why it was changed to ls[0] */
+	exec_cmd(ls[0], ls);
 
 	char cmd[] = "rm";
 	char *param[5] = {"rm", ".sbush.tmp"};
@@ -287,7 +290,7 @@ int main(int argc, char* argv[], char *envp[])
 			parse_cmd(line, s);
 
 			if (bufsize > 0)
-				exec_cmd(line, s);
+				exec_cmd(s[0], s);
 
 			/* terminate the string for safety */
 			line[0] = '\0';
@@ -314,7 +317,7 @@ int main(int argc, char* argv[], char *envp[])
 		parse_cmd(line, s);
 
 		if (bufsize > 0)
-			exec_cmd(line, s);
+			exec_cmd(s[0], s);
 
 		/* terminate the string for safety */
 		line[0] = '\0';
