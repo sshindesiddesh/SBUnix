@@ -1,45 +1,44 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <unistd.h>
-#if 0
+
 void print(char *s)
 {
 	while (*s != '\0')
 		putc(*s++, stdout);
 }
 
+char buf[1024];
+
 void printdir(char *path)
 {
-	DIR *dir = opendir(path);
-	if (!dir) {
+	int dir = open(path, O_RDONLY);
+	if (dir < 0) {
 		print("Invalid Path");
 		return;
 	}
 
-	struct dirent *ep;
-	while (ep = readdir(dir)) {
-		print(ep->d_name);
-		putc('\t', stdout);
+	char *b = buf;
+	int i = 0, read = 1, k = 0;
+	struct dirent *d;
+	while (read > 0) {
+		read = getdents(dir, b, sizeof(buf));
+		while (i < read) {
+			d = (struct dirent *)(buf + i);
+			print(d->d_name);
+			print("\t");
+			if ((k % 5 == 0) && k != 0)
+				print("\n");
+			i += d->d_reclen; k++;
+		}
 	}
-	closedir(dir);
 
+	close(dir);
 }
 
-#endif
 int main(int argc, char *argv[])
 {
-#if 0
-	char buf[256];
-	char *dir = buf;
-
-
-	if (argc == 1) {
-		dir = getcwd(dir, sizeof(buf));
-		printdir(dir);
-	} else if (argc == 2) {
-		printdir(argv[1]);
-	}
+	printdir(argv[1] ? argv[1] : ".");
 	putc('\n', stdout);
-#endif
 	return 0;
 }
