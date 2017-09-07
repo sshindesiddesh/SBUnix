@@ -4,7 +4,7 @@
 
 ssize_t read(int fd, void *buf, size_t count)
 {
-	size_t out;
+	ssize_t out;
 	__asm__ (
 		/* System Call Number */
 		"movq $0, %%rax\n"
@@ -25,10 +25,10 @@ ssize_t read(int fd, void *buf, size_t count)
 		"syscall\n"
 		/* Output of the system call */
 		"movq %%rax, %0\n"
-		: "=m"(out)/* output parameters, we aren't outputting anything, no none */
+		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"m" (fd), "m" (buf), "m" (count)
+		"r" ((int64_t)fd), "r" (buf), "r" (count)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax", "rdi", "rsi", "rdx"
 	);

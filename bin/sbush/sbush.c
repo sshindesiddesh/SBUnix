@@ -34,10 +34,14 @@ char *prompt_name = p_name;
 char usr_env[10][200];
 int usr_env_cnt = 0;
 
+int get_c(int fd);
+
+int put_c(int c, int fd);
+
 void print(char *s)
 {
 	while (*s != '\0')
-		putc(*s++, stdout);
+		put_c(*s++, 1);
 }
 
 /* Set the Environment Variable ponter from stack */
@@ -66,30 +70,44 @@ void set_env_param(char *env[])
 	strcpy(env_p[i], p + 5);
 	while (p) {
 		p = strtok(NULL, ":");
+		if (!p)
+			break;
 		strcpy(env_p[++i], p);
 	}
 }
 
-/* Get Line from Input */
 size_t get_line(int fp, char *buf)
 {
-
-	if (!buf)
-		return 0;
-
 	size_t pos = 0;
 	int x = EOF;
+	char c;
 
 	do {
-		buf[pos++] = x = getc(fp);
+		x = read(fp, &c, 1);
+		buf[pos++] = c;
 
-	} while (x != EOF && x != '\n');
+	} while (x > 0 && c != '\n');
 
 	buf[pos - 1] = '\0';
 
 	return strlen(buf);
+
 }
 
+/* Alternate getline backup function not for script */
+#if 0
+/* Get Line from Input */
+size_t get_line(int fp, char *buf)
+{
+	int ret = -1;
+	if ((ret = read(fp, buf, 1024)) == -1) {
+		exit(0);
+	}
+	buf[ret - 1] = '\0';
+	return ret;
+
+}
+#endif
 void parse_cmd(char *str, char *s[])
 {
         size_t i = 0;
@@ -105,10 +123,14 @@ void parse_cmd(char *str, char *s[])
 		if (*(s[i]) == '$') {
 			p_par = strtok(s[i], "$");
 			s[i] = getenv(p_par);
+			/*  Additional Check for PS1 */
+			if (!s[i]) {
+				if (!strncmp("PS1", p_par, strlen("PS1")))
+					s[i] = prompt_name;
+			}
 		}
 		i++;
 	}
-	return;
 }
 
 void parse_env_var(char *str, char *s[])
@@ -202,7 +224,7 @@ void put_s(char *str)
 {
 	size_t i = 0;
 	while (str[i])
-		putc(str[i++], stdout);
+		put_c(str[i++], 1);
 }
 
 /* This function returns the number of commands with pipes.
@@ -262,7 +284,7 @@ int pros_pipes(char *s[])
 
 		close(fd[1]);
 
-		int fd_tmp = open(".sbush.tmp", O_CREAT|O_RDWR);
+		int fd_tmp = open(".sbush.tmp", O_RDWR);
 
 		while (1) {
 			size_t cnt = read(fd[0], pipe_buf, sizeof(pipe_buf));
@@ -270,7 +292,7 @@ int pros_pipes(char *s[])
 				break;
 			i = 0;
 			while (i < cnt)
-				putc(pipe_buf[i++], fd_tmp);
+				put_c(pipe_buf[i++], fd_tmp);
 		}
 
 		close(fd[0]);
@@ -293,10 +315,11 @@ int pros_pipes(char *s[])
 	/* exec_cmd(s[cmd_no], ls); */
 	/* s[cmd_no] had few issues that is why it was changed to ls[0] */
 	exec_cmd(ls[0], ls);
-
+#if 0
 	char cmd[] = "rm";
 	char *param[5] = {"rm", ".sbush.tmp"};
 	exec_cmd(cmd, param);
+#endif
         return 0;
 }
 
@@ -321,6 +344,8 @@ int main(int argc, char* argv[], char *envp[])
 
 			if (!tmp) {
 				tmp = 1;
+				print(line);
+				print("\n");
 				if (strcmp(line, "#!rootfs/bin/sbush")) {
 					/* TO DO : Do not use printf. use exec cmd for echo. */
 					print("The File you provided does not begin with #!rootfs/bin/sbush \n");
@@ -348,7 +373,7 @@ int main(int argc, char* argv[], char *envp[])
 		return 0;
 	}
 
-	int bufsize= 0;
+	int bufsize = 0;
 
 	while (1) {
 		put_s(prompt_name);
@@ -364,7 +389,7 @@ int main(int argc, char* argv[], char *envp[])
 
 		parse_cmd(line, s);
 
-		if (bufsize > 0)
+		if (bufsize > 1)
 			exec_cmd(s[0], s);
 
 		/* terminate the string for safety */

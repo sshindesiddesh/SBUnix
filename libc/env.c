@@ -12,7 +12,6 @@ extern char env_p[30][100];
 /* Buffer to store user defined env variables */
 extern char usr_env[10][200];
 extern int usr_env_cnt;
-char *prompt_name;
 
 char *getenv(const char *name)
 {
@@ -25,10 +24,6 @@ char *getenv(const char *name)
 			return (ep[i] + strlen(name) + 1);
 		i++;
 	}
-
-	/*  Additional Check for PS1 */
-	if (!strncmp("PS1", name, strlen(name)))
-		return prompt_name;
 
 	return NULL;
 }

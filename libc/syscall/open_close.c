@@ -35,8 +35,6 @@ int open(const char *pathname, int flags)
 	return out;
 }
 
-extern int __eof;
-
 int close(int fd)
 {
 	size_t out;
@@ -67,8 +65,6 @@ int close(int fd)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax", "rdi"
 	);
-
-	__eof = 0;
 
 	return out;
 

@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 
-int putc(int c, int fd)
+int put_c(int c, int fd)
 {
-	write((long)fd, &c, 1);
-	return c;
+	return write((long)fd, &c, 1);
 }
