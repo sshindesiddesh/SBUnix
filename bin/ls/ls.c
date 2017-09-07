@@ -26,7 +26,7 @@ void printdir(char *path)
 		while (i < read) {
 			d = (struct dirent *)(buf + i);
 			print(d->d_name);
-			print("\t");
+			print("   ");
 			if ((k % 5 == 0) && k != 0)
 				print("\n");
 			i += d->d_reclen; k++;
