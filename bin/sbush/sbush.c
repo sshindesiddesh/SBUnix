@@ -4,8 +4,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
-
+#include <fcntl.h>
 #include <string.h>
+#include <sys/wait.h>
 
 /* Buffer size for max chars in input command */
 #define MAX_IN_BUF_SIZE		200
@@ -33,52 +34,11 @@ char *prompt_name = p_name;
 char usr_env[10][200];
 int usr_env_cnt = 0;
 
-char *getenv(char *name)
+void print(char *s)
 {
-	int i = 0;
-	/*  Check in system variables. */
-	while (ep[i]) {
-		if (!strcmpn(ep[i], name, strlen(name)))
-			/* This only returns pointer to path and not starting
-			 * from the name of the variable. */
-			return (ep[i] + strlen(name) + 1);
-		i++;
-	}
-
-	/*  Additional Check for PS1 */
-	if (!strcmpn("PS1", name, strlen(name)))
-		return prompt_name;
-
-	return NULL;
+	while (*s != '\0')
+		putc(*s++, stdout);
 }
-
-int setenv(char *name, char *value, int overwrite)
-{
-	int i = 0;
-	/* The variable exists */
-	if (overwrite == 1) {
-		while (ep[i]) {
-			if (!strcmpn(ep[i], name, strlen(name))) {
-				strcpy(ep[i] + strlen(name) + 1, value);
-				break;
-			}
-			i++;
-		}
-	/* Create a variable */
-	} else if (overwrite == 0) {
-		i = 0;
-		strcpy(usr_env[usr_env_cnt] + i, name);
-		i += strlen(name);
-		strcpy(usr_env[usr_env_cnt] + i, "=");
-		i += 1;
-		strcpy(usr_env[usr_env_cnt] + i, value);
-		i = 0;
-		while(ep[++i]);
-		ep[i++] = usr_env[usr_env_cnt++];
-		ep[i] = NULL;
-	}
-	return 0;
-};
 
 /* Set the Environment Variable ponter from stack */
 void set_ep(char *env[])
@@ -93,7 +53,7 @@ void set_env_param(char *env[])
 	char path[200];
 
 	while (env[i]) {
-		if (!strcmpn(env[i], "PATH", 4)) {
+		if (!strncmp(env[i], "PATH", 4)) {
 			strcpy(path, env[i]);
 			break;
 		}
@@ -108,6 +68,26 @@ void set_env_param(char *env[])
 		p = strtok(NULL, ":");
 		strcpy(env_p[++i], p);
 	}
+}
+
+/* Get Line from Input */
+size_t get_line(int fp, char *buf)
+{
+
+	if (!buf)
+		return 0;
+
+	size_t pos = 0;
+	int x = EOF;
+
+	do {
+		buf[pos++] = x = getc(fp);
+
+	} while (x != EOF && x != '\n');
+
+	buf[pos - 1] = '\0';
+
+	return strlen(buf);
 }
 
 void parse_cmd(char *str, char *s[])
@@ -282,7 +262,7 @@ int pros_pipes(char *s[])
 
 		close(fd[1]);
 
-		FILE fd_tmp = open(".sbush.tmp", O_CREAT|O_RDWR);
+		int fd_tmp = open(".sbush.tmp", O_CREAT|O_RDWR);
 
 		while (1) {
 			size_t cnt = read(fd[0], pipe_buf, sizeof(pipe_buf));
@@ -333,11 +313,11 @@ int main(int argc, char* argv[], char *envp[])
 		 * Only then we will execute the file.
 		 */
 		size_t tmp = 0;
-		FILE f = open(argv[1], O_RDONLY);
+		int f = open(argv[1], O_RDONLY);
 		int bufsize = 1;
 
 		while (bufsize > 0) {
-			bufsize = getline(f, line);
+			bufsize = get_line(f, line);
 
 			if (!tmp) {
 				tmp = 1;
@@ -373,7 +353,7 @@ int main(int argc, char* argv[], char *envp[])
 	while (1) {
 		put_s(prompt_name);
 
-		bufsize = getline(stdin, line);
+		bufsize = get_line(0, line);
 
 
 		/* Support for piping */

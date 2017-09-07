@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-size_t write(int fd, const void *buf, size_t nbytes)
+ssize_t write(int fd, const void *buf, size_t nbytes)
 {
 	size_t out;
 	__asm__ (

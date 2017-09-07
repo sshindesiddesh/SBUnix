@@ -11,26 +11,6 @@ size_t strlen(const char *buf)
 	return len;
 }
 
-/* Get Line from Input */
-size_t getline(FILE fp, char *buf)
-{
-
-	if (!buf)
-		return 0;
-
-	size_t pos = 0;
-	int x = EOF;
-
-	do {
-		buf[pos++] = x = getc(fp);
-
-	} while (x != EOF && x != '\n');
-
-	buf[pos - 1] = '\0';
-
-	return strlen(buf);
-}
-
 size_t strcmp(const char *s1, const char *s2)
 {
 	if (!s1 || !s2)
@@ -47,7 +27,7 @@ size_t strcmp(const char *s1, const char *s2)
 	return cnt;
 }
 
-size_t strcmpn(const char *s1, const char *s2, int len)
+size_t strncmp(const char *s1, const char *s2, int len)
 {
 	if (!s1 || !s2)
 		return -1;
@@ -88,7 +68,7 @@ char* strcpy(char *dst, const char *src)
 	return dst;
 }
 
-char *mystrtok_r(char *bstr, char *delim, char **save)
+char *mystrtok_r(char *bstr, const char *delim, char **save)
 {
 	char *temp = bstr;
 	if(temp == NULL)
@@ -165,14 +145,8 @@ char *mystrtok_r(char *bstr, char *delim, char **save)
 	return retval;
 }
 
-char *strtok(char *bstr, char *delim)
+char *strtok(char *bstr, const char *delim)
 { 
 	static char *save = NULL;
 	return mystrtok_r(bstr, delim, &save);
-}
-
-void print(char *s)
-{
-	while (*s != '\0')
-		putc(*s++, stdout);
 }

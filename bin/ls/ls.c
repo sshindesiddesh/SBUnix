@@ -2,10 +2,15 @@
 #include <dirent.h>
 #include <unistd.h>
 
+int put_c(int c, int fd)
+{
+	return write((long)fd, &c, 1);
+}
+
 void print(char *s)
 {
 	while (*s != '\0')
-		putc(*s++, stdout);
+		put_c(*s++, 1);
 }
 
 char buf[1024];
@@ -39,6 +44,6 @@ void printdir(char *path)
 int main(int argc, char *argv[])
 {
 	printdir(argv[1] ? argv[1] : ".");
-	putc('\n', stdout);
+	put_c('\n', stdout);
 	return 0;
 }
