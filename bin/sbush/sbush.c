@@ -207,7 +207,7 @@ void exec_cmd(const char *buf, char *argv[])
 	size_t c_pid = fork();
 
 	if (c_pid == 0) {
-		execvpe(buf, argv, NULL);
+		execvpe(buf, argv, ep);
 		exit(EXIT_SUCCESS);
 	}
 

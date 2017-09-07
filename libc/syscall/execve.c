@@ -44,7 +44,7 @@ int execvpe(const char *file, char *const argv[], char *const envp[])
 	size_t k = 0;
 	int ret = -1;
 	/* Execute without addding any path. */
-	execve(file, argv, NULL);
+	execve(file, argv, envp);
 	/* Execute with appending paths */
 	/* TODO : check if this can be checked against pointer. */
 	while (env_p[k][0]) {
