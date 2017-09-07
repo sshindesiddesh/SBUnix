@@ -44,6 +44,11 @@ char *getenv(char *name)
 			return (ep[i] + strlen(name) + 1);
 		i++;
 	}
+
+	/*  Additional Check for PS1 */
+	if (!strcmpn("PS1", name, strlen(name)))
+		return prompt_name;
+
 	return NULL;
 }
 
