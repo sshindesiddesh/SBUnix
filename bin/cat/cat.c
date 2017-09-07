@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
 {
 	int x = 1, c = 0;
 	if (argc == 2) {
-		int f = open(argv[1], O_RDONLY);
+		int f = open(argv[1], O_RDONLY, 444);
 		if (!f)
 			return 0;
 		while (x != 0) {

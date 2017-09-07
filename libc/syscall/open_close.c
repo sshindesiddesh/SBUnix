@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-int open(const char *pathname, int flags)
+int open(const char *pathname, int flags, uint64_t mode)
 {
 	size_t out;
 	__asm__ (
@@ -13,7 +13,7 @@ int open(const char *pathname, int flags)
 		/* Param 2 */
 		"movq %2, %%rsi\n"
 		/* Param 3 */
-		"movq $444, %%rdx\n"
+		"movq %3, %%rdx\n"
 #if 0
 		/* Param 4 */
 		"movq %1, %%rcx\n"
@@ -28,7 +28,7 @@ int open(const char *pathname, int flags)
 		: "=m"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"m" (pathname), "m" (flags)
+		"m" (pathname), "m" (flags), "m" (mode)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax", "rdi", "rsi", "rdx"
 	);

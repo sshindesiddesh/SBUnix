@@ -282,7 +282,7 @@ int pros_pipes(char *s[])
 
 		close(fd[1]);
 
-		int fd_tmp = open(".sbush.tmp", O_RDWR);
+		int fd_tmp = open(".sbush.tmp", O_RDWR | O_CREAT, 444);
 
 		while (1) {
 			size_t cnt = read(fd[0], pipe_buf, sizeof(pipe_buf));
@@ -313,11 +313,9 @@ int pros_pipes(char *s[])
 	/* exec_cmd(s[cmd_no], ls); */
 	/* s[cmd_no] had few issues that is why it was changed to ls[0] */
 	exec_cmd(ls[0], ls);
-#if 0
 	char cmd[] = "rm";
 	char *param[5] = {"rm", ".sbush.tmp"};
 	exec_cmd(cmd, param);
-#endif
         return 0;
 }
 
@@ -334,7 +332,7 @@ int main(int argc, char* argv[], char *envp[])
 		 * Only then we will execute the file.
 		 */
 		size_t tmp = 0;
-		int f = open(argv[1], O_RDONLY);
+		int f = open(argv[1], O_RDONLY, 444);
 		int bufsize = 1;
 
 		while (bufsize > 0) {

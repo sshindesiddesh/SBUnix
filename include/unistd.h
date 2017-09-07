@@ -6,7 +6,7 @@
 
 ssize_t write(int fd, const void *buf, size_t count);
 ssize_t read(int fd, void *buf, size_t count);
-int open(const char *pathname, int flags);
+int open(const char *pathname, int flags, uint64_t);
 int close(int fd);
 pid_t fork();
 int execvpe(const char *file, char *const argv[], char *const envp[]);

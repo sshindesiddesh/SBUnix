@@ -17,7 +17,7 @@ char buf[1024];
 
 void printdir(char *path)
 {
-	int dir = open(path, O_RDONLY);
+	int dir = open(path, O_RDONLY, 444);
 	if (dir < 0) {
 		print("Invalid Path");
 		return;
