@@ -349,6 +349,12 @@ int main(int argc, char* argv[], char *envp[])
 				continue;
 			}
 
+			/* Support for piping */
+			if (collect_pipe_cmds(line, s) > 1) {
+				pros_pipes(s);
+				continue;
+			}
+
 			parse_cmd(line, s);
 
 			if (bufsize > 0)
