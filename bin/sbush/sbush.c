@@ -340,8 +340,6 @@ int main(int argc, char* argv[], char *envp[])
 
 			if (!tmp) {
 				tmp = 1;
-				print(line);
-				print("\n");
 				if (strcmp(line, "#!rootfs/bin/sbush")) {
 					/* TO DO : Do not use printf. use exec cmd for echo. */
 					print("The File you provided does not begin with #!rootfs/bin/sbush \n");
