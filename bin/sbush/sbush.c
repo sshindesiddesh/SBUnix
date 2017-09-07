@@ -34,8 +34,6 @@ char *prompt_name = p_name;
 char usr_env[10][200];
 int usr_env_cnt = 0;
 
-int get_c(int fd);
-
 int put_c(int c, int fd);
 
 void print(char *s)

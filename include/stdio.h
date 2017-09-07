@@ -21,7 +21,6 @@
 
 static const int EOF = -1;
 
-int getc(int fd);
 int putc(int c, int fd);
 int puts(const char *s);
 int printf(const char *format, ...);
