@@ -78,6 +78,13 @@ void kprintf(const char *fmt, ...)
 	va_start(arg, fmt);
 	for (t = (char *)fmt; *t != '\0'; t++) {
 		while ((*t != '%') && (*t != '\0')) {
+			if (*t == '\n') {
+				cur = cur / 80;
+				cur = cur * 80;
+				cur += 80;
+				t++;
+				continue;
+			}
 			putchar(*t);
 			t++;
 		}
