@@ -2,43 +2,68 @@
 #include <stdarg.h>
 
 #define MAX_SCREEN_SIZE	2000
+#define MAX_WRITE_SIZE	200
 
 
 static unsigned int cur = 0;
+static unsigned int write_cnt = 0;
 
-char buf[MAX_SCREEN_SIZE] = {' '};
+char screen_buf[MAX_SCREEN_SIZE] = {' '};
+char write_buf[MAX_WRITE_SIZE] = {' '};
 
+/* Memory Copy function */
 void *memcpy(void *dest, const void *src, int n)
 {
-	char *s = (char *)src;
 	char *d = (char *)dest;
+	char *s = (char *)src;
 	int i;
 	for (i = 0; i < n; i++)
 		d[i] = s[i];
 	return d;
 }
 
+/* Update the data in write_buf on the screen */
+/* TODO: Currently the screen scrolling is well supported only if all the
+ * print statements end on a line. i.e. ending with \n
+ */
 void update()
 {
+	char *b = screen_buf;
+	/*  If the cursor has reached the end */
+	if (cur >= MAX_SCREEN_SIZE - 1) {
+		/* Move the screen buffer to fit the new write buffer */
+		memcpy(b, b + write_cnt, MAX_SCREEN_SIZE - write_cnt);
+		/* Copy the Write buffer to the end of the screen buffer */
+		memcpy(b + MAX_SCREEN_SIZE - write_cnt, write_buf, write_cnt);
+	} else {
+		/* Copy the Write buffer to the end of the screen buffer */
+		memcpy(b + cur, write_buf, write_cnt);
+		cur += write_cnt;
+	}
+	/* The cursor has stil not reached the end */
 	register char *temp1, *temp2;
-	char *ptr = buf;
 	int i = 0;
-	for (temp1 = ptr, temp2 = (char*)0xb8000; i < cur; temp1 += 1, temp2 += 2, i++)
+
+	for (temp1 = b, temp2 = (char*)0xb8000; i < cur; temp1 += 1, temp2 += 2, i++)
 		*temp2 = *temp1;
-	for (temp1 = ptr, temp2 = (char*)0xb8000 + 2 * cur; i < MAX_SCREEN_SIZE; temp1 += 1, temp2 += 2, i++)
+	/* Print spaces if cursor is at something less than 2000. */
+	for (temp2 = (char*)0xb8000 + 2 * cur; i < MAX_SCREEN_SIZE; temp2 += 2, i++)
 		*temp2 = ' ';
+	/* Make write_cnt 0 for next iteration */
+	write_cnt = 0;
 }
 
+/* Writes to a write buffer which is later copied to the screen buffer in update. */
 void write(void *b_in, int n)
 {
-	char *out = buf;
+	char *out = write_buf;
 	char *in = (char *)b_in;
 
 	int i = 0;
 	while (i < n) {
-		out[cur + i] = in[i];
+		out[write_cnt + i] = in[i];
 		i++;
-		cur++;
+		write_cnt++;
 	}
 }
 
@@ -56,6 +81,7 @@ int puts(const char *str)
 	return i;
 }
 
+/* Conversion Function for all required base */
 char *generic_conv(long n, int b)
 {
 	char fixed[] = "0123456789ABCDEF";
@@ -76,12 +102,15 @@ void kprintf(const char *fmt, ...)
 	unsigned int i;
 
 	va_start(arg, fmt);
+
+	/* Collect all the data in a write buffer */
 	for (t = (char *)fmt; *t != '\0'; t++) {
 		while ((*t != '%') && (*t != '\0')) {
 			if (*t == '\n') {
-				cur = cur / 80;
-				cur = cur * 80;
-				cur += 80;
+				int space_rem = (80 - (cur + write_cnt)%80);
+				/* Fill the write buffer with spaces for the rest of the line */
+				for (i = 0; i < space_rem; i++)
+					putchar(' ');
 				t++;
 				continue;
 			}
@@ -115,5 +144,7 @@ void kprintf(const char *fmt, ...)
 		}
 
 	}
+
+	/* Update the data on screen */
 	update();
 }
