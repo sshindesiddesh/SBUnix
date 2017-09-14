@@ -36,13 +36,13 @@ void pic_init()
 	outb(PIC1_CMD, ICW1_ICW4 | ICW1_INIT);
 	iowait();
 	/* Initialize Slave */
-	outb(PIC2_CMD, ICW1_ICW4 | ICW1_INIT);
+	//outb(PIC2_CMD, ICW1_ICW4 | ICW1_INIT);
 	iowait();
 	/* Offset for Master is IRQ0 */
 	outb(PIC1_DATA, IRQ0);
 	iowait();
 	/* Offset for Slave is IRQ8 */
-	outb(PIC2_DATA, IRQ8);
+	//outb(PIC2_DATA, IRQ8);
 	iowait();
 	/* Inform Pic about wired cascade */
 	/* ToDO: Change it to 4 */
@@ -52,14 +52,14 @@ void pic_init()
 	outb(PIC2_DATA, 0x00);
 	iowait();
 	/* 8086 mode */
-	outb(PIC1_DATA, ICW4_8086);
+	//outb(PIC1_DATA, ICW4_8086);
 	iowait();
-	outb(PIC2_DATA, ICW4_8086);
+	//outb(PIC2_DATA, ICW4_8086);
 	iowait();
 	/* Mask everything */ /* except 2nd pin of master */
-	outb(PIC1_DATA, 0x7F);
+	outb(PIC1_DATA, 0xF7);
 	iowait();
-	outb(PIC2_DATA, 0xFF);
+	//outb(PIC2_DATA, 0xFF);
 	iowait();
 	/* Set Interrupts */
 	__asm__ __volatile__("sti");

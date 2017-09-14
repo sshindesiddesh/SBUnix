@@ -1,7 +1,7 @@
 #include <sys/timer.h>
 #include <sys/kprintf.h>
 
-#define PIT_RELOAD_VAL	5965
+int PIT_RELOAD_VAL = 5965;
 
 static void outb(uint16_t port, uint8_t val)
 {

@@ -70,10 +70,10 @@ void boot(void)
   init_gdt();
 	kprintf("IDT INIT ");
   init_idt();
-	kprintf("PIC INIT ");
-  pic_init();
 	kprintf("TIMER INIT \n");
   timer_init();
+	kprintf("PIC INIT ");
+  pic_init();
 	kprintf("INT ENABLE \n");
 
   start(
