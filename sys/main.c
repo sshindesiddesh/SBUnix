@@ -9,6 +9,11 @@ uint8_t initial_stack[INITIAL_STACK_SIZE]__attribute__((aligned(16)));
 uint32_t* loader_stack;
 extern char kernmem, physbase;
 
+void init_idt(void);
+void pic_init(void);
+void timer_init(void);
+void intr_enable(void);
+
 void start(uint32_t *modulep, void *physbase, void *physfree)
 {
   struct smap_t {
@@ -19,11 +24,33 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
   for(smap = (struct smap_t*)(modulep+2); smap < (struct smap_t*)((char*)modulep+modulep[1]+2*4); ++smap) {
     if (smap->type == 1 /* memory */ && smap->length != 0) {
       kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
+#if 0
+      kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
+      kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
+      kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
+      kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
+#endif
     }
   }
+#if 0
+  kprintf("physfree %p\n", (uint64_t)physfree);
+  kprintf("physfree %p\n", (uint64_t)physfree);
+  kprintf("physfree %p\n", (uint64_t)physfree);
+  kprintf("physfree %p\n", (uint64_t)physfree);
   kprintf("physfree %p\n", (uint64_t)physfree);
   kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
-  while (1);
+  kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
+  kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
+  kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
+  kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
+#endif
+#if 0
+  kprintf("physfree %p\n", (uint64_t)physfree);
+  kprintf("physfree %p\n", (uint64_t)physfree);
+  kprintf("physfree %p\n", (uint64_t)physfree);
+  kprintf("physfree %p\n", (uint64_t)physfree);
+  kprintf("physfree %p\n", (uint64_t)physfree);
+#endif
 }
 
 void boot(void)
@@ -39,12 +66,22 @@ void boot(void)
     :"=g"(loader_stack)
     :"r"(&initial_stack[INITIAL_STACK_SIZE])
   );
+	kprintf("GDT INIT ");
   init_gdt();
+	kprintf("IDT INIT ");
+  init_idt();
+	kprintf("PIC INIT ");
+  pic_init();
+	kprintf("TIMER INIT \n");
+  timer_init();
+	kprintf("INT ENABLE \n");
+
   start(
     (uint32_t*)((char*)(uint64_t)loader_stack[3] + (uint64_t)&kernmem - (uint64_t)&physbase),
     (uint64_t*)&physbase,
     (uint64_t*)(uint64_t)loader_stack[4]
   );
+  while (1);
   for(
     temp1 = "!!!!! start() returned !!!!!", temp2 = (char*)0xb8000;
     *temp1;
