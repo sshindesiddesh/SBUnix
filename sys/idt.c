@@ -101,6 +101,7 @@ WEAK void excp1C(void);
 WEAK void excp1D(void);
 WEAK void excp1E(void);
 WEAK void excp1F(void);
+
 /* Populate IDT entry as per ID */
 void idt_populate_desc(uint8_t id, uint64_t int_handler)
 {

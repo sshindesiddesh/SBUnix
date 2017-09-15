@@ -1,7 +1,9 @@
 #include <sys/kprintf.h>
+#include <sys/defs.h>
 #include <stdarg.h>
 
-#define MAX_SCREEN_SIZE	2000
+/* -80 to skip the last line which is reserved for Timer. */
+#define MAX_SCREEN_SIZE	2000 - 80
 #define MAX_WRITE_SIZE	200
 
 
@@ -10,6 +12,8 @@ static unsigned int write_cnt = 0;
 
 char screen_buf[MAX_SCREEN_SIZE] = {' '};
 char write_buf[MAX_WRITE_SIZE] = {' '};
+
+char *generic_conv(long n, int b);
 
 /* Memory Copy function */
 void *memcpy(void *dest, const void *src, int n)
@@ -20,6 +24,21 @@ void *memcpy(void *dest, const void *src, int n)
 	for (i = 0; i < n; i++)
 		d[i] = s[i];
 	return d;
+}
+
+void update_time(uint64_t time)
+{
+		char *str = generic_conv(time, 10);
+		register char *temp1, *temp2;
+		int i = 0;
+
+		char *str1 = "Seconds since Boot ";
+
+		for (temp1 = str1, temp2 = (char*)0xb8000 + 3840; i < 20; temp1 += 1, temp2 += 2, i++)
+				*temp2 = *temp1;
+		i = 0;
+		for (temp1 = str, temp2 = (char*)0xb8000 + 3840 + 40; i < 2; temp1 += 1, temp2 += 2, i++)
+				*temp2 = *temp1;
 }
 
 /* Update the data in write_buf on the screen */
