@@ -24,33 +24,8 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
   for(smap = (struct smap_t*)(modulep+2); smap < (struct smap_t*)((char*)modulep+modulep[1]+2*4); ++smap) {
     if (smap->type == 1 /* memory */ && smap->length != 0) {
       kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
-#if 0
-      kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
-      kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
-      kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
-      kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
-#endif
     }
   }
-#if 0
-  kprintf("physfree %p\n", (uint64_t)physfree);
-  kprintf("physfree %p\n", (uint64_t)physfree);
-  kprintf("physfree %p\n", (uint64_t)physfree);
-  kprintf("physfree %p\n", (uint64_t)physfree);
-  kprintf("physfree %p\n", (uint64_t)physfree);
-  kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
-  kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
-  kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
-  kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
-  kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
-#endif
-#if 0
-  kprintf("physfree %p\n", (uint64_t)physfree);
-  kprintf("physfree %p\n", (uint64_t)physfree);
-  kprintf("physfree %p\n", (uint64_t)physfree);
-  kprintf("physfree %p\n", (uint64_t)physfree);
-  kprintf("physfree %p\n", (uint64_t)physfree);
-#endif
 }
 
 void boot(void)
@@ -66,15 +41,10 @@ void boot(void)
     :"=g"(loader_stack)
     :"r"(&initial_stack[INITIAL_STACK_SIZE])
   );
-	kprintf("GDT INIT ");
   init_gdt();
-	kprintf("IDT INIT ");
   init_idt();
-	kprintf("TIMER INIT \n");
   timer_init();
-	kprintf("PIC INIT\n");
   pic_init();
-	kprintf("INT ENABLE \n");
 
   start(
     (uint32_t*)((char*)(uint64_t)loader_stack[3] + (uint64_t)&kernmem - (uint64_t)&physbase),
