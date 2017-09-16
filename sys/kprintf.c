@@ -15,6 +15,14 @@ char write_buf[MAX_WRITE_SIZE] = {' '};
 
 char *generic_conv(long n, int b);
 
+/* Returns Length of the String */
+size_t strlen(const char *buf)
+{
+	size_t len = 0;
+	while (*buf++ != '\0') len++;
+	return len;
+}
+
 /* Memory Copy function */
 void *memcpy(void *dest, const void *src, int n)
 {
@@ -34,11 +42,24 @@ void update_time(uint64_t time)
 
 		char *str1 = "Seconds since Boot ";
 
-		for (temp1 = str1, temp2 = (char*)0xb8000 + 3840; i < 20; temp1 += 1, temp2 += 2, i++)
+		for (temp1 = str1, temp2 = (char*)0xb8000 + 3840; i < strlen(str1); temp1 += 1, temp2 += 2, i++)
 				*temp2 = *temp1;
 		i = 0;
-		for (temp1 = str, temp2 = (char*)0xb8000 + 3840 + 40; i < 2; temp1 += 1, temp2 += 2, i++)
+		for (temp1 = str, temp2 = (char*)0xb8000 + 3840 + 40; i < strlen(str); temp1 += 1, temp2 += 2, i++)
 				*temp2 = *temp1;
+}
+
+void update_key(int key)
+{
+		register char *temp1, *temp2;
+		int i = 0;
+		char *str1 = "Last Pressed Key ";
+
+		for (temp1 = str1, temp2 = (char*)0xb8000 + 3900; i < strlen(str1); temp1 += 1, temp2 += 2, i++)
+				*temp2 = *temp1;
+
+		temp2 = (char*)0xb8000 + 3936;
+		*temp2 = (char)key;
 }
 
 /* Update the data in write_buf on the screen */
@@ -157,6 +178,10 @@ void kprintf(const char *fmt, ...)
 			case 'x':
 				i = va_arg(arg, unsigned int);
 				puts(generic_conv(i, 16));
+				break;
+			case 'c' :
+				i = va_arg(arg, int);
+				putchar(i);
 				break;
 			default:
 				break;

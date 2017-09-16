@@ -13,7 +13,6 @@ void init_idt(void);
 void pic_init(void);
 void timer_init(void);
 void intr_enable(void);
-void keyboard_init(void);
 
 void start(uint32_t *modulep, void *physbase, void *physfree)
 {
@@ -73,8 +72,6 @@ void boot(void)
   init_idt();
 	kprintf("TIMER INIT \n");
   timer_init();
-	kprintf("Keyboard Init\n");
-  keyboard_init();
 	kprintf("PIC INIT\n");
   pic_init();
 	kprintf("INT ENABLE \n");
