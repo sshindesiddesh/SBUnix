@@ -49,7 +49,7 @@ void update_time(uint64_t time)
 				*temp2 = *temp1;
 }
 
-void update_key(int key)
+void update_key(int key, int ctrl)
 {
 		register char *temp1, *temp2;
 		int i = 0;
@@ -59,7 +59,14 @@ void update_key(int key)
 				*temp2 = *temp1;
 
 		temp2 = (char*)0xb8000 + 3936;
+
+		if (ctrl == 1) {
+			*temp2 = '^';
+			temp2 += 2;
+		}
 		*temp2 = (char)key;
+		temp2 += 2;
+		*temp2 = ' ';
 }
 
 /* Update the data in write_buf on the screen */
