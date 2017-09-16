@@ -1,6 +1,7 @@
 #include <sys/timer.h>
 #include <sys/kprintf.h>
 
+void pic_ack(uint8_t irq_id);
 
 static void outb(uint16_t port, uint8_t val)
 {
@@ -30,5 +31,6 @@ void __isr_timer_cb(uint64_t count)
 		update_time(i++);
 		k = 0;
 	}
-	return;
+	/* Acknowledge PIC */
+	pic_ack(0x20);
 }

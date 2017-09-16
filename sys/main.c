@@ -72,7 +72,7 @@ void boot(void)
   init_idt();
 	kprintf("TIMER INIT \n");
   timer_init();
-	kprintf("PIC INIT ");
+	kprintf("PIC INIT \n");
   pic_init();
 	kprintf("INT ENABLE \n");
 
