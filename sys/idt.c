@@ -59,7 +59,7 @@ void *memset(void *ptr, int value, size_t len)
 
 #define WEAK  __attribute__((weak))
 void isr20(void);
-WEAK void isr21(void);
+void isr21(void);
 WEAK void isr22(void);
 WEAK void isr23(void);
 WEAK void isr24(void);
@@ -165,7 +165,8 @@ void init_idt()
 	idt_populate_desc(0x1F, (uint64_t)excp1F);
 	/* Timer Interrupt */
 	idt_populate_desc(IRQ0, (uint64_t)isr20);
-	//idt_populate_desc(IRQ1, (uint64_t)isr21);
+	/* Keyboard Interrupt */
+	idt_populate_desc(IRQ1, (uint64_t)isr21);
 
 	idtr.address = (uint64_t)idt_desc;
 	/* TODO: Check for this -1 */
