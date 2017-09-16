@@ -22,6 +22,13 @@ static void outb(uint16_t port, uint8_t val)
 	__asm__ __volatile__ ( "outb %0, %1" : : "a"(val), "Nd"(port) );
 }
 
+static int inb(uint16_t port)
+{
+	uint8_t val;
+	__asm__ __volatile__ ( "inb %1, %0" : "=a"(val) : "Nd"(port) );
+	return val;
+}
+
 void iowait(void) {}
 
 /* TODO: Remove this later. This is redeclared */
@@ -29,39 +36,69 @@ void iowait(void) {}
 #define IRQ8	0x28
 
 
+void pic_ack(uint8_t irq_id)
+{
+	if (irq_id > 0x28)
+		outb(PIC2_CMD, PIC_EOI);
+	outb(PIC1_CMD, PIC_EOI);
+}
+
+void set_mask(uint8_t irq_id)
+{
+	uint16_t port;
+	uint8_t value;
+
+	if (irq_id > 0x28) {
+		port = PIC1_DATA;
+		irq_id -= 0x20;
+	} else {
+		port = PIC2_CMD;
+		irq_id -= 0x20;
+	}
+	value = inb(port) | (1 << irq_id);
+	outb(port, value);
+}
+
+void clr_mask(uint8_t irq_id)
+{
+	uint16_t port;
+	uint8_t value;
+
+	if (irq_id > 0x28) {
+		port = PIC1_DATA;
+		irq_id -= 0x20;
+	} else {
+		port = PIC2_DATA;
+		irq_id -= 0x28;
+	}
+	value = inb(port) & ~(1 << irq_id);
+	outb(port, value);
+}
+
 void pic_init()
 {
 	__asm__ __volatile__("cli");
 	/* Initialize Master */
 	outb(PIC1_CMD, ICW1_ICW4 | ICW1_INIT);
-	iowait();
+
 	/* Initialize Slave */
 	outb(PIC2_CMD, ICW1_ICW4 | ICW1_INIT);
-	iowait();
+
 	/* Offset for Master is IRQ0 */
 	outb(PIC1_DATA, IRQ0);
-	iowait();
+
 	/* Offset for Slave is IRQ8 */
 	outb(PIC2_DATA, IRQ8);
-	iowait();
+
 	/* Inform Pic about wired cascade */
 	outb(PIC1_DATA, 0x04);
-	iowait();
 	outb(PIC2_DATA, 0x02);
-	iowait();
-	/* Mask everything */ /* except Timer Interrupt */
-	outb(PIC1_DATA, 0xF7);
-	iowait();
+
+	/* Mask everything */
+	/* except Timer Interrupt */
+	/* except Keyboard Interrupt */
+	outb(PIC1_DATA, 0xFC);
 	outb(PIC2_DATA, 0xFF);
-	iowait();
 	/* Set Interrupts */
 	__asm__ __volatile__("sti");
-}
-
-void pic_ack(uint8_t irq_id)
-{
-	if (irq_id > 8)
-		outb(PIC2_CMD, PIC_EOI);
-	outb(PIC1_CMD, PIC_EOI);
-	
 }

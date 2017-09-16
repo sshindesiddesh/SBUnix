@@ -75,7 +75,7 @@ void boot(void)
   timer_init();
 	kprintf("Keyboard Init\n");
   keyboard_init();
-	kprintf("PIC INIT ");
+	kprintf("PIC INIT\n");
   pic_init();
 	kprintf("INT ENABLE \n");
 
