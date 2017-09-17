@@ -48,26 +48,32 @@ void update_time(uint64_t time)
 		char *str = generic_conv(time, 10);
 		register char *temp1, *temp2;
 		int i = 0;
+#if 0
 
 		char *str1 = "Seconds since Boot ";
 
 		for (temp1 = str1, temp2 = (char*)0xb8000 + 3840; i < strlen(str1); temp1 += 1, temp2 += 2, i++)
 				*temp2 = *temp1;
+#endif
 		i = 0;
-		for (temp1 = str, temp2 = (char*)0xb8000 + 3840 + 40; i < strlen(str); temp1 += 1, temp2 += 2, i++)
+		for (temp1 = str, temp2 = (char*)0xb8000 + 3980; i < strlen(str); temp1 += 1, temp2 += 2, i++)
 				*temp2 = *temp1;
 }
 
 void update_key(int key, int ctrl)
 {
 		register char *temp1, *temp2;
+#if 0
 		int i = 0;
 		char *str1 = "Last Pressed Key ";
 
 		for (temp1 = str1, temp2 = (char*)0xb8000 + 3900; i < strlen(str1); temp1 += 1, temp2 += 2, i++)
 				*temp2 = *temp1;
+#endif
+		temp1 = NULL;
+		temp1++;
 
-		temp2 = (char*)0xb8000 + 3936;
+		temp2 = (char*)0xb8000 + 3970;
 
 		if (ctrl == 1) {
 			*temp2 = '^';

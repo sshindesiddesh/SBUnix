@@ -35,7 +35,7 @@ void __isr_keyboard_cb()
 					update_key(shift_key_map[last_key], 0);
 					shift = 0;
 				} else if (s_code - 0x80 == ctrl) {
-					update_key(key_map[last_key], 1);
+					update_key(shift_key_map[last_key], 1);
 					ctrl = 0;
 				}
 			} else {
