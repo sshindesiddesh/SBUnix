@@ -1,12 +1,6 @@
 #include <sys/timer.h>
 #include <sys/kprintf.h>
-
-void pic_ack(uint8_t irq_id);
-
-static void outb(uint16_t port, uint8_t val)
-{
-	__asm__ __volatile__ ("outb %0, %1" : : "a"(val), "Nd"(port));
-}
+#include <sys/pic.h>
 
 void timer_init()
 {

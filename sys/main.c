@@ -4,15 +4,14 @@
 #include <sys/tarfs.h>
 #include <sys/ahci.h>
 
+#include <sys/idt.h>
+#include <sys/timer.h>
+#include <sys/pic.h>
+
 #define INITIAL_STACK_SIZE 4096
 uint8_t initial_stack[INITIAL_STACK_SIZE]__attribute__((aligned(16)));
 uint32_t* loader_stack;
 extern char kernmem, physbase;
-
-void init_idt(void);
-void pic_init(void);
-void timer_init(void);
-void intr_enable(void);
 
 void start(uint32_t *modulep, void *physbase, void *physfree)
 {

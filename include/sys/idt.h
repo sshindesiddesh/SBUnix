@@ -42,6 +42,8 @@ typedef struct IDTR {
 	uint64_t address;	//Address
 } __attribute__((packed)) idtr_t;
 
+void init_idt();
+
 void isr20(void);
 void isr21(void);
 WEAK void isr22(void);
