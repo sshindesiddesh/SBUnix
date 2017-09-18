@@ -34,6 +34,15 @@ unsigned short *memsetw(unsigned short *dest, unsigned short src, size_t count)
     return dest;
 }
 
+/* Write character at specific position */
+int write_console(int c, int x, int y)
+{
+	unsigned short *c_temp;
+	c_temp = textptr + (y * MAX_SCREEN_X + x);
+	*c_temp = c;
+	return c;
+}
+
 /* Conversion Function for all required base */
 char *generic_conv(long n, int b)
 {
@@ -50,43 +59,22 @@ char *generic_conv(long n, int b)
 
 void update_time(uint64_t time)
 {
-		char *str = generic_conv(time, 10);
-		register char *temp1, *temp2;
-		int i = 0;
-#if 0
-
-		char *str1 = "Seconds since Boot ";
-
-		for (temp1 = str1, temp2 = (char*)0xb8000 + 3840; i < strlen(str1); temp1 += 1, temp2 += 2, i++)
-				*temp2 = *temp1;
-#endif
-		i = 0;
-		for (temp1 = str, temp2 = (char*)0xb8000 + 3980; i < strlen(str); temp1 += 1, temp2 += 2, i++)
-				*temp2 = *temp1;
+	char *str = generic_conv(time, 10);
+	int i, l = strlen(str);
+	for (i = 0; i < l; i++) {
+		write_console(str[i], 70 + i, 24);
+	}
 }
 
 void update_key(int key, int ctrl)
 {
-		register char *temp1, *temp2;
-#if 0
-		int i = 0;
-		char *str1 = "Last Pressed Key ";
-
-		for (temp1 = str1, temp2 = (char*)0xb8000 + 3900; i < strlen(str1); temp1 += 1, temp2 += 2, i++)
-				*temp2 = *temp1;
-#endif
-		temp1 = NULL;
-		temp1++;
-
-		temp2 = (char*)0xb8000 + 3970;
-
 		if (ctrl == 1) {
-			*temp2 = '^';
-			temp2 += 2;
+			write_console('^', 65, 24);
+			write_console(key, 66, 24);
+		} else {
+			write_console(key, 65, 24);
+			write_console(' ', 66, 24);
 		}
-		*temp2 = (char)key;
-		temp2 += 2;
-		*temp2 = ' ';
 }
 
 /* Screen scrolling supported here */
@@ -104,7 +92,6 @@ void update()
 
 int putchar(int c)
 {
-	unsigned short *c_temp;
 	/* handle positions of x and y coordinates of the screen as per the character getting put */
 	if (c == '\b') {	/* back space */
 		if (x_pos != 0)
@@ -118,8 +105,7 @@ int putchar(int c)
 		y_pos++;
 	}
 	else if(c >= ' ') {	/* for all the characters >= space (0x20)*/
-		c_temp = textptr + (y_pos * MAX_SCREEN_X + x_pos);
-		*c_temp = c;
+		write_console(c, x_pos, y_pos);
 		x_pos++;
 	}
 	if (x_pos >= MAX_SCREEN_X) {	/* Shift the x coordinate to new line after 80 units */

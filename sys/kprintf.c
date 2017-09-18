@@ -43,6 +43,10 @@ void kprintf(const char *fmt, ...)
 				i = va_arg(arg, int);
 				putchar(i);
 				break;
+			case 's' :
+				str = va_arg(arg, char *);
+				puts(str);
+				break;
 			default:
 				break;
 		}
