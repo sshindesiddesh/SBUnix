@@ -17,14 +17,6 @@ void kprintf(const char *fmt, ...)
 	/* Collect all the data in a write buffer */
 	for (t = (char *)fmt; *t != '\0'; t++) {
 		while ((*t != '%') && (*t != '\0')) {
-			if (*t == '\n') {
-				int space_rem = (80 - (cur + write_cnt)%80);
-				/* Fill the write buffer with spaces for the rest of the line */
-				for (i = 0; i < space_rem; i++)
-					putchar(' ');
-				t++;
-				continue;
-			}
 			putchar(*t);
 			t++;
 		}
@@ -60,6 +52,4 @@ void kprintf(const char *fmt, ...)
 
 	}
 
-	/* Update the data on screen */
-	update();
 }

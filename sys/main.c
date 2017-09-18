@@ -1,6 +1,7 @@
 #include <sys/defs.h>
 #include <sys/gdt.h>
 #include <sys/kprintf.h>
+#include <sys/console.h>
 #include <sys/tarfs.h>
 #include <sys/ahci.h>
 
@@ -12,19 +13,27 @@
 uint8_t initial_stack[INITIAL_STACK_SIZE]__attribute__((aligned(16)));
 uint32_t* loader_stack;
 extern char kernmem, physbase;
+void clear();
 
 void start(uint32_t *modulep, void *physbase, void *physfree)
 {
-  struct smap_t {
-    uint64_t base, length;
-    uint32_t type;
-  }__attribute__((packed)) *smap;
-  while(modulep[0] != 0x9001) modulep += modulep[1]+2;
-  for(smap = (struct smap_t*)(modulep+2); smap < (struct smap_t*)((char*)modulep+modulep[1]+2*4); ++smap) {
-    if (smap->type == 1 /* memory */ && smap->length != 0) {
-      kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
-    }
-  }
+	clear();
+	struct smap_t {
+		uint64_t base, length;
+		uint32_t type;
+	}__attribute__((packed)) *smap;
+	while(modulep[0] != 0x9001) modulep += modulep[1]+2;
+	for(smap = (struct smap_t*)(modulep+2); smap < (struct smap_t*)((char*)modulep+modulep[1]+2*4); ++smap) {
+		if (smap->type == 1 /* memory */ && smap->length != 0) {
+			kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
+		}
+	}
+	kprintf("Dhanashri Patil\n");
+	kprintf("Dhanashri Patil\nDhanashri Patil\nDhanashri Patil\nDhanashri Patil\nDhanashri Patil\nDhanashri Patil\nDhanashri Patil\nDhanashri Patil\nDhanashri Patil\n");
+	kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
+	kprintf("Dhanashri Patil\r");
+	kprintf("From carriage return: ");
+	kprintf("This is a sample test to check how function behaves in case of big line. This is a sample test to check how function behaves in case of big line. This is a sample test to check how function behaves in case of big line.\n");
 }
 
 void boot(void)

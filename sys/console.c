@@ -6,9 +6,10 @@
 unsigned int cur = 0;
 unsigned int write_cnt = 0;
 
+unsigned short *textptr = (unsigned short *)0xB8000;;
 char screen_buf[MAX_SCREEN_SIZE] = {' '};
 char write_buf[MAX_WRITE_SIZE] = {' '};
-
+int x_pos = 0, y_pos = 0;
 
 /* Returns Length of the String */
 size_t strlen(const char *buf)
@@ -27,6 +28,14 @@ void *memcpy(void *dest, const void *src, int n)
 	for (i = 0; i < n; i++)
 		d[i] = s[i];
 	return d;
+}
+
+/* Memcopy function for 16 bit values */
+unsigned short *memsetw(unsigned short *dest, unsigned short src, size_t count)
+{
+    unsigned short *t = (unsigned short *)dest;
+    for( ; count != 0; count--) *t++ = src;
+    return dest;
 }
 
 /* Conversion Function for all required base */
@@ -90,6 +99,7 @@ void update_key(int key, int ctrl)
  */
 void update()
 {
+	#if 0	
 	char *b = screen_buf;
 	/*  If the cursor has reached the end */
 	if (cur >= MAX_SCREEN_SIZE - 1) {
@@ -113,6 +123,15 @@ void update()
 		*temp2 = ' ';
 	/* Make write_cnt 0 for next iteration */
 	write_cnt = 0;
+	#endif
+	int temp = 0;
+	unsigned blank_c = 0x20;
+	if(y_pos >= 24) {
+		temp = y_pos - 24 + 1;
+		memcpy(textptr, textptr + temp * 80, (24 - temp) * 80 * 2);
+		memsetw (textptr + (24 - temp) * 80, blank_c, 80);
+		y_pos = 23;
+	}
 }
 
 /* Writes to a write buffer which is later copied to the screen buffer in update. */
@@ -131,7 +150,29 @@ void write(void *b_in, int n)
 
 int putchar(int c)
 {
-	write(&c, 1);
+	unsigned short *c_temp;
+	/* handle positions of x and y coordinates of the screen as per the character getting put */
+	if (c == 0x08) {	/* back space */
+		if (x_pos != 0)
+			x_pos--;
+	}
+	else if(c == '\r') {	/* Carriage return */
+		x_pos = 0;
+	}	
+	else if(c == '\n') {	/* new line */
+		x_pos = 0;
+		y_pos++;
+	}
+	else if(c >= 0x20) {	/* for all the characters >= space (0x20)*/
+		c_temp = textptr + (y_pos * 80 + x_pos);
+		*c_temp = c;
+		x_pos++;
+	}
+	if (x_pos >= 80) {	/* Shift the x coordinate to new line after 80 units */
+		x_pos = 0;
+		y_pos++;
+	}
+	update();
 	return c;
 }
 
@@ -141,4 +182,14 @@ int puts(const char *str)
 	while (str[i] != '\0')
 		putchar(str[i++]);
 	return i;
+}
+
+int clear()
+{
+	unsigned blank_c = 0x20;
+	for(int i = 0; i < 25; i++)
+		memsetw((textptr + i * 80), (blank_c), 80);
+	x_pos = 0;
+    	y_pos = 0;
+	return 0;
 }
