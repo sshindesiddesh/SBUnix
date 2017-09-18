@@ -4,6 +4,7 @@
 #include <sys/console.h>
 
 unsigned short *textptr = (unsigned short *)0xB8000;
+unsigned short *clrptr = (unsigned short *)0xB8001;
 
 int x_pos = 0, y_pos = 0;
 
@@ -37,9 +38,11 @@ unsigned short *memsetw(unsigned short *dest, unsigned short src, size_t count)
 /* Write character at specific position */
 int write_console(int c, int x, int y)
 {
-	unsigned short *c_temp;
+	unsigned short *c_temp, *clr;
 	c_temp = textptr + (y * MAX_SCREEN_X + x);
+	clr = clrptr + (y * MAX_SCREEN_X + x);
 	*c_temp = c;
+	*clr = 7;
 	return c;
 }
 
