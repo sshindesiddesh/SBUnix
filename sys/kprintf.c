@@ -3,9 +3,6 @@
 #include <stdarg.h>
 #include <sys/console.h>
 
-extern unsigned int cur;
-extern unsigned int write_cnt;
-
 void kprintf(const char *fmt, ...)
 {
 	char *t, *str;

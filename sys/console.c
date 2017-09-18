@@ -3,12 +3,8 @@
 #include <stdarg.h>
 #include <sys/console.h>
 
-unsigned int cur = 0;
-unsigned int write_cnt = 0;
+unsigned short *textptr = (unsigned short *)0xB8000;
 
-unsigned short *textptr = (unsigned short *)0xB8000;;
-char screen_buf[MAX_SCREEN_SIZE] = {' '};
-char write_buf[MAX_WRITE_SIZE] = {' '};
 int x_pos = 0, y_pos = 0;
 
 /* Returns Length of the String */
@@ -43,7 +39,7 @@ char *generic_conv(long n, int b)
 {
 	char fixed[] = "0123456789ABCDEF";
 	static char out[100];
-	char *p = (out + 99);
+	char *p = (out + sizeof(out) - 1);
 	*p = '\0';
 	do {
 		*--p = fixed[n%b];
@@ -93,58 +89,16 @@ void update_key(int key, int ctrl)
 		*temp2 = ' ';
 }
 
-/* Update the data in write_buf on the screen */
-/* TODO: Currently the screen scrolling is well supported only if all the
- * print statements end on a line. i.e. ending with \n
- */
+/* Screen scrolling supported here */
 void update()
 {
-	#if 0	
-	char *b = screen_buf;
-	/*  If the cursor has reached the end */
-	if (cur >= MAX_SCREEN_SIZE - 1) {
-		/* Move the screen buffer to fit the new write buffer */
-		memcpy(b, b + write_cnt, MAX_SCREEN_SIZE - write_cnt);
-		/* Copy the Write buffer to the end of the screen buffer */
-		memcpy(b + MAX_SCREEN_SIZE - write_cnt, write_buf, write_cnt);
-	} else {
-		/* Copy the Write buffer to the end of the screen buffer */
-		memcpy(b + cur, write_buf, write_cnt);
-		cur += write_cnt;
-	}
-	/* The cursor has stil not reached the end */
-	register char *temp1, *temp2;
-	int i = 0;
-
-	for (temp1 = b, temp2 = (char*)0xb8000; i < cur; temp1 += 1, temp2 += 2, i++)
-		*temp2 = *temp1;
-	/* Print spaces if cursor is at something less than 2000. */
-	for (temp2 = (char*)0xb8000 + 2 * cur; i < MAX_SCREEN_SIZE; temp2 += 2, i++)
-		*temp2 = ' ';
-	/* Make write_cnt 0 for next iteration */
-	write_cnt = 0;
-	#endif
 	int temp = 0;
-	unsigned blank_c = 0x20;
-	if(y_pos >= 24) {
-		temp = y_pos - 24 + 1;
-		memcpy(textptr, textptr + temp * 80, (24 - temp) * 80 * 2);
-		memsetw (textptr + (24 - temp) * 80, blank_c, 80);
-		y_pos = 23;
-	}
-}
-
-/* Writes to a write buffer which is later copied to the screen buffer in update. */
-void write(void *b_in, int n)
-{
-	char *out = write_buf;
-	char *in = (char *)b_in;
-
-	int i = 0;
-	while (i < n) {
-		out[write_cnt + i] = in[i];
-		i++;
-		write_cnt++;
+	unsigned blank_c = ' ';
+	if(y_pos >= MAX_SCREEN_Y) {
+		temp = y_pos - MAX_SCREEN_Y + 1;
+		memcpy(textptr, textptr + temp * MAX_SCREEN_X, (MAX_SCREEN_Y - temp) * MAX_SCREEN_X * 2);
+		memsetw(textptr + (MAX_SCREEN_Y - temp) * MAX_SCREEN_X, blank_c, MAX_SCREEN_X);
+		y_pos = MAX_SCREEN_Y - 1;
 	}
 }
 
@@ -152,7 +106,7 @@ int putchar(int c)
 {
 	unsigned short *c_temp;
 	/* handle positions of x and y coordinates of the screen as per the character getting put */
-	if (c == 0x08) {	/* back space */
+	if (c == '\b') {	/* back space */
 		if (x_pos != 0)
 			x_pos--;
 	}
@@ -163,12 +117,12 @@ int putchar(int c)
 		x_pos = 0;
 		y_pos++;
 	}
-	else if(c >= 0x20) {	/* for all the characters >= space (0x20)*/
-		c_temp = textptr + (y_pos * 80 + x_pos);
+	else if(c >= ' ') {	/* for all the characters >= space (0x20)*/
+		c_temp = textptr + (y_pos * MAX_SCREEN_X + x_pos);
 		*c_temp = c;
 		x_pos++;
 	}
-	if (x_pos >= 80) {	/* Shift the x coordinate to new line after 80 units */
+	if (x_pos >= MAX_SCREEN_X) {	/* Shift the x coordinate to new line after 80 units */
 		x_pos = 0;
 		y_pos++;
 	}
@@ -186,9 +140,9 @@ int puts(const char *str)
 
 int clear()
 {
-	unsigned blank_c = 0x20;
-	for(int i = 0; i < 25; i++)
-		memsetw((textptr + i * 80), (blank_c), 80);
+	unsigned blank_c = ' ';
+	for(int i = 0; i < MAX_SCREEN_Y; i++)
+		memsetw((textptr + i * MAX_SCREEN_X), (blank_c), MAX_SCREEN_X);
 	x_pos = 0;
     	y_pos = 0;
 	return 0;

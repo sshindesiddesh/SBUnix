@@ -2,8 +2,10 @@
 #define _CONSOLE_H
 
 /* -80 to skip the last line which is reserved for Timer and keyboard. */
-#define MAX_SCREEN_SIZE	2000 - 80
-#define MAX_WRITE_SIZE	200
+
+#define MAX_SCREEN_Y	24
+#define MAX_SCREEN_X	80
+
 int putchar(int c);
 int puts(const char *str);
 void update();
