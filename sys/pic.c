@@ -4,11 +4,7 @@
 #include <sys/tarfs.h>
 #include <sys/ahci.h>
 #include <sys/pic.h>
-
-/* TODO: Remove this later. This is redeclared */
-#define IRQ0	0x20
-#define IRQ8	0x28
-
+#include <sys/idt.h>
 
 void pic_ack(uint8_t irq_id)
 {
