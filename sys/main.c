@@ -28,12 +28,8 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
 			kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
 		}
 	}
-	kprintf("Dhanashri Patil\n");
-	kprintf("Dhanashri Patil\nDhanashri Patil\nDhanashri Patil\nDhanashri Patil\nDhanashri Patil\nDhanashri Patil\nDhanashri Patil\nDhanashri Patil\nDhanashri Patil\n");
+	kprintf("physfree %p\n", (uint64_t)physfree);
 	kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
-	kprintf("Dhanashri Patil\r");
-	kprintf("From carriage return: ");
-	kprintf("This is a sample test to check how function behaves in case of big line. This is a sample test to check how function behaves in case of big line. This is a sample test to check how function behaves in case of big line.\n");
 }
 
 void boot(void)
