@@ -112,6 +112,9 @@ int putchar(int c)
 		x_pos = 0;
 		y_pos++;
 	}
+	else if(c == '\t') {	/* tab */
+		x_pos = x_pos + 8;
+	}	
 	else if(c >= ' ') {	/* for all the characters >= space (0x20)*/
 		write_console(c, x_pos, y_pos);
 		x_pos++;
