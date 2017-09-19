@@ -8,7 +8,7 @@
 
 void pic_ack(uint8_t irq_id)
 {
-	if (irq_id > 0x28)
+	if (irq_id > 0x27)
 		outb(PIC2_CMD, PIC_EOI);
 	outb(PIC1_CMD, PIC_EOI);
 }
@@ -18,14 +18,15 @@ void set_mask(uint8_t irq_id)
 	uint16_t port;
 	uint8_t value;
 
-	if (irq_id > 0x28) {
-		port = PIC1_DATA;
-		irq_id -= 0x20;
+	if (irq_id >= 0x28) {
+		port = PIC2_DATA;
+		irq_id -= 0x28;
 	} else {
-		port = PIC2_CMD;
+		port = PIC1_DATA;
 		irq_id -= 0x20;
 	}
 	value = inb(port) | (1 << irq_id);
+	kprintf("PORT 0x%x value %x \n", port, value);
 	outb(port, value);
 }
 
@@ -34,14 +35,15 @@ void clr_mask(uint8_t irq_id)
 	uint16_t port;
 	uint8_t value;
 
-	if (irq_id > 0x28) {
-		port = PIC1_DATA;
-		irq_id -= 0x20;
-	} else {
+	if (irq_id >= 0x28) {
 		port = PIC2_DATA;
 		irq_id -= 0x28;
+	} else {
+		port = PIC1_DATA;
+		irq_id -= 0x20;
 	}
 	value = inb(port) & ~(1 << irq_id);
+	kprintf("PORT 0x%x value %x \n", port, value);
 	outb(port, value);
 }
 
@@ -67,8 +69,16 @@ void pic_init()
 	/* Mask everything */
 	/* except Timer Interrupt */
 	/* except Keyboard Interrupt */
-	outb(PIC1_DATA, 0xFC);
-	outb(PIC2_DATA, 0xFF);
+	outb(PIC1_DATA, 0x3F);
+	outb(PIC2_DATA, 0x3F);
+	clr_mask(0x20);
+	clr_mask(0x21);
+	set_mask(0x22);
+	set_mask(0x23);
+	set_mask(0x24);
+	set_mask(0x25);
+	set_mask(0x26);
+	set_mask(0x27);
 	/* Set Interrupts */
 	__asm__ __volatile__("sti");
 }
@@ -76,6 +86,7 @@ void pic_init()
 void outb(uint16_t port, uint8_t val)
 {
 	__asm__ __volatile__ ("outb %0, %1" : : "a"(val), "Nd"(port));
+	__asm__ __volatile__ ( "jmp 1f\n\t""1:jmp 2f\n\t""2:");
 }
 
 unsigned char inb(unsigned short port)

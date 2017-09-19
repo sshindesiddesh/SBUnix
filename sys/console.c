@@ -62,21 +62,26 @@ char *generic_conv(long n, int b)
 
 void update_time(uint64_t time)
 {
+	const char *str1 = "Time since Boot: ";
 	char *str = generic_conv(time, 10);
-	int i, l = strlen(str);
+	int i, l = strlen(str1);
 	for (i = 0; i < l; i++) {
-		write_console(str[i], 70 + i, 24);
+		write_console(str1[i], 54 + i, 24);
+	}
+	l = strlen(str);
+	for (i = 0; i < l; i++) {
+		write_console(str[i], 72 + i, 24);
 	}
 }
 
 void update_key(int key, int ctrl)
 {
 		if (ctrl == 1) {
-			write_console('^', 65, 24);
-			write_console(key, 66, 24);
+			write_console('^', 50, 24);
+			write_console(key, 51, 24);
 		} else {
-			write_console(key, 65, 24);
-			write_console(' ', 66, 24);
+			write_console(key, 50, 24);
+			write_console(' ', 51, 24);
 		}
 }
 
