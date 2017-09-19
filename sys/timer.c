@@ -11,6 +11,8 @@ void timer_init()
 		 */
 		/* Send the command byte.*/
 		outb(0x43, 0x36);
+		outb(0x40, 0xFF);
+		outb(0x40, 0xFF);
 }
 
 uint64_t k = 0, i = 0;
