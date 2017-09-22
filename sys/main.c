@@ -15,9 +15,12 @@ uint32_t* loader_stack;
 extern char kernmem, physbase;
 void clear();
 
+void ahci_init();
+
 void start(uint32_t *modulep, void *physbase, void *physfree)
 {
 	clear();
+	ahci_init();
 	struct smap_t {
 		uint64_t base, length;
 		uint32_t type;

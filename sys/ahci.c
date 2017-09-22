@@ -49,7 +49,8 @@ uint64_t pci_config_read_word(uint8_t bus, uint8_t slot, uint8_t func, uint8_t o
 	 * Vendor ID : 15-0 : 2 Bytes : 0
 	 * Class Code : 31:14 : 1 Byte : 11
 	 * Subclass Code : 23:16 : 1 Byte : 10
-	 */
+     * BAR5 : Prefetchable Memory Limit : 32
+     */
 	return (sys_in_long(0xCFC) & 0xFFFFFFFF);
 }
 
@@ -73,10 +74,13 @@ uint64_t get_ahci()
 			if (vendor_id != 0xFFFF) {
 				if (vendor_id == INTEL && device_id == AHCI_CONTROLLER && class_code == MSD && sub_class_code == SATA) {
 					kprintf("!!! Found AHCI Controller !!!\n");
+					uint64_t address = pci_config_read_word(bus, device, 0, 0x24);
+					address = get_pci_data(address, 0);
+					kprintf(" 0x%x\n", address);
+					return address;
 				}
 				kprintf("Vendor 0x%x Device 0x%x class 0x%x sub class 0x%x\n", vendor_id, device_id, class_code, sub_class_code);
 			}
-
 		}
 	}
 	return 0;
