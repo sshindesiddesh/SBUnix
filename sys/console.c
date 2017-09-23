@@ -47,7 +47,7 @@ int write_console(int c, int x, int y)
 }
 
 /* Conversion Function for all required base */
-char *generic_conv(long n, int b)
+char *generic_conv(unsigned long n, int b)
 {
 	char fixed[] = "0123456789ABCDEF";
 	static char out[100];

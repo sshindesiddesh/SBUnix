@@ -7,7 +7,7 @@ void kprintf(const char *fmt, ...)
 {
 	char *t, *str;
 	va_list arg;
-	unsigned int i;
+	unsigned long i;
 
 	va_start(arg, fmt);
 
@@ -31,7 +31,7 @@ void kprintf(const char *fmt, ...)
 				puts(str);
 				break;
 			case 'p' :
-				i = va_arg(arg, unsigned int);
+				i = va_arg(arg, unsigned long);
 				puts("0x");
 				puts(generic_conv(i, 16));
 				break;
