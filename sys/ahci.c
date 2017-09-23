@@ -51,7 +51,7 @@ uint64_t pci_config_read_word(uint8_t bus, uint8_t slot, uint8_t func, uint8_t o
 	 * Subclass Code : 23:16 : 1 Byte : 10
      * BAR5 : Prefetchable Memory Limit : 32
      */
-	return (sys_in_long(0xCFC) & 0xFFFFFFFF);
+	return (sys_in_long(0xCFC) & 0xFFFFFFFFFFFFFFFF);
 }
 
 
@@ -86,8 +86,50 @@ uint64_t get_ahci()
 	return 0;
 }
 
+void search_disk(uint64_t address)
+{
+	hba_mem_t *abar = (hba_mem_t *)address;
+	kprintf("ABAR %p\n", abar);
+	uint32_t pi = abar->pi;
+	kprintf("%d pi\n", pi);
+	int i = 0;
+	while (i < 32) {
+		if (pi & 1)
+			kprintf("%p\n", abar->ports[i++]);
+		pi >>= 1;
+	}
+}
+
+#if 0
+static int check_type(hba_port_t *port)
+{
+		uint32_t ssts = port->ssts;
+
+		uint8_t ipm = (ssts >> 8) & 0x0F;
+		uint8_t det = ssts & 0x0F;
+
+		if (det != HBA_PORT_DET_PRESENT)
+				return AHCI_DEV_NULL;
+		if (ipm != HBA_PORT_IPM_ACTIVE)
+				return AHCI_DEV_NULL;
+
+		switch (port->sig)
+		{
+				case SATA_SIG_ATAPI:
+						return AHCI_DEV_SATAPI;
+				case SATA_SIG_SEMB:
+						return AHCI_DEV_SEMB;
+				case SATA_SIG_PM:
+						return AHCI_DEV_PM;
+				default:
+						return AHCI_DEV_SATA;
+		}
+}
+#endif
+
 void ahci_init()
 {
 	kprintf("\nAHCI : \n");
-	get_ahci();
+	uint64_t address = get_ahci();
+	search_disk(address + 0XFFFFFFFF00000000);
 }
