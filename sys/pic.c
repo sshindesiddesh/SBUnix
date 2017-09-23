@@ -26,7 +26,6 @@ void set_mask(uint8_t irq_id)
 		irq_id -= 0x20;
 	}
 	value = inb(port) | (1 << irq_id);
-	kprintf("PORT 0x%x value %x \n", port, value);
 	outb(port, value);
 }
 
@@ -43,7 +42,6 @@ void clr_mask(uint8_t irq_id)
 		irq_id -= 0x20;
 	}
 	value = inb(port) & ~(1 << irq_id);
-	kprintf("PORT 0x%x value %x \n", port, value);
 	outb(port, value);
 }
 
