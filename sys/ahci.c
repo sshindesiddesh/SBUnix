@@ -10,6 +10,10 @@
 #define MSD					0x01
 #define SATA				0x06
 
+#define NEW_ABAR	0x10000000
+
+#define get_pci_data(val, offset)	(val >> (offset * 8))
+
 uint32_t sys_in_long(uint16_t port)
 {
 	uint32_t result;
@@ -22,9 +26,38 @@ void sys_out_long(uint16_t port, uint32_t data)
 	__asm__ __volatile__ ("outl %0, %1" : : "a" (data), "Nd" (port));
 }
 
-#define get_pci_data(val, offset)	(val >> (offset * 8))
 
 uint64_t pci_config_read_word(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
+{
+	uint32_t address;
+	uint32_t l_bus = (uint32_t)bus;
+	uint32_t l_slot = (uint32_t)slot;
+	uint32_t l_func = (uint32_t)func;
+
+	address = (uint32_t)((l_bus << 16) |	/* Shift lbus 23 - 16 */
+			(l_slot << 11) |			/* Shift lbus 15 - 11 */
+			(l_func << 8) |				/* Shift Function Number 10 - 8 */
+			(offset & 0xFC) | 			/* Last two bits must be 0 */
+			(uint32_t)0x80000000);		/* Set Enable Bit  */
+
+	sys_out_long(0x0CF8, address);
+	/* Each offset gives 8 bit depth of the 32bit register.
+	 * So every register has 4 offsets and are devided into
+	 * information as device id, vendor id, class, etc
+	 */
+	/*
+	 * Offsets and size are mentioned
+	 * Device ID : 31-16 : 2 Bytes : 2
+	 * Vendor ID : 15-0 : 2 Bytes : 0
+	 * Class Code : 31:14 : 1 Byte : 11
+	 * Subclass Code : 23:16 : 1 Byte : 10
+	 * BAR5 : Prefetchable Memory Limit : 32
+	 */
+	return (sys_in_long(0xCFC) & 0xFFFFFFFFFFFFFFFF);
+}
+
+/* 0x5000000 */
+uint64_t remap_bar(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
 {
 	uint32_t address;
 	uint32_t l_bus = (uint32_t)bus;
@@ -49,11 +82,13 @@ uint64_t pci_config_read_word(uint8_t bus, uint8_t slot, uint8_t func, uint8_t o
 	 * Vendor ID : 15-0 : 2 Bytes : 0
 	 * Class Code : 31:14 : 1 Byte : 11
 	 * Subclass Code : 23:16 : 1 Byte : 10
-     * BAR5 : Prefetchable Memory Limit : 32
+     * BAR5 : Prefetchable Memory Limit : 0x24
      */
-	return (sys_in_long(0xCFC) & 0xFFFFFFFFFFFFFFFF);
+	uint64_t bar5 = sys_in_long(0xCFC) & 0xFFFFFFFFFFFFFFFF;
+	sys_out_long(0x0CFC, NEW_ABAR);
+	bar5 = sys_in_long(0xCFC) & 0xFFFFFFFFFFFFFFFF;
+	return bar5;
 }
-
 
 
 uint64_t get_ahci()
@@ -77,6 +112,8 @@ uint64_t get_ahci()
 					uint64_t address = pci_config_read_word(bus, device, 0, 0x24);
 					address = get_pci_data(address, 0);
 					kprintf(" 0x%x\n", address);
+					address = remap_bar(bus, device, 0, 0x24);
+					kprintf("  bar5 0x%x\n", address);
 					return address;
 				}
 				kprintf("Vendor 0x%x Device 0x%x class 0x%x sub class 0x%x\n", vendor_id, device_id, class_code, sub_class_code);
@@ -89,9 +126,8 @@ uint64_t get_ahci()
 void search_disk(uint64_t address)
 {
 	hba_mem_t *abar = (hba_mem_t *)address;
-	kprintf("ABAR %p\n", abar);
 	uint32_t pi = abar->pi;
-	kprintf("%d pi\n", pi);
+	kprintf("0x%x pi\n", pi);
 	int i = 0;
 	while (i < 32) {
 		if (pi & 1)
@@ -131,5 +167,6 @@ void ahci_init()
 {
 	kprintf("\nAHCI : \n");
 	uint64_t address = get_ahci();
-	search_disk(address + 0XFFFFFFFF00000000);
+	address++;
+	search_disk(0xFFFFFFFF80000000 + NEW_ABAR);
 }
