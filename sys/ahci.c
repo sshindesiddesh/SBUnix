@@ -34,7 +34,7 @@
 #define get_pci_data(val, offset)	(val >> (offset * 8))
 
 
-#define NO_OF_BLOCKS	108
+#define NO_OF_BLOCKS	100
 
 uint64_t abar;
 
@@ -274,10 +274,7 @@ int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
 	int i = 0;
 	int j = 0;
 	for (i = 0; i < NO_OF_BLOCKS; i++) {
-		/* Fill Write the Buffer */
-		//for (j = 0; j < 4096; j++)
-		//	write_buf[j] = i;
-		memset(write_buf, i, 4096);
+		memset(write_buf, i + 1, 4096);
 		/* Write to the LBA */
 		write(&((hba_mem_t *)abar)->ports[port_no], i, 0, 8, write_buf);
 	}
@@ -287,17 +284,20 @@ int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
 	for (i = 0; i < NO_OF_BLOCKS; i++) {
 		/* Read from LBA */
 		read(&((hba_mem_t *)abar)->ports[port_no], i, 0, 8, read_buf);
-		kprintf("Verifying LBA %d\n", i);
+		kprintf("Verifying LBA %d..", i);
 		/* Check the data */
+		flag = 0;
 		for (j = 0; j < 4096; j++) {
 			kprintf("%d ", read_buf[j]);
-			if (read_buf[j] != i) {
+			if (j != 0 && j % 128 == 0)
+				kprintf(".");
+			if (read_buf[j] != i + 1) {
 				flag = 1;
 				kprintf("Error in read LBA %d Byte %d\n read %d ... %p %p %p %p\n", i, j, read_buf[j], read_buf, read_buf + j, write_buf, write_buf + j);
 				break;
 			}
 			if (flag == 0 && j == 4095)
-				kprintf("a");
+				kprintf("Done\n");
 			
 		}
 	}
@@ -376,7 +376,7 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 	cmd_tbl->prdt_entry[i].dba = (uint64_t)buf;
 	/* 512 bytes per sector */
 	cmd_tbl->prdt_entry[i].dbc = count << 9;
-	cmd_tbl->prdt_entry[i].i = 0;
+	cmd_tbl->prdt_entry[i].i = 1;
 
 	/* setup command */
 	fis_reg_h2d_t *cmd_fis = (fis_reg_h2d_t*)(&cmd_tbl->cfis);
@@ -464,7 +464,7 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 	cmd_tbl->prdt_entry[i].dba = (uint64_t)(buf);
 	/* 512 bytes per sector */
 	cmd_tbl->prdt_entry[i].dbc = count << 9;
-	cmd_tbl->prdt_entry[i].i = 0;
+	cmd_tbl->prdt_entry[i].i = 1;
 
 	/* Setup command FIS */
 	fis_reg_h2d_t *cmd_fis = (fis_reg_h2d_t*)(&cmd_tbl->cfis);
