@@ -272,8 +272,8 @@ int find_cmdslot(hba_port_t *port)
 	return -1;
 }
 
-uint8_t read_buf[4096 * 2] = {2};
-uint8_t write_buf[4096 * 2] = {3};
+//uint8_t read_buf[4096] = {2};
+//uint8_t write_buf[4096] = {3};
 
 void probe_port(hba_mem_t *abar)
 {
@@ -285,12 +285,25 @@ void probe_port(hba_mem_t *abar)
 			int dt = check_type(&abar->ports[i]);
 			if (dt == AHCI_DEV_SATA) {
 				if (i == 0) {
+				uint8_t *write_buf = (uint8_t *)0x500000;
+				uint8_t *read_buf = (uint8_t *)0x505000;
+				kprintf("%p %p \n", write_buf, read_buf);
+				for (int j = 0; j < 4096; j++) {
+					write_buf[j] = 25;
+					read_buf[j] = 23;
+				}
+				for (int j = 0; j < 20; j++) {
+					kprintf("r:%d ", read_buf[j]);
+					if (j % 20 == 0 && j != 0)
+						kprintf("\n");
+				}
+
 				kprintf("SATA drive found at port %d\n", i);
 				port_rebase(&abar->ports[i], i);
 				kprintf("Free Slot : 0x%x\n", find_cmdslot(&abar->ports[i]));
-				write(&abar->ports[i], 0, 0, 2, write_buf);
-				read(&abar->ports[i], 0, 0, 8, read_buf);
-				for (int j = 0; j < 100; j++) {
+				write(&abar->ports[i], 1, 0, 8, write_buf);
+				read(&abar->ports[i], 1, 0, 8, read_buf);
+				for (int j = 0; j < 20; j++) {
 					kprintf("r:%d ", read_buf[j]);
 					if (j % 20 == 0 && j != 0)
 						kprintf("\n");
@@ -315,7 +328,6 @@ void probe_port(hba_mem_t *abar)
 #define ATA_DEV_BUSY 0x80
 #define ATA_DEV_DRQ 0x08
 
-#if 0
 int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf)  
 {
     //   buf = KERNBASE + buf;
@@ -420,7 +432,7 @@ number of words specified in the PRD table, ignoring any additional padding.**/
         }
         return 1;
 }
-#endif
+#if 0
 
 #if 1
 int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf)
@@ -514,6 +526,7 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 	kprintf("Read Success\n"); 
 	return 1;
 }
+#endif
 #endif
 
 int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf)  
