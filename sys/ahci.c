@@ -25,12 +25,16 @@
 #define ATA_CMD_READ_DMA_EX	0x25
 #define	ATA_CMD_WRITE_DMA_EX	0x35
 
+#define ATA_DEV_BUSY 0x80
+#define ATA_DEV_DRQ 0x08
+
 /* TODO : Try bringing it closer to the ABAR */
 #define AHCI_BASE	0x400000
 
 #define get_pci_data(val, offset)	(val >> (offset * 8))
 
-#define KERNBASE	0xFFFFFFFF80000000
+
+#define NO_OF_BLOCKS	100
 
 uint64_t abar;
 
@@ -89,16 +93,16 @@ uint64_t remap_bar(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
 	uint32_t l_func = (uint32_t)func;
 
 	address = (uint32_t)((l_bus << 16) |	/* Shift lbus 23 - 16 */
-				(l_slot << 11) |			/* Shift lbus 15 - 11 */
-				(l_func << 8) |				/* Shift Function Number 10 - 8 */
-				(offset & 0xFC) | 			/* Last two bits must be 0 */
-				(uint32_t)0x80000000);		/* Set Enable Bit  */
+			(l_slot << 11) |			/* Shift lbus 15 - 11 */
+			(l_func << 8) |				/* Shift Function Number 10 - 8 */
+			(offset & 0xFC) | 			/* Last two bits must be 0 */
+			(uint32_t)0x80000000);		/* Set Enable Bit  */
 
-    sys_out_long(0x0CF8, address);
+	sys_out_long(0x0CF8, address);
 
 	/* Each offset gives 8 bit depth of the 32bit register.
-     * So every register has 4 offsets and are devided into
-     * information as device id, vendor id, class, etc
+	 * So every register has 4 offsets and are devided into
+	 * information as device id, vendor id, class, etc
 	 */
 	/*
 	 * Offsets and size are mentioned
@@ -106,8 +110,8 @@ uint64_t remap_bar(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
 	 * Vendor ID : 15-0 : 2 Bytes : 0
 	 * Class Code : 31:14 : 1 Byte : 11
 	 * Subclass Code : 23:16 : 1 Byte : 10
-     * BAR5 : Prefetchable Memory Limit : 0x24
-     */
+	 * BAR5 : Prefetchable Memory Limit : 0x24
+	 */
 	uint64_t bar5 = sys_in_long(0xCFC) & 0xFFFFFFFFFFFFFFFF;
 	sys_out_long(0x0CFC, NEW_ABAR);
 	bar5 = sys_in_long(0xCFC) & 0xFFFFFFFFFFFFFFFF;
@@ -147,18 +151,6 @@ uint64_t get_ahci()
 	return 0;
 }
 
-void search_disk(uint64_t address)
-{
-	hba_mem_t *abar = (hba_mem_t *)address;
-	uint32_t pi = abar->pi;
-	kprintf("0x%x pi\n", pi);
-	int i = 0;
-	while (i < 32) {
-		if (pi & 1)
-			kprintf("%p\n", abar->ports[i++]);
-		pi >>= 1;
-	}
-}
 
 /* Check device type */
 static int check_type(hba_port_t *port)
@@ -174,37 +166,36 @@ static int check_type(hba_port_t *port)
 				return AHCI_DEV_NULL;
 
 		switch (port->sig) {
-				case SATA_SIG_ATAPI:
-					return AHCI_DEV_SATAPI;
-				case SATA_SIG_SEMB:
-					return AHCI_DEV_SEMB;
-				case SATA_SIG_PM:
-					return AHCI_DEV_PM;
-				default:
-					return AHCI_DEV_SATA;
+			case SATA_SIG_ATAPI:
+				return AHCI_DEV_SATAPI;
+			case SATA_SIG_SEMB:
+				return AHCI_DEV_SEMB;
+			case SATA_SIG_PM:
+				return AHCI_DEV_PM;
+			default:
+				return AHCI_DEV_SATA;
 		}
 }
 
-// Start command engine
+/* Start Command Engine */
 void start_cmd(hba_port_t *port)
 {
-	// Wait until CR (bit15) is cleared
+	/* Wait until CR (bit15) is cleared */
 	while (port->cmd & HBA_PxCMD_CR);
 
-	// Set FRE (bit4) and ST (bit0)
+	/* Set FRE (bit4) and ST (bit0) */
 	port->cmd |= HBA_PxCMD_FRE;
-	port->cmd |= HBA_PxCMD_ST; 
+	port->cmd |= HBA_PxCMD_ST;
 }
  
-// Stop command engine
+/* Stop Command Engine */
 void stop_cmd(hba_port_t *port)
 {
-	// Clear ST (bit0)
+	/* Clear ST (bit0) */
 	port->cmd &= ~HBA_PxCMD_ST;
  
-	// Wait until FR (bit14), CR (bit15) are cleared
-	while(1)
-	{
+	/* Wait until FR (bit14), CR (bit15) are cleared */
+	while(1) {
 		if (port->cmd & HBA_PxCMD_FR)
 			continue;
 		if (port->cmd & HBA_PxCMD_CR)
@@ -212,59 +203,65 @@ void stop_cmd(hba_port_t *port)
 		break;
 	}
 
-	// Clear FRE (bit4)
+	/* Clear FRE (bit4) */
 	port->cmd &= ~HBA_PxCMD_FRE;
 }
 
 void port_rebase(hba_port_t *port, int portno)
 {
-	/* Trial */
+	/* Reset AHCI control, enable AHCI controller and Interrupts */
 	hba_mem_t *t_abar = ((hba_mem_t *)abar);
-	kprintf("GHC : ox%x\n", t_abar->ghc);
 	t_abar->ghc = t_abar->ghc | 0X01;
 	t_abar->ghc = t_abar->ghc | 0X80000000;
 	t_abar->ghc = t_abar->ghc | 0X02;
-	while (((t_abar->ghc) & 0x01) != 0);
-	kprintf("t_abar : ox%x\n", t_abar->ghc);
-	stop_cmd(port);	// Stop command engine
 
-	// Command list offset: 1K*portno
-	// Command list entry size = 32
-	// Command list entry maxim count = 32
-	// Command list maxim size = 32*32 = 1K per port
-	port->clb = AHCI_BASE + (portno<<10);
-	kprintf("port->clb %p\n", port->clb);
+	/* Wait untill reset successfull */
+	while (((t_abar->ghc) & 0x01) != 0);
+
+	/* Stop Command Engine */
+	stop_cmd(port);
+
+	/* Command list offset: 1K*portno
+	 * Command list entry size = 32
+	 * Command list entry maxim count = 32
+	 * Command list maxim size = 32*32 = 1K per port
+	 */
+	port->clb = AHCI_BASE + (portno << 10);
 	memset((void*)(port->clb), 0, 1024);
 
-	// FIS offset: 32K+256*portno
-	// FIS entry size = 256 bytes per port
-	port->fb = AHCI_BASE + (32<<10) + (portno<<8);
+	/* FIS offset: 32K+256*portno
+	 * FIS entry size = 256 bytes per port
+	 */
+	port->fb = AHCI_BASE + (32<<10) + (portno << 8);
 	memset((void*)(port->fb), 0, 256);
 
-	// Command table offset: 40K + 8K*portno
-	// Command table size = 256*32 = 8K per port
-	hba_cmd_header_t *cmdheader = (hba_cmd_header_t*)(port->clb);
-	for (int i=0; i<32; i++) {
-		cmdheader[i].prdtl = 8;	// 8 prdt entries per command table
-		// 256 bytes per command table, 64+16+48+16*8
-		// Command table offset: 40K + 8K*portno + cmdheader_index*256
-		cmdheader[i].ctba = AHCI_BASE + (40<<10) + (portno<<13) + (i<<8);
-		//kprintf("ctba : %p\n", cmdheader[i].ctba);
-		memset((void*)cmdheader[i].ctba, 0, 256);
+	/* Command table offset: 40K + 8K*portno
+	 * Command table size = 256*32 = 8K per port
+	 */
+	hba_cmd_header_t *cmd_header = (hba_cmd_header_t*)(port->clb);
+	for (int i = 0; i < 32; i++) {
+		/* 8 PRDT entries per comamand tabled */
+		cmd_header[i].prdtl = 8;
+		/* 256 bytes per command table, 64+16+48+16*8
+		 * Command table offset: 40K + 8K*portno + cmdheader_index*256
+		 */
+		cmd_header[i].ctba = AHCI_BASE + (40 << 10) + (portno << 13) + (i << 8);
+		memset((void*)cmd_header[i].ctba, 0, 256);
 	}
-	
-	start_cmd(port);	// Start command engine
+
+	/* Start Command Engine */
+	start_cmd(port);
 }
 
-// Find a free command list slot
+/* Find free command list slot */
 int find_cmdslot(hba_port_t *port)
 {
-	// If not set in SACT and CI, the slot is free
+	/* If bit not set in SACT and CI, the slot is free */
 	uint32_t slots = (port->sact | port->ci);
 	/* Intel SATA Manual 1.3.1 : Bits 8 - 12 */
 	uint8_t cmdslots = ((hba_mem_t *)abar)->cap & 0x0f00 >> 8;
 	for (int i = 0; i < cmdslots; i++) {
-		if ((slots&1) == 0)
+		if ((slots & 1) == 0)
 			return i;
 		slots >>= 1;
 	}
@@ -272,17 +269,6 @@ int find_cmdslot(hba_port_t *port)
 	return -1;
 }
 
-void delay()
-{
-	for (int i = 0; i < 60000; i++)
-		for (int j = 0; j < 60000; j++)
-			for (int k = 0; k < 60000; k++)
-		;
-}
-//uint8_t read_buf[4096] = {2};
-//uint8_t write_buf[4096] = {3};
-
-#define NO_OF_BLOCKS	100
 int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
 {
 	/*Write*/
@@ -290,9 +276,9 @@ int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
 	int j = 0;
 	for (i = 0; i < NO_OF_BLOCKS; i++) {
 		/* Fill Write the Buffer */
-		for (j = 0; j < 4096; j++)
-			write_buf[j] = i;
-		//memset(write_buf, i, 4096);
+		//for (j = 0; j < 4096; j++)
+		//	write_buf[j] = i;
+		memset(write_buf, i, 4096);
 		/* Write to the LBA */
 		write(&((hba_mem_t *)abar)->ports[port_no], i, 0, 8, write_buf);
 	}
@@ -304,7 +290,7 @@ int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
 		read(&((hba_mem_t *)abar)->ports[port_no], i, 0, 8, read_buf);
 		kprintf("Verifying LBA %d\n", i);
 		/* Check the data */
-		for (j = 0; j < 530; j++) {
+		for (j = 0; j < 4096; j++) {
 			kprintf("%d ", read_buf[j]);
 			if (read_buf[j] != i) {
 				flag = 1;
@@ -329,38 +315,15 @@ void probe_port(hba_mem_t *abar)
 		if ((pi & 1)) {
 			int dt = check_type(&abar->ports[i]);
 			if (dt == AHCI_DEV_SATA) {
+				/* Currently we read/write on port 1 */
 				if (i == 1) {
-				uint8_t *write_buf = (uint8_t *)0x600000;
-				uint8_t *read_buf = (uint8_t *)0x605000;
-				kprintf("%p %p \n", write_buf, read_buf);
-				kprintf("SATA drive found at port %d\n", i);
-				port_rebase(&abar->ports[i], i);
-				kprintf("Free Slot : 0x%x\n", find_cmdslot(&abar->ports[i]));
-#if 0
-				for (int j = 0; j < 4096; j++) {
-					write_buf[j] = 25;
-					read_buf[j] = 23;
+					uint8_t *write_buf = (uint8_t *)0x600000;
+					uint8_t *read_buf = (uint8_t *)0x605000;
+					kprintf("SATA drive found at port %d\n", i);
+					port_rebase(&abar->ports[i], i);
+					read_write_lba(i, write_buf, read_buf);
+					return;
 				}
-				for (int j = 0; j < 20; j++) {
-					kprintf("r:%d ", read_buf[j]);
-					if (j % 20 == 0 && j != 0)
-						kprintf("\n");
-				}
-				write(&abar->ports[i], 2, 0, 8, write_buf);
-				read(&abar->ports[i], 2, 0, 8, read_buf);
-				for (int j = 0; j < 4096; j++) {
-					if (read_buf[j] != 25) {
-						kprintf("r:%d ", read_buf[j]);
-						break;
-					}
-					if (j == 4095)
-						kprintf("\nSuccess\n");
-				}
-#endif
-				read_write_lba(i, write_buf, read_buf);
-				return;
-				}
-				//return;
 			} else if (dt == AHCI_DEV_SATAPI)
 				kprintf("SATAPI drive found at port %d\n", i);
 			else if (dt == AHCI_DEV_SEMB)
@@ -374,9 +337,6 @@ void probe_port(hba_mem_t *abar)
 		i++;
 	}
 }
-
-#define ATA_DEV_BUSY 0x80
-#define ATA_DEV_DRQ 0x08
 
 int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf)
 {
