@@ -39,7 +39,6 @@
 uint64_t abar;
 
 int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf);
-//int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint16_t *buf);
 int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf);
 
 uint32_t sys_in_long(uint16_t port)
