@@ -138,9 +138,7 @@ uint64_t get_ahci()
 					kprintf("!!! Found AHCI Controller !!!\n");
 					uint64_t address = pci_config_read_word(bus, device, 0, 0x24);
 					address = get_pci_data(address, 0);
-					kprintf(" 0x%x\n", address);
 					address = remap_bar(bus, device, 0, 0x24);
-					kprintf("  bar5 0x%x\n", address);
 					return address;
 				}
 				kprintf("Vendor 0x%x Device 0x%x class 0x%x sub class 0x%x\n", vendor_id, device_id, class_code, sub_class_code);
@@ -268,6 +266,15 @@ int find_cmdslot(hba_port_t *port)
 	return -1;
 }
 
+/* Not used */
+void delay()
+{
+	for (int i = 0; i < 400; i++) {
+		write_console(' ', 1, 24);
+		write_console(' ', 2, 24);
+	}
+}
+
 int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
 {
 	/*Write*/
@@ -276,31 +283,30 @@ int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
 	for (i = 0; i < NO_OF_BLOCKS; i++) {
 		memset(write_buf, i + 1, 4096);
 		/* Write to the LBA */
-		write(&((hba_mem_t *)abar)->ports[port_no], i, 0, 8, write_buf);
+		write(&((hba_mem_t *)abar)->ports[port_no], i * 8, 0, 8, write_buf);
 	}
 
 	/* Read */
 	int flag = 0;
+	kprintf("Verifying LBAs... ");
 	for (i = 0; i < NO_OF_BLOCKS; i++) {
 		/* Read from LBA */
-		read(&((hba_mem_t *)abar)->ports[port_no], i, 0, 8, read_buf);
-		kprintf("Verifying LBA %d..", i);
+		read(&((hba_mem_t *)abar)->ports[port_no], i * 8, 0, 8, read_buf);
 		/* Check the data */
 		flag = 0;
 		for (j = 0; j < 4096; j++) {
-			kprintf("%d ", read_buf[j]);
-			if (j != 0 && j % 128 == 0)
-				kprintf(".");
 			if (read_buf[j] != i + 1) {
 				flag = 1;
+				kprintf(" r : %d i : %d ", read_buf[j], i);
 				kprintf("Error in read LBA %d Byte %d\n read %d ... %p %p %p %p\n", i, j, read_buf[j], read_buf, read_buf + j, write_buf, write_buf + j);
 				break;
 			}
 			if (flag == 0 && j == 4095)
-				kprintf("Done\n");
+				;
 			
 		}
 	}
+	kprintf("Verification Complete\n");
 	return 1;
 
 }
