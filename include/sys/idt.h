@@ -88,4 +88,5 @@ WEAK void excp1D(void);
 WEAK void excp1E(void);
 WEAK void excp1F(void);
 
+void *memset(void *ptr, int value, size_t len);
 #endif
