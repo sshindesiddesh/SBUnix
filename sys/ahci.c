@@ -34,7 +34,7 @@
 #define get_pci_data(val, offset)	(val >> (offset * 8))
 
 
-#define NO_OF_BLOCKS	100
+#define NO_OF_BLOCKS	108
 
 uint64_t abar;
 
@@ -349,8 +349,14 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 
 	hba_cmd_header_t *cmd_header = (hba_cmd_header_t*)port->clb;
 	cmd_header += slot;
+
+	/* FIS size  */
 	cmd_header->cfl = sizeof(fis_reg_h2d_t)/sizeof(uint32_t);
 	cmd_header->w = 0;
+	cmd_header->c = 1;
+	cmd_header->p = 1;
+
+	/* PRDT entries count  */
 	cmd_header->prdtl = (uint16_t)((count - 1) >> 4) + 1;
 
 	hba_cmd_tbl_t *cmd_tbl = (hba_cmd_tbl_t*)(cmd_header->ctba);
@@ -368,8 +374,9 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 
 	/* Last entry */
 	cmd_tbl->prdt_entry[i].dba = (uint64_t)buf;
+	/* 512 bytes per sector */
 	cmd_tbl->prdt_entry[i].dbc = count << 9;
-	cmd_tbl->prdt_entry[i].i = 1;
+	cmd_tbl->prdt_entry[i].i = 0;
 
 	/* setup command */
 	fis_reg_h2d_t *cmd_fis = (fis_reg_h2d_t*)(&cmd_tbl->cfis);
@@ -405,14 +412,17 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 			break;
 		if (port->is_rwc & HBA_PxIS_TFES) {
 			kprintf("Read Error\n");
-			return -1;
+			return 0;
 		}
 	}
 
 	if (port->is_rwc & HBA_PxIS_TFES) {
 		kprintf("Read Error\n");
-		return -1;
+		return 0;
 	}
+
+	/* Wait until CI is cleared */
+	while(port->ci != 0);
 
 	return 1;
 }
@@ -420,15 +430,16 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf)  
 {
 	/* Clear Interrupt Bits */
-	port->is_rwc = 0xFFFF;
+	port->is_rwc = 0xFFFFFFFF;
+	int spin = 0;
+
 	int slot = find_cmdslot(port);
 	if (slot == -1)
 		return 0;
 
-	uint64_t addr = port->clb;
-	hba_cmd_header_t *cmd_header = (hba_cmd_header_t*)(addr);
-
+	hba_cmd_header_t *cmd_header = (hba_cmd_header_t*)port->clb;
 	cmd_header += slot;
+
 	/* FIS size  */
 	cmd_header->cfl = sizeof(fis_reg_h2d_t)/sizeof(uint32_t);
 	cmd_header->w = 1;
@@ -438,10 +449,9 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 	/* PRDT entries count  */
 	cmd_header->prdtl = (uint16_t)((count - 1) >> 4) + 1;
 
-	addr = cmd_header->ctba;
-	hba_cmd_tbl_t *cmd_tbl = (hba_cmd_tbl_t*)(addr);
+	hba_cmd_tbl_t *cmd_tbl = (hba_cmd_tbl_t*)(cmd_header->ctba);
 
-	int i = 0;
+	int i;
 	for (i = 0; i < cmd_header->prdtl - 1; i++) {
 		cmd_tbl->prdt_entry[i].dba = (uint64_t)(buf);
 		cmd_tbl->prdt_entry[i].dbc = 8 * 1024 - 1;
@@ -474,8 +484,16 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 	cmd_fis->lba5 = (uint8_t)(starth >> 8);
 
 	cmd_fis->count = count;
+
+	/* The below loop waits until the port is no longer busy before issuing a new command */
+	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
+		spin++;
+
+	if (spin == 1000000)
+		return -1;
+
 	/* Issue Command */
-	port->ci = 1;
+	port->ci = 1 << slot;
 
 	while (1) {
 		if ((port->ci & (1<<slot)) == 0)
@@ -493,6 +511,7 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 
 	/* Wait until CI is cleared */
 	while(port->ci != 0);
+
 	return 1;
 }
 
