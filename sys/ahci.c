@@ -20,7 +20,7 @@
 #define hba_port_t_IPM_ACTIVE	1
 
 #define	AHCI_DEV_NULL		0
-#define NEW_ABAR	0x20000000
+#define NEW_ABAR	0xA6000
 
 #define ATA_CMD_READ_DMA_EX	0x25
 #define	ATA_CMD_WRITE_DMA_EX	0x35
@@ -120,26 +120,29 @@ uint64_t remap_bar(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
 uint64_t get_ahci()
 {
 	uint8_t bus, device;
-	uint64_t vendor_id = 0, device_id = 0, class_code = 0, sub_class_code = 0;
+	uint64_t vendor_id = 0, device_id = 0, class_code = 0, sub_class_code = 0, func = 0;
 	for (bus = 0; bus < 255; bus++) {
 		for (device = 0; device < 32; device++) {
-			vendor_id = pci_config_read_word(bus, device, 0, 0);
-			vendor_id = get_pci_data(vendor_id, 0) & 0xFFFF;
-			device_id = pci_config_read_word(bus, device, 0, 2);
-			device_id = get_pci_data(device_id, 2) & 0xFFFF;
-			class_code = pci_config_read_word(bus, device, 0, 11);
-			class_code = get_pci_data(class_code, 11 % 4) & 0xFF;
-			sub_class_code = pci_config_read_word(bus, device, 0, 10);
-			sub_class_code = get_pci_data(sub_class_code, 10 % 4) & 0xFF;
+			for (func = 0; func < 8; func++) {
+				vendor_id = pci_config_read_word(bus, device, func, 0);
+				vendor_id = get_pci_data(vendor_id, 0) & 0xFFFF;
+				device_id = pci_config_read_word(bus, device, func, 2);
+				device_id = get_pci_data(device_id, 2) & 0xFFFF;
+				class_code = pci_config_read_word(bus, device, func, 11);
+				class_code = get_pci_data(class_code, 11 % 4) & 0xFF;
+				sub_class_code = pci_config_read_word(bus, device, func, 10);
+				sub_class_code = get_pci_data(sub_class_code, 10 % 4) & 0xFF;
 
-			if (vendor_id != 0xFFFF) {
-				if (vendor_id == INTEL && device_id == AHCI_CONTROLLER && class_code == MSD && sub_class_code == SATA) {
-					kprintf("!!! Found AHCI Controller !!!\n");
-					kprintf("Vendor 0x%x Device 0x%x class 0x%x sub class 0x%x\n", vendor_id, device_id, class_code, sub_class_code);
-					uint64_t address = pci_config_read_word(bus, device, 0, 0x24);
-					address = get_pci_data(address, 0);
-					address = remap_bar(bus, device, 0, 0x24);
-					return address;
+				if (vendor_id != 0xFFFF) {
+					//if (vendor_id == INTEL && device_id == AHCI_CONTROLLER && class_code == MSD && sub_class_code == SATA) {
+					if (class_code == MSD && sub_class_code == SATA) {
+						kprintf("!!! Found AHCI Controller !!!\n");
+						kprintf("Vendor 0x%x Device 0x%x class 0x%x sub class 0x%x\n", vendor_id, device_id, class_code, sub_class_code);
+						uint64_t address = pci_config_read_word(bus, device, 0, 0x24);
+						address = get_pci_data(address, 0);
+						address = remap_bar(bus, device, func, 0x24);
+						return address;
+					}
 				}
 			}
 		}
@@ -151,16 +154,17 @@ uint64_t get_ahci()
 /* Check device type */
 static int check_type(hba_port_t *port)
 {
+#if 0
 		uint32_t ssts = port->ssts;
 
 		uint8_t ipm = (ssts >> 8) & 0x0F;
 		uint8_t det = ssts & 0x0F;
-
 		if (det != hba_port_t_DET_PRESENT)	/* Check drive status */
 				return AHCI_DEV_NULL;
 		if (ipm != hba_port_t_IPM_ACTIVE)
 				return AHCI_DEV_NULL;
 
+#endif
 		switch (port->sig) {
 			case SATA_SIG_ATAPI:
 				return AHCI_DEV_SATAPI;
@@ -313,7 +317,7 @@ void probe_port(hba_mem_t *abar)
 	while (i < 32) {
 		if ((pi & 1)) {
 			int dt = check_type(&abar->ports[i]);
-			if (dt == AHCI_DEV_SATA) {
+			if (dt == AHCI_DEV_SATA || dt == AHCI_DEV_SATAPI) {
 				/* Currently we read/write on port 1 */
 				if (i == 1) {
 					uint8_t *write_buf = (uint8_t *)0x600000;
@@ -401,8 +405,10 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
 		spin++;
 
-	if (spin == 1000000)
+	if (spin == 1000000) {
+		kprintf("Port is Hung\n");
 		return -1;
+	}
 
 	port->ci = 1 << slot;
 
@@ -489,8 +495,10 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
 		spin++;
 
-	if (spin == 1000000)
+	if (spin == 1000000) {
+		kprintf("Port is hung\n");
 		return -1;
+	}
 
 	/* Issue Command */
 	port->ci = 1 << slot;
