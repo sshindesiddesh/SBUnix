@@ -286,22 +286,17 @@ int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
 	}
 
 	/* Read */
-	int flag = 0;
 	kprintf("Verifying LBAs... ");
 	for (i = 0; i < NO_OF_BLOCKS; i++) {
 		/* Read from LBA */
 		read(&((hba_mem_t *)abar)->ports[port_no], i * 8, 0, 8, read_buf);
 		/* Check the data */
-		flag = 0;
 		for (j = 0; j < 4096; j++) {
 			if (read_buf[j] != i) {
-				flag = 1;
 				kprintf(" r : %d i : %d ", read_buf[j], i);
 				kprintf("Error in read LBA %d Byte %d\n read %d ... %p %p %p %p\n", i, j, read_buf[j], read_buf, read_buf + j, write_buf, write_buf + j);
 				break;
 			}
-			if (flag == 0 && j == 4095)
-				;
 			
 		}
 	}
@@ -346,7 +341,7 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 {
 	/* Clear Interrupt Bits */
 	port->is_rwc = 0xFFFFFFFF;
-	int spin = 0;
+	int spin = 0, cnt = count;
 
 	int slot = find_cmdslot(port);
 	if (slot == -1)
@@ -362,7 +357,7 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 	cmd_header->p = 1;
 
 	/* PRDT entries count  */
-	cmd_header->prdtl = (uint16_t)((count - 1) >> 4) + 1;
+	cmd_header->prdtl = (uint16_t)((count - 1) >> 3) + 1;
 
 	hba_cmd_tbl_t *cmd_tbl = (hba_cmd_tbl_t*)(cmd_header->ctba);
 
@@ -371,10 +366,10 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 	int i;
 	for (i = 0; i < cmd_header->prdtl - 1; i++) {
 		cmd_tbl->prdt_entry[i].dba = (uint64_t)buf;
-		cmd_tbl->prdt_entry[i].dbc = 8*1024;
+		cmd_tbl->prdt_entry[i].dbc = 4*1024;
 		cmd_tbl->prdt_entry[i].i = 1;
 		buf += 4*1024;
-		count -= 16;
+		count -= 8;
 	}
 
 	/* Last entry */
@@ -400,7 +395,7 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 	cmd_fis->lba4 = (uint8_t)starth;
 	cmd_fis->lba5 = (uint8_t)(starth >> 8);
 
-	cmd_fis->count = count;
+	cmd_fis->count = cnt;
 
 	/* The below loop waits until the port is no longer busy before issuing a new command */
 	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
@@ -436,7 +431,7 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 {
 	/* Clear Interrupt Bits */
 	port->is_rwc = 0xFFFFFFFF;
-	int spin = 0;
+	int spin = 0, cnt = count;
 
 	int slot = find_cmdslot(port);
 	if (slot == -1)
@@ -452,17 +447,17 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 	cmd_header->p = 1;
 
 	/* PRDT entries count  */
-	cmd_header->prdtl = (uint16_t)((count - 1) >> 4) + 1;
+	cmd_header->prdtl = (uint16_t)((count - 1) >> 3) + 1;
 
 	hba_cmd_tbl_t *cmd_tbl = (hba_cmd_tbl_t*)(cmd_header->ctba);
 
 	int i;
 	for (i = 0; i < cmd_header->prdtl - 1; i++) {
 		cmd_tbl->prdt_entry[i].dba = (uint64_t)(buf);
-		cmd_tbl->prdt_entry[i].dbc = 8 * 1024 - 1;
+		cmd_tbl->prdt_entry[i].dbc = 4*1024;
 		cmd_tbl->prdt_entry[i].i = 0;
 		buf += 4*1024;
-		count -= 16;
+		count -= 8;
 	}
 
 	/* Last entry */
@@ -488,7 +483,7 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 	cmd_fis->lba4 = (uint8_t)starth;
 	cmd_fis->lba5 = (uint8_t)(starth >> 8);
 
-	cmd_fis->count = count;
+	cmd_fis->count = cnt;
 
 	/* The below loop waits until the port is no longer busy before issuing a new command */
 	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
