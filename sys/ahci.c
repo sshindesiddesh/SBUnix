@@ -33,7 +33,6 @@
 
 #define get_pci_data(val, offset)	(val >> (offset * 8))
 
-
 #define NO_OF_BLOCKS	100
 
 uint64_t abar;
@@ -136,12 +135,12 @@ uint64_t get_ahci()
 			if (vendor_id != 0xFFFF) {
 				if (vendor_id == INTEL && device_id == AHCI_CONTROLLER && class_code == MSD && sub_class_code == SATA) {
 					kprintf("!!! Found AHCI Controller !!!\n");
+					kprintf("Vendor 0x%x Device 0x%x class 0x%x sub class 0x%x\n", vendor_id, device_id, class_code, sub_class_code);
 					uint64_t address = pci_config_read_word(bus, device, 0, 0x24);
 					address = get_pci_data(address, 0);
 					address = remap_bar(bus, device, 0, 0x24);
 					return address;
 				}
-				kprintf("Vendor 0x%x Device 0x%x class 0x%x sub class 0x%x\n", vendor_id, device_id, class_code, sub_class_code);
 			}
 		}
 	}
@@ -281,7 +280,7 @@ int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
 	int i = 0;
 	int j = 0;
 	for (i = 0; i < NO_OF_BLOCKS; i++) {
-		memset(write_buf, i + 1, 4096);
+		memset(write_buf, i, 4096);
 		/* Write to the LBA */
 		write(&((hba_mem_t *)abar)->ports[port_no], i * 8, 0, 8, write_buf);
 	}
@@ -295,7 +294,7 @@ int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
 		/* Check the data */
 		flag = 0;
 		for (j = 0; j < 4096; j++) {
-			if (read_buf[j] != i + 1) {
+			if (read_buf[j] != i) {
 				flag = 1;
 				kprintf(" r : %d i : %d ", read_buf[j], i);
 				kprintf("Error in read LBA %d Byte %d\n read %d ... %p %p %p %p\n", i, j, read_buf[j], read_buf, read_buf + j, write_buf, write_buf + j);
