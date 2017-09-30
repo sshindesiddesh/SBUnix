@@ -120,6 +120,7 @@ uint64_t remap_bar(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
 	uint64_t bar5 = sys_in_long(0xCFC) & 0xFFFFFFFFFFFFFFFF;
 	sys_out_long(0x0CFC, NEW_ABAR);
 	bar5 = sys_in_long(0xCFC) & 0xFFFFFFFFFFFFFFFF;
+	kprintf("bar5 : 0x%x", bar5);
 	return bar5;
 }
 
@@ -341,7 +342,7 @@ int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
 		/* Write to the LBA */
 		write(&((hba_mem_t *)abar)->ports[port_no], i * 8, 0, 8, write_buf);
 	}
-
+	kprintf("Read complete\n");
 	/* Read */
 	kprintf("Verifying LBAs... ");
 	for (i = 0; i < NO_OF_BLOCKS; i++) {
@@ -366,6 +367,7 @@ void probe_port(hba_mem_t *abar)
 {
 	/* Search disk in impelemented ports */
 	uint32_t pi = abar->pi;
+	kprintf("pi : %x", pi);
 	int i = 0;
 	while (i < 32) {
 		if ((pi & 1)) {
