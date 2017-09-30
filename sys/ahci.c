@@ -52,6 +52,13 @@ void sys_out_long(uint16_t port, uint32_t data)
 	__asm__ __volatile__ ("outl %0, %1" : : "a" (data), "Nd" (port));
 }
 
+/* Not used */
+void delay()
+{
+	for (unsigned int i = 0; i < 65535; i++) {
+		write_console(' ', 1, 24);
+	}
+}
 
 uint64_t pci_config_read_word(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
 {
@@ -168,9 +175,38 @@ static int check_type(hba_port_t *port)
 				return AHCI_DEV_SEMB;
 			case SATA_SIG_PM:
 				return AHCI_DEV_PM;
-			default:
+			case SATA_SIG_ATA:
 				return AHCI_DEV_SATA;
+			default:
+				kprintf("Problem Default\n");
+				return -1;
 		}
+}
+
+#define SUD	1
+#define POD	2
+#define FRE	4
+
+#define set_bit(x, y)	(x |= 1 << y)
+#define clr_bit(x, y)	(x &= ~(1 << y))
+
+void port_init(hba_port_t *port)
+{
+	uint32_t t = 0;
+	/* Set ICC : Bit 31:28 */
+	t = port->cmd;
+	t &= 0x0FFFFFFF;
+	t |= 0x10000000;
+	port->cmd = t;
+
+	/* Set SUD */
+	set_bit(port->cmd, SUD);
+
+	/* Set POD */
+	set_bit(port->cmd, POD);
+
+	/* Set FRE */
+	set_bit(port->cmd, FRE);
 }
 
 /* Start Command Engine */
@@ -179,32 +215,60 @@ void start_cmd(hba_port_t *port)
 	/* Wait until CR (bit15) is cleared */
 	while (port->cmd & HBA_PxCMD_CR);
 
+	port_init(port);
+
 	/* Set FRE (bit4) and ST (bit0) */
 	port->cmd |= HBA_PxCMD_FRE;
 	port->cmd |= HBA_PxCMD_ST;
 }
- 
+
+/*  Reset the port as per INTEL specification 10.4.2 */
+void port_reset(hba_port_t *port)
+{
+	uint32_t t = 0;
+	/* Set DET Bit */
+	t = port->sctl;
+	t &= 0xFFFFFFF0;
+	t |= 0x1;
+	port->sctl = t;
+
+	/* Wait atleast for 500 ms */
+	delay();
+	/* Clear DET Bit */
+	port->sctl &= 0xFFFFFFF0;
+	/* Wait for DET in SSTS to become 3H  */
+	while ((port->ssts & 0xF) != 0x3);
+	/* Write all 1s to SERR Register */
+	port->serr_rwc = 0xFFFFFFFF;
+	/* Partial and slumber State Disable */
+	t = port->sctl;
+	t &= 0xFFFFF0FF;
+	t |= 0x300;
+	port->sctl = t;
+}
+
 /* Stop Command Engine */
 void stop_cmd(hba_port_t *port)
 {
 	/* Clear ST (bit0) */
 	port->cmd &= ~HBA_PxCMD_ST;
- 
-	/* Wait until FR (bit14), CR (bit15) are cleared */
-	while(1) {
-		if (port->cmd & HBA_PxCMD_FR)
-			continue;
-		if (port->cmd & HBA_PxCMD_CR)
-			continue;
-		break;
-	}
+
+	while (port->cmd & HBA_PxCMD_CR);
 
 	/* Clear FRE (bit4) */
 	port->cmd &= ~HBA_PxCMD_FRE;
+
+	while (port->cmd & HBA_PxCMD_FR);
+
+	/* Reset Port : Recommended only when system is not fault. */
+	/* TODO: When something goes wrong on hardware, check here. */
+	port_reset(port);
 }
 
 void port_rebase(hba_port_t *port, int portno)
 {
+/* HBA reset should not be used in ideal condition */
+#if 0
 	/* Reset AHCI control, enable AHCI controller and Interrupts */
 	hba_mem_t *t_abar = ((hba_mem_t *)abar);
 	t_abar->ghc = t_abar->ghc | 0X01;
@@ -213,7 +277,7 @@ void port_rebase(hba_port_t *port, int portno)
 
 	/* Wait untill reset successfull */
 	while (((t_abar->ghc) & 0x01) != 0);
-
+#endif
 	/* Stop Command Engine */
 	stop_cmd(port);
 
@@ -263,15 +327,6 @@ int find_cmdslot(hba_port_t *port)
 	}
 	kprintf("Cannot find free command list entry\n");
 	return -1;
-}
-
-/* Not used */
-void delay()
-{
-	for (int i = 0; i < 400; i++) {
-		write_console(' ', 1, 24);
-		write_console(' ', 2, 24);
-	}
 }
 
 int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
@@ -520,6 +575,11 @@ void ahci_init()
 	uint64_t address = get_ahci();
 	/* Set global abar address  */
 	abar = address;
+
+	/* Reset AHCI control, enable AHCI controller and Interrupts */
+	hba_mem_t *t_abar = ((hba_mem_t *)abar);
+	t_abar->ghc = t_abar->ghc | 0X80000000;
+
 	/* If in problem, try NEW_ABAR NEW_ABAR); */
 	probe_port((hba_mem_t *)(address));
 }
