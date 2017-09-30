@@ -418,6 +418,7 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 	/* PRDT entries count  */
 	cmd_header->prdtl = (uint16_t)((count - 1) >> 3) + 1;
 
+	kprintf("cmd_header bits set\n");
 	hba_cmd_tbl_t *cmd_tbl = (hba_cmd_tbl_t*)(cmd_header->ctba);
 
 	memset(cmd_tbl, 0, sizeof(hba_cmd_tbl_t) + (cmd_header->prdtl - 1) * sizeof(hba_prdt_entry_t));
@@ -436,6 +437,7 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 	/* 512 bytes per sector */
 	cmd_tbl->prdt_entry[i].dbc = count << 9;
 	cmd_tbl->prdt_entry[i].i = 1;
+	kprintf("prdt_entry bits set\n");
 
 	/* setup command */
 	fis_reg_h2d_t *cmd_fis = (fis_reg_h2d_t*)(&cmd_tbl->cfis);
@@ -455,6 +457,7 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 	cmd_fis->lba5 = (uint8_t)(starth >> 8);
 
 	cmd_fis->count = cnt;
+	kprintf("cmd_fis bits set\n");
 
 	/* The below loop waits until the port is no longer busy before issuing a new command */
 	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
@@ -482,6 +485,7 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 		return 0;
 	}
 
+	kprintf("Waiting for CI getting cleared\n");
 	/* Wait until CI is cleared */
 	while(port->ci != 0);
 
@@ -507,6 +511,7 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 	cmd_header->c = 1;
 	cmd_header->p = 1;
 
+	kprintf("cmd_header bits set\n");
 	/* PRDT entries count  */
 	cmd_header->prdtl = (uint16_t)((count - 1) >> 3) + 1;
 
@@ -527,6 +532,7 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 	cmd_tbl->prdt_entry[i].dbc = count << 9;
 	cmd_tbl->prdt_entry[i].i = 1;
 
+	kprintf("prdt_entry bits set\n");
 	/* Setup command FIS */
 	fis_reg_h2d_t *cmd_fis = (fis_reg_h2d_t*)(&cmd_tbl->cfis);
 
@@ -546,6 +552,7 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 
 	cmd_fis->count = cnt;
 
+	kprintf("cmd_fis bits set\n");
 	/* The below loop waits until the port is no longer busy before issuing a new command */
 	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
 		spin++;
@@ -572,6 +579,7 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 		return 0;
 	}
 
+	kprintf("Waiting for CI getting cleared\n");
 	/* Wait until CI is cleared */
 	while(port->ci != 0);
 
