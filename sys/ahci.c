@@ -29,11 +29,11 @@
 #define ATA_DEV_DRQ 0x08
 
 /* TODO : Try bringing it closer to the ABAR */
-#define AHCI_BASE	0x400000
+#define AHCI_BASE	0x800000
 
 #define get_pci_data(val, offset)	(val >> (offset * 8))
 
-#define NO_OF_BLOCKS	100
+#define NO_OF_BLOCKS	6
 
 uint64_t abar;
 
@@ -55,8 +55,11 @@ void sys_out_long(uint16_t port, uint32_t data)
 /* Not used */
 void delay()
 {
-	for (unsigned int i = 0; i < 65535; i++) {
-		write_console(' ', 1, 24);
+	int spin = 0;
+	for (uint64_t i = 0; i < 1000000; i++) {
+		for (uint64_t j = 0; j < 10000; j++) {
+			spin++;
+		}
 	}
 }
 
@@ -162,6 +165,7 @@ uint64_t get_ahci()
 /* Check device type */
 static int check_type(hba_port_t *port)
 {
+#if 0
 		uint32_t ssts = port->ssts;
 
 		uint8_t ipm = (ssts >> 8) & 0x0F;
@@ -171,6 +175,7 @@ static int check_type(hba_port_t *port)
 		if (ipm != hba_port_t_IPM_ACTIVE)
 				return AHCI_DEV_NULL;
 
+#endif
 		switch (port->sig) {
 			case SATA_SIG_ATAPI:
 				return AHCI_DEV_SATAPI;
@@ -196,58 +201,77 @@ static int check_type(hba_port_t *port)
 void port_init(hba_port_t *port)
 {
 	uint32_t t = 0;
-	/* Set ICC : Bit 31:28 */
-	t = port->cmd;
-	t &= 0x0FFFFFFF;
-	t |= 0x10000000;
-	port->cmd = t;
-
-	/* Set SUD */
-	set_bit(port->cmd, SUD);
-
-	/* Set POD */
-	set_bit(port->cmd, POD);
-
-	/* Set FRE */
-	set_bit(port->cmd, FRE);
-}
-
-/* Start Command Engine */
-void start_cmd(hba_port_t *port)
-{
-	/* Wait until CR (bit15) is cleared */
-	while (port->cmd & HBA_PxCMD_CR);
-
-	port_init(port);
-
-	/* Set FRE (bit4) and ST (bit0) */
-	port->cmd |= HBA_PxCMD_FRE;
-	port->cmd |= HBA_PxCMD_ST;
-}
-
-/*  Reset the port as per INTEL specification 10.4.2 */
-void port_reset(hba_port_t *port)
-{
-	uint32_t t = 0;
-	/* Set DET Bit */
-	t = port->sctl;
-	t &= 0xFFFFFFF0;
-	t |= 0x1;
-	port->sctl = t;
-
-	/* Wait atleast for 500 ms */
-	delay();
-	/* Clear DET Bit */
-	port->sctl &= 0xFFFFFFF0;
-	/* Wait for DET in SSTS to become 3H  */
-	while ((port->ssts & 0xF) != 0x3);
-	/* Write all 1s to SERR Register */
-	port->serr_rwc = 0xFFFFFFFF;
+#if 0
 	/* Partial and slumber State Disable */
 	t = port->sctl;
 	t &= 0xFFFFF0FF;
 	t |= 0x300;
 	port->sctl = t;
+#endif
+	/* Set SUD */
+	set_bit(port->cmd, SUD);
+
+	delay();
+
+	/* Set POD */
+	set_bit(port->cmd, POD);
+	delay();
+
+	/* Set ICC : Bit 31:28 */
+	t = port->cmd;
+	t &= 0x0FFFFFFF;
+	t |= 0x10000000;
+	port->cmd = t;
+	delay();
+
+	/* Set FRE */
+	//set_bit(port->cmd, FRE);
+
+	/* Write all 1s to SERR Register */
+	port->serr_rwc = 0xFFFFFFFF;
+	delay();
+
+	//port->ie = 0xFFFFFFFF;
+	kprintf("cmd:%x ", port->cmd);
+	/* IS */
+	port->is_rwc = 0xFFFFFFFF;
+}
+
+/*  Reset the port as per INTEL specification 10.4.2 */
+void port_reset(hba_port_t *port)
+{
+	port->sctl = 0x301;
+
+	/* Wait atleast for 500 ms */
+	delay();
+
+	port->sctl = 0x300;
+
+	port_init(port);
+
+	delay();
+
+	kprintf("st:%x ", port->ssts);
+	/* Wait for DET in SSTS to become 3H  */
+	while ((port->ssts & 0xF) != 0x3);
+	kprintf("st:%x ", port->ssts);
+}
+
+/* Start Command Engine */
+void start_cmd(hba_port_t *port)
+{
+	/* Reset Port : Recommended only when system is not fault. */
+	/* TODO: When something goes wrong on hardware, check here. */
+	port_reset(port);
+
+	/* Wait until CR (bit15) is cleared */
+	while (port->cmd & HBA_PxCMD_CR);
+
+	/* Set FRE (bit4) and ST (bit0) */
+	port->cmd |= HBA_PxCMD_FRE;
+	delay();
+	port->cmd |= HBA_PxCMD_ST;
+	delay();
 }
 
 /* Stop Command Engine */
@@ -255,23 +279,21 @@ void stop_cmd(hba_port_t *port)
 {
 	/* Clear ST (bit0) */
 	port->cmd &= ~HBA_PxCMD_ST;
+	delay();
 
 	while (port->cmd & HBA_PxCMD_CR);
 
 	/* Clear FRE (bit4) */
 	port->cmd &= ~HBA_PxCMD_FRE;
+	delay();
 
 	while (port->cmd & HBA_PxCMD_FR);
-
-	/* Reset Port : Recommended only when system is not fault. */
-	/* TODO: When something goes wrong on hardware, check here. */
-	port_reset(port);
 }
 
 void port_rebase(hba_port_t *port, int portno)
 {
 /* HBA reset should not be used in ideal condition */
-#if 0
+#if 1
 	/* Reset AHCI control, enable AHCI controller and Interrupts */
 	hba_mem_t *t_abar = ((hba_mem_t *)abar);
 	t_abar->ghc = t_abar->ghc | 0X01;
@@ -322,10 +344,12 @@ int find_cmdslot(hba_port_t *port)
 	/* If bit not set in SACT and CI, the slot is free */
 	uint32_t slots = (port->sact | port->ci);
 	/* Intel SATA Manual 1.3.1 : Bits 8 - 12 */
-	uint8_t cmdslots = ((hba_mem_t *)abar)->cap & 0x0f00 >> 8;
+	uint8_t cmdslots = (((hba_mem_t *)abar)->cap >> 8) & 0x1F;
 	for (int i = 0; i < cmdslots; i++) {
-		if ((slots & 1) == 0)
+		if ((slots & 1) == 0) {
+			kprintf("cs:%x ", i);
 			return i;
+		}
 		slots >>= 1;
 	}
 	kprintf("Cannot find free command list entry\n");
@@ -337,26 +361,35 @@ int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
 	/*Write*/
 	int i = 0;
 	int j = 0;
-	for (i = 0; i < NO_OF_BLOCKS; i++) {
-		memset(write_buf, i, 4096);
-		/* Write to the LBA */
-		write(&((hba_mem_t *)abar)->ports[port_no], i * 8, 0, 8, write_buf);
+	memset(read_buf, 25, 4096);
+	for (j = 0; j < 10; j++) {
+		kprintf("%x ", read_buf[j]);
 	}
-	kprintf("Read complete\n");
+	for (i = 0; i < NO_OF_BLOCKS; i++) {
+		/* Write to the LBA */
+		memset(write_buf, 25 + i, 4096);
+		write(&((hba_mem_t *)abar)->ports[port_no], i * 8, 0, 1, write_buf);
+	}
+	kprintf("WC ");
 	/* Read */
 	kprintf("Verifying LBAs... ");
 	for (i = 0; i < NO_OF_BLOCKS; i++) {
 		/* Read from LBA */
-		read(&((hba_mem_t *)abar)->ports[port_no], i * 8, 0, 8, read_buf);
+		read(&((hba_mem_t *)abar)->ports[port_no], i*8, 0, 1, read_buf);
+		for (j = 0; j < 10; j++) {
+			kprintf("%x ", read_buf[j]);
+		}
 		/* Check the data */
+		#if 0
 		for (j = 0; j < 4096; j++) {
 			if (read_buf[j] != i) {
-				kprintf(" r : %d i : %d ", read_buf[j], i);
-				kprintf("Error in read LBA %d Byte %d\n read %d ... %p %p %p %p\n", i, j, read_buf[j], read_buf, read_buf + j, write_buf, write_buf + j);
-				break;
+				//kprintf(" r : %d i : %d ", read_buf[j], i);
+				//kprintf("Error in read LBA %d Byte %d\n read %d ... %p %p %p %p\n", i, j, read_buf[j], read_buf, read_buf + j, write_buf, write_buf + j);
+				//break;
 			}
 			
 		}
+		#endif
 	}
 	kprintf("Verification Complete\n");
 	return 1;
@@ -374,9 +407,9 @@ void probe_port(hba_mem_t *abar)
 			int dt = check_type(&abar->ports[i]);
 			if (dt == AHCI_DEV_SATA || dt == AHCI_DEV_SATAPI) {
 				/* Currently we read/write on port 1 */
-				if (i == 1) {
-					uint8_t *write_buf = (uint8_t *)0x600000;
-					uint8_t *read_buf = (uint8_t *)0x605000;
+				if (i == 0) {
+					uint8_t *write_buf = (uint8_t *)0x400000;
+					uint8_t *read_buf = (uint8_t *)0x500000;
 					kprintf("SATA drive found at port %d\n", i);
 					port_rebase(&abar->ports[i], i);
 					read_write_lba(i, write_buf, read_buf);
@@ -412,13 +445,12 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 	/* FIS size  */
 	cmd_header->cfl = sizeof(fis_reg_h2d_t)/sizeof(uint32_t);
 	cmd_header->w = 0;
-	cmd_header->c = 1;
-	cmd_header->p = 1;
+	//cmd_header->c = 1;
+	//cmd_header->p = 1;
 
 	/* PRDT entries count  */
 	cmd_header->prdtl = (uint16_t)((count - 1) >> 3) + 1;
 
-	kprintf("cmd_header bits set\n");
 	hba_cmd_tbl_t *cmd_tbl = (hba_cmd_tbl_t*)(cmd_header->ctba);
 
 	memset(cmd_tbl, 0, sizeof(hba_cmd_tbl_t) + (cmd_header->prdtl - 1) * sizeof(hba_prdt_entry_t));
@@ -437,7 +469,6 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 	/* 512 bytes per sector */
 	cmd_tbl->prdt_entry[i].dbc = count << 9;
 	cmd_tbl->prdt_entry[i].i = 1;
-	kprintf("prdt_entry bits set\n");
 
 	/* setup command */
 	fis_reg_h2d_t *cmd_fis = (fis_reg_h2d_t*)(&cmd_tbl->cfis);
@@ -457,8 +488,8 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 	cmd_fis->lba5 = (uint8_t)(starth >> 8);
 
 	cmd_fis->count = cnt;
-	kprintf("cmd_fis bits set\n");
 
+	kprintf("R:BUSY ");
 	/* The below loop waits until the port is no longer busy before issuing a new command */
 	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
 		spin++;
@@ -472,8 +503,11 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 
 	/* Wait until CI is cleared */
 	while (1) {
-		if ((port->ci & (1 << slot)) == 0)
+		//kprintf("a ");
+		if ((port->ci & (1 << slot)) == 0) {
+			kprintf("pc %p  ", port->ci);
 			break;
+		}
 		if (port->is_rwc & HBA_PxIS_TFES) {
 			kprintf("Read Error\n");
 			return 0;
@@ -485,9 +519,10 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 		return 0;
 	}
 
-	kprintf("Waiting for CI getting cleared\n");
+	//kprintf("R:CI ");
 	/* Wait until CI is cleared */
-	while(port->ci != 0);
+	//while(port->ci != 0);
+	//kprintf("R:CI ");
 
 	return 1;
 }
@@ -508,10 +543,9 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 	/* FIS size  */
 	cmd_header->cfl = sizeof(fis_reg_h2d_t)/sizeof(uint32_t);
 	cmd_header->w = 1;
-	cmd_header->c = 1;
-	cmd_header->p = 1;
+//	cmd_header->c = 1;
+//	cmd_header->p = 1;
 
-	kprintf("cmd_header bits set\n");
 	/* PRDT entries count  */
 	cmd_header->prdtl = (uint16_t)((count - 1) >> 3) + 1;
 
@@ -532,7 +566,6 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 	cmd_tbl->prdt_entry[i].dbc = count << 9;
 	cmd_tbl->prdt_entry[i].i = 1;
 
-	kprintf("prdt_entry bits set\n");
 	/* Setup command FIS */
 	fis_reg_h2d_t *cmd_fis = (fis_reg_h2d_t*)(&cmd_tbl->cfis);
 
@@ -552,7 +585,7 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 
 	cmd_fis->count = cnt;
 
-	kprintf("cmd_fis bits set\n");
+	kprintf("W:BUSY ");
 	/* The below loop waits until the port is no longer busy before issuing a new command */
 	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
 		spin++;
@@ -566,8 +599,10 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 	port->ci = 1 << slot;
 
 	while (1) {
-		if ((port->ci & (1<<slot)) == 0)
+		if ((port->ci & (1<<slot)) == 0) {
+			kprintf("pc: ", port->ci);
 			break;
+		}
 		if (port->is_rwc & HBA_PxIS_TFES) {
 			kprintf("Write Error\n");
 			return 0;
@@ -579,9 +614,10 @@ int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, ui
 		return 0;
 	}
 
-	kprintf("Waiting for CI getting cleared\n");
+	kprintf("W:CI ");
 	/* Wait until CI is cleared */
-	while(port->ci != 0);
+	//while(port->ci != 0);
+	kprintf("W:CI ");
 
 	return 1;
 }
@@ -593,8 +629,8 @@ void ahci_init()
 	abar = address;
 
 	/* Reset AHCI control, enable AHCI controller and Interrupts */
-	hba_mem_t *t_abar = ((hba_mem_t *)abar);
-	t_abar->ghc = t_abar->ghc | 0X80000000;
+	//hba_mem_t *t_abar = ((hba_mem_t *)abar);
+	//t_abar->ghc = t_abar->ghc | 0X80000000;
 
 	/* If in problem, try NEW_ABAR NEW_ABAR); */
 	probe_port((hba_mem_t *)(address));
