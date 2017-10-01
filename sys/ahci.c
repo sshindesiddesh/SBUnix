@@ -361,35 +361,25 @@ int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
 	/*Write*/
 	int i = 0;
 	int j = 0;
-	memset(read_buf, 25, 4096);
-	for (j = 0; j < 10; j++) {
-		//kprintf("%x ", read_buf[j]);
-	}
 	for (i = 0; i < NO_OF_BLOCKS; i++) {
 		/* Write to the LBA */
-		memset(write_buf, i + 25, 4096);
+		memset(write_buf, i, 4096);
 		write(&((hba_mem_t *)abar)->ports[port_no], i * 8, 0, 8, write_buf);
 	}
-	//kprintf("WC ");
 	/* Read */
 	kprintf("Verifying LBAs... ");
 	for (i = 0; i < NO_OF_BLOCKS; i++) {
 		/* Read from LBA */
 		read(&((hba_mem_t *)abar)->ports[port_no], i * 8, 0, 8, read_buf);
-		for (j = 0; j < 10; j++) {
-			//kprintf("%x ", read_buf[j]);
-		}
 		/* Check the data */
-		#if 1
 		for (j = 0; j < 4096; j++) {
-			if (read_buf[j] != i + 25) {
+			if (read_buf[j] != i) {
 				kprintf(" r : %d i : %d ", read_buf[j], i);
 				kprintf("Error in read LBA %d Byte %d\n read %d ... %p %p %p %p\n", i, j, read_buf[j], read_buf, read_buf + j, write_buf, write_buf + j);
 				break;
 			}
 			
 		}
-		#endif
 	}
 	kprintf("Verification Complete\n");
 	return 1;
