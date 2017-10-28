@@ -17,7 +17,7 @@ static page_dir_t *free_list_ptr = 0;
 static page_dir_t *pd_prev = 0;
 static uint64_t total_pages = 0;
 
-page_dir_t *get_free_pages(int n)
+page_dir_t *get_free_pages(uint64_t n)
 {
 	if (!free_list_ptr)
 		return 0;
@@ -27,6 +27,7 @@ page_dir_t *get_free_pages(int n)
 		free_list_ptr->acc = 0;
 		free_list_ptr = free_list_ptr->next;
 	}
+	ptr = (page_dir_t *)(((uint64_t)ptr - phys_free)/sizeof(page_dir_t)*PG_SIZE);
 	return ptr;
 }
 
@@ -35,22 +36,26 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 	page_dir_t *pd_cur = (page_dir_t *)phys_free;
 	uint64_t no_page = length/PG_SIZE;
 	total_pages += no_page;
+	uint64_t end = (start + length)/PG_SIZE;
 
 	uint64_t i = start/PG_SIZE;
 	for (; i < no_page; i++) {
-		if ((i*PG_SIZE >= (uint64_t)physbase) && (i*PG_SIZE < (uint64_t)phys_free)) {
+		if (i*PG_SIZE < (uint64_t)phys_free) {
 			pd_cur[i].acc = 0;
-		} else if (i*PG_SIZE < (uint64_t)phys_free) {
+			pd_cur[i].next = 0;
+		} else if (i < ((phys_free + end*sizeof(page_dir_t))/PG_SIZE)) {
 			pd_cur[i].acc = 0;
+			pd_cur[i].next = 0;
 		} else {
-			if (free_list_ptr == 0)
-				free_list_ptr = (page_dir_t *)(i*PG_SIZE);
+			if (free_list_ptr == 0) {
+				free_list_ptr = (page_dir_t *)(pd_cur + i);
+			}
 			pd_cur[i].acc = 1;
+			pd_cur[i].next = 0;
+			if (pd_prev)
+				pd_prev->next = (pd_cur + i);
+			pd_prev = (pd_cur + i);
 		}
-
-		if (pd_prev)
-			pd_prev->next = (pd_cur + i);
-		pd_prev = (pd_cur + i);
 	}
 }
 
@@ -68,15 +73,10 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 		if (smap->type == 1 /* memory */ && smap->length != 0) {
 			kprintf("Available Physical Memory [%p-%p] Length %p\n", smap->base, smap->base + smap->length, smap->length);
 			if (smap->base == 0) {
-				//kprintf("Available Pages %d\n", smap->length/PG_SIZE);
 				create_page_disc(smap->base, smap->length, physbase);
-				kprintf("TP %d\n", total_pages);
 			} else {
-				//kprintf("Available Pages %d\n", (smap->base+smap->length-(uint64_t)physfree)/PG_SIZE);
-				//no_page = (smap->base+smap->length-(uint64_t)physfree)/PG_SIZE;
 				create_page_disc(smap->base, smap->length, physbase);
-				kprintf("TP %d\n", total_pages);
-				/* TODO: Remove this */
+				/* TODO Remove this */
 				break;
 			}
 		}
@@ -86,10 +86,8 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	page_dir_t *ptr = free_list_ptr;
 	int i = 0;
 	for (i = 0; i < 10; i++) {
-		kprintf("%p \n", ptr->next);
+		kprintf("%x \n", ptr->next);
 		ptr = ptr->next;
 	}
-	kprintf("TP %d\n", total_pages);
-	get_free_pages((total_pages*sizeof(page_dir_t))/PG_SIZE);
-	kprintf("%p \n", free_list_ptr);
+	get_free_pages(1);
 }
