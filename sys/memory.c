@@ -186,7 +186,7 @@ pte_t *get_pte_from_pml(pml_t *pml, va_t va)
 	return pte;
 }
 
-void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa)
+void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm)
 {
 	pte_t *pte_ptr;
 	int i;
@@ -208,8 +208,8 @@ void page_table_init()
 #ifdef PG_DEBUG
 	kprintf("pml %p ", pml);
 #endif
-	map_page_entry(pml, (va_t)VA, (phys_end - phys_base), (pa_t)phys_base);
-	map_page_entry(pml, (va_t)(KERNBASE + 0xB8000), 4 * 4096, (pa_t)0xB8000);
+	map_page_entry(pml, (va_t)VA, (phys_end - phys_base), (pa_t)phys_base, 0);
+	map_page_entry(pml, (va_t)(KERNBASE + 0xB8000), 4 * 4096, (pa_t)0xB8000, 0);
 }
 
 void memory_init(uint32_t *modulep, void *physbase, void *physfree)
