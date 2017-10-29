@@ -42,28 +42,37 @@ static page_dir_t *pd_prev = 0;
 static uint64_t total_pages = 0;
 //#define K_DEBUG
 
+int try = 0;
+
 uint64_t *get_free_pages(uint64_t n)
 {
 	if (!free_list_ptr)
 		return 0;
 	int i = n;
 	page_dir_t *ptr = free_list_ptr;
+	#ifdef K_DEBUG
+	kprintf("fp %p %p n %p n ", free_list_ptr, (uint64_t)free_list_ptr - KERNBASE, free_list_ptr->next);
+	#endif
 	while (i--) {
 		free_list_ptr->acc = 0;
 		free_list_ptr = free_list_ptr->next;
 	}
-	ptr = (page_dir_t *)(((uint64_t)ptr - phys_free)/sizeof(page_dir_t)*PG_SIZE);
+	ptr = (page_dir_t *)((((uint64_t)ptr - (uint64_t)phys_free - (uint64_t)KERNBASE)/sizeof(page_dir_t)*PG_SIZE));
+	#ifdef K_DEBUG
+	kprintf("ptr %p 2: %p", ptr, (uint64_t)ptr + KERNBASE);
+	#endif
+	
 	/* TODO: Remove ?? -> ZERO OUT PAGE */
-	memset((void *)ptr, 0, PG_SIZE);
-#ifdef K_DEBUG
+	memset((void *)((uint64_t)ptr + KERNBASE), 0, PG_SIZE);
 	kprintf(" NP %p ", ptr);
+#ifdef K_DEBUG
 #endif
-	return (uint64_t *)ptr;
+	return (uint64_t *)(uint64_t)ptr;
 }
 
 void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 {
-	page_dir_t *pd_cur = (page_dir_t *)phys_free;
+	page_dir_t *pd_cur = (page_dir_t *)(phys_free + KERNBASE);
 	uint64_t no_page = length/PG_SIZE;
 	total_pages += no_page;
 	uint64_t end = (start + length)/PG_SIZE;
@@ -79,6 +88,7 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 		} else {
 			if (free_list_ptr == 0) {
 				free_list_ptr = (page_dir_t *)(pd_cur + i);
+				kprintf("FP %p \n", free_list_ptr);
 			}
 			pd_cur[i].acc = 1;
 			pd_cur[i].next = 0;
@@ -181,7 +191,6 @@ void page_table_init()
 {
 	pml = get_free_pages(1);
 	kprintf("pml %p ", pml);
-	kprintf(" e%p-p%p %p ", phys_end, phys_base, (phys_end - phys_base));
 	map_page_entry(pml, VA, (phys_end - phys_base), (uint64_t)phys_base, 0);
 	//map_page_entry(pml, VA, 8 * 4096, (uint64_t)phys_base, 0);
 	map_page_entry(pml, KERNBASE + 0xB8000, 4 * 4096, (uint64_t)0xB8000, 0);
@@ -225,5 +234,5 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	page_table_init();
 	__asm__ volatile("mov %0, %%cr3":: "b"(pml));
 	change_console_ptr();
-	kprintf("Hello World\n");
+	kprintf("Hello World %p \n", ((uint64_t)get_free_pages(1) + KERNBASE));
 }
