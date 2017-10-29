@@ -13,4 +13,5 @@ void update_key(int key, int ctrl);
 void update_time(uint64_t time);
 char *generic_conv(unsigned long n, int b);
 int write_console(int c, int x, int y);
+void change_console_ptr();
 #endif

@@ -8,6 +8,14 @@ unsigned short *clrptr = (unsigned short *)0xB8001;
 
 int x_pos = 0, y_pos = 0;
 
+void change_console_ptr()
+{
+	//clear();
+	textptr = (unsigned short *)0xFFFFFFFF800B8000;
+	clrptr = (unsigned short *)0xFFFFFFFF800B8001;
+}
+
+
 /* Returns Length of the String */
 size_t strlen(const char *buf)
 {
