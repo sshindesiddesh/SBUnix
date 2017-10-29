@@ -5,7 +5,15 @@
 #include <sys/idt.h>
 
 #define PG_SIZE	4096
-#define KERNBASE	0xffffffff80000000
+#define KERNBASE	(0xffffffff80000000)
+
+#if 0
+/* Paging Debug */
+#define PG_DEBUG
+#else
+/* Kmalloc Debug */
+#define MALLOC_DEBUG
+#endif
 
 #define PTE_P           0x001   // Present
 #define PTE_W           0x002   // Writeable
@@ -42,9 +50,60 @@ static uint64_t phys_end;
 static page_dir_t *free_list_ptr = 0;
 static page_dir_t *pd_prev = 0;
 static uint64_t total_pages = 0;
-//#define K_DEBUG
 
 int try = 0;
+
+uint64_t page2pa(page_dir_t *ptr)
+{
+	return ((uint64_t)((((uint64_t)ptr - (uint64_t)phys_free - (uint64_t)KERNBASE)/sizeof(page_dir_t)*PG_SIZE)));
+}
+
+uint64_t pa2va(uint64_t pa)
+{
+	return (pa + KERNBASE);
+}
+
+uint64_t *kmalloc(const uint64_t size)
+{
+	if (size <= 0)
+		return 0;
+
+	int pgr = 0;
+	uint64_t t_size = size;
+	page_dir_t *fp = free_list_ptr;
+
+	if (size < PG_SIZE && size)
+		pgr = 1;
+	else {
+		pgr = t_size/PG_SIZE;
+		t_size -= (pgr * PG_SIZE);
+		if (t_size > 0)
+			pgr++;
+	}
+
+#ifdef MALLOC_DEBUG
+	kprintf("Page req %d\n", pgr);
+#endif
+
+	if (!fp)
+		return 0;
+
+	uint64_t *start_address = (uint64_t *)pa2va(page2pa(fp));
+
+	int i;
+	for (i = 0; i < pgr; i++) {
+		fp->acc = 0;
+		memset((void *)pa2va(page2pa(fp)), 0, PG_SIZE);
+#ifdef MALLOC_DEBUG
+		kprintf("Page Address %p\n", pa2va(page2pa(fp)));
+#endif
+		fp = fp->next;
+	}
+
+	free_list_ptr = fp;
+
+	return start_address;
+}
 
 uint64_t *get_free_pages(uint64_t n)
 {
@@ -81,7 +140,7 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 		} else {
 			if (free_list_ptr == 0) {
 				free_list_ptr = (page_dir_t *)(pd_cur + i);
-#ifdef K_DEBUG
+#ifdef PG_DEBUG
 				kprintf("FP %p \n", free_list_ptr);
 #endif
 			}
@@ -97,19 +156,19 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 uint64_t *get_pte_from_pgdir(uint64_t *pgdir, uint64_t va)
 {
 	uint64_t *pte_ptr, *pte;
-#ifdef K_DEBUG
+#ifdef PG_DEBUG
 	kprintf(" PDX %x ", PDX(va));
 	kprintf(" pgdir %p ", pgdir);
 #endif
 	if (!(pgdir[PDX(va)] & PTE_P)) {
 		pte_ptr = get_free_pages(1);
-#ifdef K_DEBUG
+#ifdef PG_DEBUG
 		kprintf(" pte %p ", pte_ptr);
 #endif
 		pgdir[PDX(va)] = ((uint64_t)pte_ptr | PTE_P | PTE_U | PTE_W);
 	} else {
 		pte_ptr = (uint64_t *)(pgdir[PDX(va)] & ~(0xFFF));
-#ifdef K_DEBUG
+#ifdef PG_DEBUG
 		kprintf(" UA PGDIR %p ", pte_ptr);
 #endif
 	}
@@ -121,7 +180,7 @@ uint64_t *get_pte_from_pgdir(uint64_t *pgdir, uint64_t va)
 uint64_t *get_pte_from_pdpe(uint64_t *pdpe, uint64_t va)
 {
 	uint64_t *pgdir, *pte;
-#ifdef K_DEBUG
+#ifdef PG_DEBUG
 	kprintf(" PDPE %p ", pdpe[PDPE(va)]);
 #endif
 	if (!(pdpe[PDPE(va)] & PTE_P)) {
@@ -129,7 +188,7 @@ uint64_t *get_pte_from_pdpe(uint64_t *pdpe, uint64_t va)
 		pdpe[PDPE(va)] = ((uint64_t)pgdir | PTE_P | PTE_U | PTE_W);
 	} else {
 		pgdir = (uint64_t *)(pdpe[PDPE(va)] & ~(0xFFF));
-#ifdef K_DEBUG
+#ifdef PG_DEBUG
 		kprintf(" ISSUE PDPE ");
 #endif
 	}
@@ -142,18 +201,18 @@ uint64_t *get_pte_from_pml(uint64_t *pml, uint64_t va)
 {
 	uint64_t *pdpe, *pte;
 
-#ifdef K_DEBUG
+#ifdef PG_DEBUG
 	kprintf(" PML %x ", PML4(va));
 #endif
 	if (!(pml[PML4(va)] & PTE_P)) {
 		pdpe = get_free_pages(1);
-#ifdef K_DEBUG
+#ifdef PG_DEBUG
 		kprintf(" pdpe %p ", pdpe);
 #endif
 		pml[PML4(va)] = ((uint64_t)pdpe | PTE_P | PTE_U | PTE_W);
 	} else {
 		pdpe = (uint64_t *)(pml[PML4(va)] & ~(0xFFF));
-#ifdef K_DEBUG
+#ifdef PG_DEBUG
 		kprintf(" ISSUE PML %p ", pdpe);
 #endif
 	}
@@ -168,7 +227,7 @@ void map_page_entry(uint64_t *pml, uint64_t va, uint64_t size, uint64_t pa, uint
 	for (i = 0; i < size; i += PG_SIZE) {
 		pte_ptr = get_pte_from_pml(pml, va + i);
 		if (pte_ptr) {
-#ifdef K_DEBUG
+#ifdef PG_DEBUG
 			kprintf(" v %p p %p ptr %p\n", va + i, pa + i, pte_ptr);
 #endif
 			*pte_ptr = pa + i;
@@ -180,7 +239,7 @@ void map_page_entry(uint64_t *pml, uint64_t va, uint64_t size, uint64_t pa, uint
 void page_table_init()
 {
 	pml = get_free_pages(1);
-#ifdef K_DEBUG
+#ifdef PG_DEBUG
 	kprintf("pml %p ", pml);
 #endif
 	map_page_entry(pml, VA, (phys_end - phys_base), (uint64_t)phys_base, 0);
@@ -217,5 +276,10 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	page_table_init();
 	__asm__ volatile("mov %0, %%cr3":: "b"(pml));
 	change_console_ptr();
-	kprintf("Hello World %p \n", ((uint64_t)get_free_pages(1) + KERNBASE));
+	kprintf("Hello World %p \n");
+	kprintf("fp %p\n", pa2va(page2pa(free_list_ptr)));
+	kprintf("Alloc 500 %p \n", kmalloc(0));
+	kprintf("fp %p\n", pa2va(page2pa(free_list_ptr)));
+	kprintf("Alloc 10000 %p \n", kmalloc(1));
+	kprintf("fp %p\n", pa2va(page2pa(free_list_ptr)));
 }
