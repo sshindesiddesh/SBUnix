@@ -3,45 +3,8 @@
 #include <sys/console.h>
 #include <sys/tarfs.h>
 #include <sys/idt.h>
-
-#define PG_SIZE	4096
-#define KERNBASE	(0xffffffff80000000)
-
-#if 0
-/* Paging Debug */
-#define PG_DEBUG
-#else
-/* Kmalloc Debug */
-#define MALLOC_DEBUG
-#endif
-
-#define PTE_P           0x001   // Present
-#define PTE_W           0x002   // Writeable
-#define PTE_U           0x004   // User
-#define PTE_PWT         0x008   // Write-Through
-#define PTE_PCD         0x010   // Cache-Disable
-#define PTE_A           0x020   // Accessed
-#define PTE_D           0x040   // Dirty
-#define PTE_PS          0x080   // Page Size
-#define PTE_MBZ         0x180   // Bits must be zero
-
-#define PML4SHIFT		39
-#define PDPESHIFT		30
-#define PTXSHIFT		12
-#define PDXSHIFT		21
-
-#define VA		(KERNBASE + phys_base)
-#define PML4(la)	((((uint64_t) (la)) >> PML4SHIFT) & 0x1FF)
-#define PDPE(la)	((((uint64_t) (la)) >> PDPESHIFT) & 0x1FF)
-#define PDX(la)         ((((uint64_t) (la)) >> PDXSHIFT) & 0x1FF)
-#define PTX(la)         ((((uint64_t) (la)) >> PTXSHIFT) & 0x1FF)
-
-//extern char kernmem, physbase;
-typedef struct page_dir {
-	struct page_dir *next;
-	int acc;
-} page_dir_t;
-
+#include <sys/memory.h>
+#include <sys/debug.h>
 
 static uint64_t *pml;
 static uint64_t phys_base;
@@ -153,9 +116,10 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 	}
 }
 
-uint64_t *get_pte_from_pgdir(uint64_t *pgdir, uint64_t va)
+pte_t *get_pte_from_pgdir(uint64_t *pgdir, uint64_t va)
 {
-	uint64_t *pte_ptr, *pte;
+	uint64_t *pte_ptr;
+	pte_t  *pte;
 #ifdef PG_DEBUG
 	kprintf(" PDX %x ", PDX(va));
 	kprintf(" pgdir %p ", pgdir);
@@ -177,9 +141,10 @@ uint64_t *get_pte_from_pgdir(uint64_t *pgdir, uint64_t va)
 	return pte;
 }
 
-uint64_t *get_pte_from_pdpe(uint64_t *pdpe, uint64_t va)
+pte_t *get_pte_from_pdpe(uint64_t *pdpe, uint64_t va)
 {
-	uint64_t *pgdir, *pte;
+	uint64_t *pgdir;
+	pte_t  *pte;
 #ifdef PG_DEBUG
 	kprintf(" PDPE %p ", pdpe[PDPE(va)]);
 #endif
@@ -197,9 +162,10 @@ uint64_t *get_pte_from_pdpe(uint64_t *pdpe, uint64_t va)
 	return pte;
 }
 
-uint64_t *get_pte_from_pml(uint64_t *pml, uint64_t va)
+pte_t *get_pte_from_pml(pml_t *pml, uint64_t va)
 {
-	uint64_t *pdpe, *pte;
+	pdpe_t *pdpe;
+	pte_t  *pte;
 
 #ifdef PG_DEBUG
 	kprintf(" PML %x ", PML4(va));
@@ -211,7 +177,7 @@ uint64_t *get_pte_from_pml(uint64_t *pml, uint64_t va)
 #endif
 		pml[PML4(va)] = ((uint64_t)pdpe | PTE_P | PTE_U | PTE_W);
 	} else {
-		pdpe = (uint64_t *)(pml[PML4(va)] & ~(0xFFF));
+		pdpe = (pdpe_t *)(pml[PML4(va)] & ~(0xFFF));
 #ifdef PG_DEBUG
 		kprintf(" ISSUE PML %p ", pdpe);
 #endif
@@ -220,7 +186,7 @@ uint64_t *get_pte_from_pml(uint64_t *pml, uint64_t va)
 	return pte;
 }
 
-void map_page_entry(uint64_t *pml, uint64_t va, uint64_t size, uint64_t pa, uint64_t perm)
+void map_page_entry(pml_t *pml, uint64_t va, uint64_t size, uint64_t pa, uint64_t perm)
 {
 	uint64_t *pte_ptr;
 	int i;
