@@ -53,7 +53,6 @@ va_t kmalloc(const uint64_t size)
 	int i;
 	for (i = 0; i < pgr; i++) {
 		fp->acc = 0;
-		kprintf("fp %p pa %p va %p \n", fp, page2pa(fp), pa2va(page2pa(fp)));
 		//map_page_entry1((pml_t *)pa2va((pa_t)pml), pa2va(page2pa(fp)), 0x1000, page2pa(fp), 0);
 		memset((void *)pa2va(page2pa(fp)), 0, PG_SIZE);
 #ifdef MALLOC_DEBUG
@@ -201,7 +200,6 @@ void page_table_init()
 #ifdef PG_DEBUG
 	kprintf("pml %p ", pml);
 #endif
-	kprintf("%x\n", ((pa_t)page2pa(free_list_ptr) - (pa_t)phys_base));
 	/* TODO: Map only these regions ? */
 	//map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)page2pa(free_list_ptr) - (pa_t)phys_base) + (uint64_t)0x2000, (pa_t)phys_base, 0);
 	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, 0);
