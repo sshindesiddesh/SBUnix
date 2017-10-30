@@ -14,6 +14,8 @@ static page_disc_t *free_list_ptr = 0;
 static page_disc_t *pd_prev = 0;
 static uint64_t total_pages = 0;
 
+void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm);
+
 pa_t page2pa(page_disc_t *ptr)
 {
 	return ((pa_t)((((uint64_t)ptr - (uint64_t)phys_free - (uint64_t)KERNBASE)/sizeof(page_disc_t)*PG_SIZE)));
@@ -51,6 +53,8 @@ va_t kmalloc(const uint64_t size)
 	int i;
 	for (i = 0; i < pgr; i++) {
 		fp->acc = 0;
+		kprintf("fp %p pa %p va %p \n", fp, page2pa(fp), pa2va(page2pa(fp)));
+		//map_page_entry1((pml_t *)pa2va((pa_t)pml), pa2va(page2pa(fp)), 0x1000, page2pa(fp), 0);
 		memset((void *)pa2va(page2pa(fp)), 0, PG_SIZE);
 #ifdef MALLOC_DEBUG
 		kprintf("Page Address %p\n", pa2va(page2pa(fp)));
@@ -73,8 +77,6 @@ pa_t get_free_pages(uint64_t n)
 	}
 
 	pa_t pa = page2pa(ptr);
-	if (pa == 0x2D2000)
-		kprintf("aaaaaa\n");
 	
 	/* TODO: Remove ?? -> ZERO OUT PAGE */
 	memset((void *)pa2va(pa), 0, PG_SIZE);
@@ -199,14 +201,16 @@ void page_table_init()
 #ifdef PG_DEBUG
 	kprintf("pml %p ", pml);
 #endif
-	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, (phys_end - phys_base), (pa_t)phys_base, 0);
+	kprintf("%x\n", ((pa_t)page2pa(free_list_ptr) - (pa_t)phys_base));
+	/* TODO: Map only these regions ? */
+	//map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)page2pa(free_list_ptr) - (pa_t)phys_base) + (uint64_t)0x2000, (pa_t)phys_base, 0);
+	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, 0);
 	/* TODO: 4 pages required ? */
-	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 1 * 0x1000, (pa_t)0xB8000, 0);
+	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 2 * 0x1000, (pa_t)0xB8000, 0);
 }
 
 void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 {
-
 	struct smap_t {
 		uint64_t base, length;
 		uint32_t type;
@@ -239,5 +243,4 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	kprintf("Alloc 1 %p \n", kmalloc(1));
 	kprintf("Alloc 5000 %p \n", kmalloc(5000));
 	kprintf("Alloc 10000 %p \n", kmalloc(10000));
-	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0x1000), 0x1000 * 1000, (pa_t)0x1000, 0);
 }
