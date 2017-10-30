@@ -10,13 +10,13 @@ static pml_t *pml;
 static uint64_t phys_base;
 static uint64_t phys_free;
 static uint64_t phys_end;
-static page_dir_t *free_list_ptr = 0;
-static page_dir_t *pd_prev = 0;
+static page_disc_t *free_list_ptr = 0;
+static page_disc_t *pd_prev = 0;
 static uint64_t total_pages = 0;
 
-pa_t page2pa(page_dir_t *ptr)
+pa_t page2pa(page_disc_t *ptr)
 {
-	return ((pa_t)((((uint64_t)ptr - (uint64_t)phys_free - (uint64_t)KERNBASE)/sizeof(page_dir_t)*PG_SIZE)));
+	return ((pa_t)((((uint64_t)ptr - (uint64_t)phys_free - (uint64_t)KERNBASE)/sizeof(page_disc_t)*PG_SIZE)));
 }
 
 va_t pa2va(pa_t pa)
@@ -31,7 +31,7 @@ uint64_t *kmalloc(const uint64_t size)
 
 	int pgr = 0;
 	uint64_t t_size = size;
-	page_dir_t *fp = free_list_ptr;
+	page_disc_t *fp = free_list_ptr;
 
 	if (size < PG_SIZE && size)
 		pgr = 1;
@@ -71,12 +71,12 @@ pa_t *get_free_pages(uint64_t n)
 	if (!free_list_ptr)
 		return 0;
 	int i = n;
-	page_dir_t *ptr = free_list_ptr;
+	page_disc_t *ptr = free_list_ptr;
 	while (i--) {
 		free_list_ptr->acc = 0;
 		free_list_ptr = free_list_ptr->next;
 	}
-	ptr = (page_dir_t *)((((uint64_t)ptr - (uint64_t)phys_free - (uint64_t)KERNBASE)/sizeof(page_dir_t)*PG_SIZE));
+	ptr = (page_disc_t *)((((uint64_t)ptr - (uint64_t)phys_free - (uint64_t)KERNBASE)/sizeof(page_disc_t)*PG_SIZE));
 	
 	/* TODO: Remove ?? -> ZERO OUT PAGE */
 	memset((void *)((uint64_t)ptr + KERNBASE), 0, PG_SIZE);
@@ -85,7 +85,7 @@ pa_t *get_free_pages(uint64_t n)
 
 void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 {
-	page_dir_t *pd_cur = (page_dir_t *)(phys_free + KERNBASE);
+	page_disc_t *pd_cur = (page_disc_t *)(phys_free + KERNBASE);
 	uint64_t no_page = length/PG_SIZE;
 	total_pages += no_page;
 	uint64_t end = (start + length)/PG_SIZE;
@@ -95,12 +95,12 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 		if (i*PG_SIZE < (uint64_t)phys_free) {
 			pd_cur[i].acc = 0;
 			pd_cur[i].next = 0;
-		} else if (i < ((phys_free + end*sizeof(page_dir_t))/PG_SIZE)) {
+		} else if (i < ((phys_free + end*sizeof(page_disc_t))/PG_SIZE)) {
 			pd_cur[i].acc = 0;
 			pd_cur[i].next = 0;
 		} else {
 			if (free_list_ptr == 0) {
-				free_list_ptr = (page_dir_t *)(pd_cur + i);
+				free_list_ptr = (page_disc_t *)(pd_cur + i);
 #ifdef PG_DEBUG
 				kprintf("FP %p \n", free_list_ptr);
 #endif

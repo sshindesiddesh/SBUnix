@@ -29,7 +29,7 @@
 typedef struct page_dir {
         struct page_dir *next;
         int acc;
-} page_dir_t;
+} page_disc_t;
 
 typedef uint64_t pml_t;
 typedef uint64_t pdpe_t;
