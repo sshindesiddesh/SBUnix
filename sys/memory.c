@@ -14,8 +14,6 @@ static page_dir_t *free_list_ptr = 0;
 static page_dir_t *pd_prev = 0;
 static uint64_t total_pages = 0;
 
-int try = 0;
-
 pa_t page2pa(page_dir_t *ptr)
 {
 	return ((pa_t)((((uint64_t)ptr - (uint64_t)phys_free - (uint64_t)KERNBASE)/sizeof(page_dir_t)*PG_SIZE)));
@@ -82,7 +80,7 @@ pa_t *get_free_pages(uint64_t n)
 	
 	/* TODO: Remove ?? -> ZERO OUT PAGE */
 	memset((void *)((uint64_t)ptr + KERNBASE), 0, PG_SIZE);
-	return (pa_t *)(pa_t)ptr;
+	return (pa_t *)ptr;
 }
 
 void create_page_disc(uint64_t start, uint64_t length, void *physbase)
@@ -209,6 +207,7 @@ void page_table_init()
 	kprintf("pml %p ", pml);
 #endif
 	map_page_entry(pml, (va_t)VA, (phys_end - phys_base), (pa_t)phys_base, 0);
+	/* TODO: 4 pages required ? */
 	map_page_entry(pml, (va_t)(KERNBASE + 0xB8000), 4 * 4096, (pa_t)0xB8000, 0);
 }
 
@@ -243,9 +242,7 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	__asm__ volatile("mov %0, %%cr3":: "b"(pml));
 	change_console_ptr();
 	kprintf("Hello World %p \n");
-	kprintf("fp %p\n", pa2va(page2pa(free_list_ptr)));
-	kprintf("Alloc 500 %p \n", kmalloc(0));
-	kprintf("fp %p\n", pa2va(page2pa(free_list_ptr)));
-	kprintf("Alloc 10000 %p \n", kmalloc(1));
-	kprintf("fp %p\n", pa2va(page2pa(free_list_ptr)));
+	kprintf("Alloc 1 %p \n", kmalloc(1));
+	kprintf("Alloc 5000 %p \n", kmalloc(5000));
+	kprintf("Alloc 10000 %p \n", kmalloc(10000));
 }
