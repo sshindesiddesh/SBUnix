@@ -4,14 +4,6 @@
 #define PG_SIZE 4096
 #define KERNBASE        (0xffffffff80000000)
 
-#if 0
-/* Paging Debug */
-#define PG_DEBUG
-#else
-/* Kmalloc Debug */
-#define MALLOC_DEBUG
-#endif
-
 #define PTE_P           0x001   // Present
 #define PTE_W           0x002   // Writeable
 #define PTE_U           0x004   // User
@@ -37,7 +29,7 @@
 typedef struct page_dir {
         struct page_dir *next;
         int acc;
-} page_dir_t;
+} page_disc_t;
 
 typedef uint64_t pml_t;
 typedef uint64_t pdpe_t;
@@ -45,6 +37,8 @@ typedef uint64_t pte_t;
 typedef uint64_t va_t;
 typedef uint64_t pa_t;
 typedef uint64_t pgdir_t;
+
+va_t kmalloc(const uint64_t size);
 
 /* round down to nearest multiple of num */
 #define round_down(num, base)                \

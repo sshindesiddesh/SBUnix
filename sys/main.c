@@ -14,9 +14,14 @@ uint8_t initial_stack[INITIAL_STACK_SIZE]__attribute__((aligned(16)));
 uint32_t* loader_stack;
 extern char kernmem, physbase;
 void clear();
+uint64_t initial_esp;
 
 //void ahci_init();
 void memory_init(uint32_t *modulep, void *physbase, void *physfree);
+
+void initialise_tasking();
+int new_fork();
+void switch_task();
 
 void start(uint32_t *modulep, void *physbase, void *physfree)
 {
@@ -26,6 +31,11 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
 	clear();
 	memory_init(modulep, physbase, physfree);
 	//ahci_init();
+	initialise_tasking();
+	int ret = new_fork();
+	kprintf(" new_fork returned : %d", ret);
+	switch_task();
+	kprintf(" switch_task complete");
 }
 
 void boot(void)
@@ -41,6 +51,7 @@ void boot(void)
     :"=g"(loader_stack)
     :"r"(&initial_stack[INITIAL_STACK_SIZE])
   );
+  initial_esp = (uint64_t)&initial_stack;
   init_gdt();
   start(
     (uint32_t*)((char*)(uint64_t)loader_stack[3] + (uint64_t)&kernmem - (uint64_t)&physbase),
