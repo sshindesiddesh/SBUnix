@@ -51,4 +51,5 @@ typedef uint64_t pgdir_t;
     (round_down((uint64_t) (num) + __base - 1, __base)); \
 })
 
+va_t kmalloc(const uint64_t size);
 #endif
