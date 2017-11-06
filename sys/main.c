@@ -44,38 +44,6 @@ void func ()
 
 void con_switch(pcb_t *me, pcb_t *next, va_t addr)
 {
-#if 0
-	uint64_t f_rsp = 0;
-	uint64_t f_rbp = 0;
-	__asm__ __volatile__(
-		"movq %%rbp, %0;"
-		:"=m"(f_rbp)
-		:
-		:"memory"
-		);
-	__asm__ __volatile__(
-		"movq %%rsp, %0;"
-		:"=m"(f_rsp)
-		:
-		:"memory"
-		);
-#if 0
-	kprintf ("%p ", *((uint64_t *)(f_rsp + 8*0)));
-	kprintf ("%p ", *((uint64_t *)(f_rsp + 8*1)));
-	kprintf ("%p ", *((uint64_t *)(f_rsp + 8*2)));
-	kprintf ("%p ", *((uint64_t *)(f_rsp + 8*3)));
-	kprintf ("%p ", *((uint64_t *)(f_rsp + 8*4)));
-	kprintf("rbp %p rsp %p\n", f_rbp, f_rsp);
-	for (int i = 0; i < 64; i+=8) {
-		//kprintf ("%x ", *((uint8_t *)(f_rsp + i)));
-		kprintf ("%p ", *((uint64_t *)(f_rsp + i)));
-		if (i%15 == 0 && i != 0)
-			kprintf("\n");
-	}
-#endif
-	kprintf(" ra %p\n", __builtin_return_address(0));
-	while (1);
-#endif
 	/* Save me on my stack  */
 	__asm__ volatile ("push %rdi;");
 	/* Save my stack pointer */
@@ -88,24 +56,9 @@ void con_switch(pcb_t *me, pcb_t *next, va_t addr)
 
 	if (addr) {
 		memcpy((void *)(addr + 64), (void *)(me->rsp), 64 * 8);
-		kprintf("new stack addr %p\n", addr + 64);
 		next->rsp = (uint64_t)(addr + 64);
-#define f_rsp	me->rsp
-	kprintf ("%p ", *((uint64_t *)(f_rsp + 8*0)));
-	kprintf ("%p ", *((uint64_t *)(f_rsp + 8*1)));
-	kprintf ("%p ", *((uint64_t *)(f_rsp + 8*2)));
-	kprintf ("%p ", *((uint64_t *)(f_rsp + 8*3)));
-	kprintf ("%p ", *((uint64_t *)(f_rsp + 8*4)));
-		kprintf("func %p\n", func);
-		*((uint64_t *)(next->rsp + 8*4)) = (uint64_t)&func;
-		//*((uint64_t *)(next->rsp + 8*3)) = (uint64_t)&func;
-		//*((uint64_t *)(next->rsp + 8*2)) = (uint64_t)&func;
-		//*((uint64_t *)(next->rsp + 8*1)) = (uint64_t)&func;
+		*((uint64_t *)(next->rsp + 8*4)) = (uint64_t)func;
 		*((uint64_t *)(next->rsp + 8*0)) = (uint64_t)pcb2;
-		//*((uint64_t *)(next->rsp + 8*1)) = (uint64_t)0;
-		//*((uint64_t *)(next->rsp + 8*2)) = (uint64_t)pcb2;
-		//*((uint64_t *)(next->rsp + 8*3)) = (uint64_t)pcb2;
-		kprintf("Done ..... %p", *((uint64_t *)(next->rsp + 8*0)));
 	}
 
 
@@ -119,21 +72,7 @@ void con_switch(pcb_t *me, pcb_t *next, va_t addr)
 
 	/* Update me to new task */
 	__asm__ volatile ("pop %rdi;");
-
-	__asm__ __volatile__(
-		"movq %%rdi, %0;"
-		:"=r"(me)
-		:
-		:
-		);
 }
-
-void process_man();
-void create_first_stack(pcb_t *me, uint64_t stack)
-{
-	//__asm__ volatile ("pop %rdi;");
-}
-
 
 void process_man()
 {
@@ -145,10 +84,9 @@ void process_man()
 	va_t addr = kmalloc(512);
 	kprintf(" new stack addr %p\n", addr);
 	con_switch(pcb1, pcb2, addr);
-	kprintf("Back Here\n");
+	kprintf("\nBack Here\n");
 	con_switch(pcb1, pcb2, addr);
-	kprintf(" Awesome Back Here\n");
-	//while (1);
+	kprintf("\nAwesome Back Here\n");
 }
 
 
