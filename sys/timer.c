@@ -21,6 +21,42 @@ void update_time(uint64_t time);
 
 void __isr_timer_cb(uint64_t count)
 {
+	__asm__ __volatile__(
+        "pushq %rdi\n"
+        "pushq %rax\n"
+        "pushq %rbx\n"
+        "pushq %rcx\n"
+        "pushq %rdx\n"
+        "pushq %rbp\n"
+        "pushq %rsi\n"
+        "pushq %r8\n"
+        "pushq %r9\n"
+        "pushq %r10\n"
+        "pushq %r11\n"
+        "pushq %r12\n"
+        "pushq %r13\n"
+        "pushq %r14\n"
+        "pushq %r15\n"
+        );
+        
+	__asm__ __volatile__(
+        "popq %r15\n"
+        "popq %r14\n"
+        "popq %r13\n"
+        "popq %r12\n"
+        "popq %r11\n"
+        "popq %r10\n"
+        "popq %r9\n"
+        "popq %r8\n"
+        "popq %rsi\n"
+        "popq %rbp\n"
+        "popq %rdx\n"
+        "popq %rcx\n"
+        "popq %rbx\n"
+        "popq %rax\n"
+	"popq %rdi\n"
+	);
+	
 	k++;
 	if (k == 18) {
 		/* kprintf("Cnt %d\n", i); */
