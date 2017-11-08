@@ -34,40 +34,31 @@ pcb_t *pcb2;
 void con_switch(pcb_t *me, pcb_t *next, va_t addr);
 void __context_switch(pcb_t *me, pcb_t *next);
 
-void schedule(int a)
+int schedule(int a)
 {
-	kprintf("Schedule PCB : %p %p\n", pcb1, pcb2);
 	if (a == 1)
 		__context_switch(pcb1, pcb2);
 	else
 		__context_switch(pcb2, pcb1);
+	return a;
 }
+
+
 
 void func2()
 {
-int b = 0, c = 1, e = 2;
-	kprintf("Hello 2\n");
-	while (b < 3) {
-		b++; c++; e++;
-		kprintf("b %d c %d, e %d\n", b, c, e);
-		schedule(2);
+	while (1) {
+		kprintf("Hello %d\n", schedule(2));
+		//schedule(2);
 	}
-	kprintf("Starving I am feeling\n");
-	while (1);
 }
 
 void func1()
 {
-int a = 0;
-	kprintf("Hello 1 %p\n", &a);
-	while (a < 3) {
-		a++;
-		kprintf("a %d\n", a);
-		schedule(1);
+	while (1) {
+		kprintf("World %d\n", schedule(1));
+		//schedule(1);
 	}
-	kprintf("Starving a\n");
-	kprintf("I am really worried adsnfasdfnaldnf\n");
-	while (1);
 }
 
 void con_switch(pcb_t *me, pcb_t *next, va_t addr)
@@ -120,7 +111,7 @@ void process_man()
 	*((uint64_t *)&pcb2->kstack[488]) = (uint64_t)pcb2;
 	pcb2->rsp = (uint64_t)&(pcb2->kstack[488]);
 
-	__context_switch(pcb0, pcb1);
+	__context_switch(pcb0, pcb2);
 
 	kprintf("Switch Done\n");
 
@@ -142,10 +133,10 @@ void process_man()
 
 void start(uint32_t *modulep, void *physbase, void *physfree)
 {
-	init_idt();
-	timer_init();
-	pic_init();
-	clear();
+	//init_idt();
+	//timer_init();
+	//pic_init();
+	//clear();
 	memory_init(modulep, physbase, physfree);
 	process_man();
 	//ahci_init();
