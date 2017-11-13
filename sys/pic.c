@@ -69,8 +69,14 @@ void pic_init()
 	/* except Keyboard Interrupt */
 	outb(PIC1_DATA, 0x3F);
 	outb(PIC2_DATA, 0x3F);
+	/* Timer currently disabled */
+	set_mask(0x20);
+	/* Keyboard currently disabled */
+	set_mask(0x21);
+#if 0
 	clr_mask(0x20);
 	clr_mask(0x21);
+#endif
 	set_mask(0x22);
 	set_mask(0x23);
 	set_mask(0x24);

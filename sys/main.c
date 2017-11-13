@@ -8,6 +8,8 @@
 #include <sys/idt.h>
 #include <sys/timer.h>
 #include <sys/pic.h>
+#include <sys/memory.h>
+#include <sys/process.h>
 
 #define INITIAL_STACK_SIZE 4096
 uint8_t initial_stack[INITIAL_STACK_SIZE]__attribute__((aligned(16)));
@@ -15,24 +17,21 @@ uint32_t* loader_stack;
 extern char kernmem, physbase;
 void clear();
 
-void ahci_init();
+//void ahci_init();
+
+void memory_init(uint32_t *modulep, void *physbase, void *physfree);
+
+void *memcpy(void *dest, const void *src, int n);
 
 void start(uint32_t *modulep, void *physbase, void *physfree)
 {
+	init_idt();
+	timer_init();
+	pic_init();
 	clear();
-	struct smap_t {
-		uint64_t base, length;
-		uint32_t type;
-	}__attribute__((packed)) *smap;
-	while(modulep[0] != 0x9001) modulep += modulep[1]+2;
-	for(smap = (struct smap_t*)(modulep+2); smap < (struct smap_t*)((char*)modulep+modulep[1]+2*4); ++smap) {
-		if (smap->type == 1 /* memory */ && smap->length != 0) {
-			kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
-		}
-	}
-	kprintf("physfree %p\n", (uint64_t)physfree);
-	kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
-	ahci_init();
+	memory_init(modulep, physbase, physfree);
+	process_init();
+	//ahci_init();
 }
 
 void boot(void)
@@ -49,10 +48,6 @@ void boot(void)
     :"r"(&initial_stack[INITIAL_STACK_SIZE])
   );
   init_gdt();
-  init_idt();
-  timer_init();
-  pic_init();
-
   start(
     (uint32_t*)((char*)(uint64_t)loader_stack[3] + (uint64_t)&kernmem - (uint64_t)&physbase),
     (uint64_t*)&physbase,
