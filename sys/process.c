@@ -5,11 +5,12 @@
 #include <sys/memory.h>
 #include <sys/process.h>
 
-/* TODO: Bug : Scheduler schedukes few tasks repetatively. */
+/* TODO: Bug : Scheduler schedukes few tasks repetatively.  Cannot see for finite. During infinite, something goes wrong */
 
 /* Head of the running linked list for yield */
 pcb_t *head = NULL;
 
+/* Global PID assigner */
 static uint64_t PID = -1;
 
 pcb_t *get_new_pcb()
@@ -20,6 +21,12 @@ pcb_t *get_new_pcb()
 
 }
 
+/* Create a kernel thread.
+ * Allocate a PCN block.
+ * Populate a dummy stack for it.
+ * Fill appropriate rsp.
+ * Add it to the scheduler list at the end.
+ */
 pcb_t *create_kernel_thread(void *func)
 {
 	pcb_t *l_pcb = get_new_pcb(), *t_pcb = head;
@@ -38,15 +45,28 @@ pcb_t *create_kernel_thread(void *func)
 	return l_pcb;
 }
 
+/* Yield from process */
 void yield()
 {
 	pcb_t *cur_pcb = head;
 	head = head->next;
-	kprintf("SCH: PID %d\n", head->pid);
+#ifdef PROC_DEBUG
+	kprintf("SCH: PID %d", head->pid);
+#endif
 	__context_switch(cur_pcb, head);
 }
 
+/* Dummy Test Thread Functions */
 #if 0
+void func1()
+{
+	int b = 0;
+	while (1) {
+		kprintf("World %d\n", b++);
+		yield();
+	}
+}
+
 void func2()
 {
 	int a = 0;
@@ -56,14 +76,6 @@ void func2()
 	}
 }
 
-void func1()
-{
-	int b = 0;
-	while (1) {
-		kprintf("World %d\n", b++);
-		yield();
-	}
-}
 #endif
 
 void func1()
@@ -106,6 +118,7 @@ void func5()
 	}
 }
 
+/* Initialise kernel thread creation. */
 void process_init()
 {
 	pcb_t *pcb0 = get_new_pcb();
@@ -114,6 +127,7 @@ void process_init()
 	create_kernel_thread(func3);
 	create_kernel_thread(func4);
 	create_kernel_thread(func5);
+	/* This happens only once and kernel should not return to this stack. */
 	__context_switch(pcb0, pcb_l);
 
 	kprintf("We will never written here\n");
