@@ -17,6 +17,7 @@ extern char kernmem, physbase;
 void clear();
 
 //void ahci_init();
+
 void memory_init(uint32_t *modulep, void *physbase, void *physfree);
 
 void *memcpy(void *dest, const void *src, int n);
@@ -34,63 +35,30 @@ pcb_t *pcb2;
 void con_switch(pcb_t *me, pcb_t *next, va_t addr);
 void __context_switch(pcb_t *me, pcb_t *next);
 
-int schedule(int a)
+void schedule(int a)
 {
 	if (a == 1)
 		__context_switch(pcb1, pcb2);
 	else
 		__context_switch(pcb2, pcb1);
-	return a;
 }
-
-
 
 void func2()
 {
+	int a = 0;
 	while (1) {
-		kprintf("Hello %d\n", schedule(2));
-		//schedule(2);
+		kprintf("Hello %d\n", a++);
+		schedule(2);
 	}
 }
 
 void func1()
 {
+	int b = 0;
 	while (1) {
-		kprintf("World %d\n", schedule(1));
-		//schedule(1);
+		kprintf("World %d\n", b++);
+		schedule(1);
 	}
-}
-
-void con_switch(pcb_t *me, pcb_t *next, va_t addr)
-{
-	/* Save me on my stack  */
-	__asm__ volatile ("push %rdi;");
-	/* Save my stack pointer */
-	__asm__ __volatile__(
-		"movq %%rsp, %0;"
-		:"=m"(me->rsp)
-		:
-		:"memory"
-		);
-
-	if (addr) {
-		memcpy((void *)(addr + 64), (void *)(me->rsp), 64 * 8);
-		next->rsp = (uint64_t)(addr + 64);
-		*((uint64_t *)(next->rsp + 8*4)) = (uint64_t)func1;
-		*((uint64_t *)(next->rsp + 8*0)) = (uint64_t)pcb2;
-	}
-
-
-	/* Switch to new stack pointer */
-	__asm__ __volatile__(
-		"movq %0, %%rsp;"
-		:
-		:"m"(next->rsp)
-		:"memory"
-		);
-
-	/* Update me to new task */
-	__asm__ volatile ("pop %rdi;");
 }
 
 void process_man()
@@ -101,33 +69,21 @@ void process_man()
 	pcb1  = (pcb_t *)kmalloc(sizeof(pcb_t));
 	pcb1->pid = 1;
 	pcb2  = (pcb_t *)kmalloc(sizeof(pcb_t));
-	pcb2->pid = 23;
+	pcb2->pid = 2;
 	kprintf("PCB : %p %p\n", pcb1, pcb2);
 
 	*((uint64_t *)&pcb1->kstack[496]) = (uint64_t)func1;
-	*((uint64_t *)&pcb1->kstack[488]) = (uint64_t)pcb1;
-	pcb1->rsp = (uint64_t)&(pcb1->kstack[488]);
+	*((uint64_t *)&pcb1->kstack[496-14*8]) = (uint64_t)pcb1;
+	pcb1->rsp = (uint64_t)&(pcb1->kstack[496-14*8]);
 	*((uint64_t *)&pcb2->kstack[496]) = (uint64_t)func2;
-	*((uint64_t *)&pcb2->kstack[488]) = (uint64_t)pcb2;
-	pcb2->rsp = (uint64_t)&(pcb2->kstack[488]);
+	*((uint64_t *)&pcb2->kstack[496-14*8]) = (uint64_t)pcb2;
+	pcb2->rsp = (uint64_t)&(pcb2->kstack[496-14*8]);
 
-	__context_switch(pcb0, pcb2);
+	__context_switch(pcb0, pcb1);
 
-	kprintf("Switch Done\n");
+	kprintf("We will never written here\n");
 
 	while (1);
-	kprintf("ks %p\n", *((uint64_t *)&pcb2->kstack[504]));
-	for (int i = 511; i > 503; i--)
-		kprintf("%x ", pcb2->kstack[i]);
-
-#if 0
-	va_t addr = kmalloc(512);
-	kprintf(" new stack addr %p\n", addr);
-	con_switch(pcb1, pcb2, addr);
-	kprintf("\nBack Here\n");
-	con_switch(pcb1, pcb2, addr);
-	kprintf("\nAwesome Back Here\n");
-#endif
 }
 
 
