@@ -22,18 +22,39 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree);
 
 void *memcpy(void *dest, const void *src, int n);
 
+#define KSTACK_SIZE	4096
+#define CON_STACK_SIZE	(14*8)
+
 typedef struct PCB {
 	uint64_t pid;
 	uint64_t rsp;
-	uint8_t kstack[512];
+	uint8_t kstack[KSTACK_SIZE];
 } pcb_t;
 
 pcb_t *pcb0;
 pcb_t *pcb1;
 pcb_t *pcb2;
 
-void con_switch(pcb_t *me, pcb_t *next, va_t addr);
 void __context_switch(pcb_t *me, pcb_t *next);
+
+static uint64_t PID = 0;
+
+pcb_t *get_new_pcb()
+{
+	pcb_t *l_pcb = (pcb_t *)kmalloc(sizeof(pcb_t));
+	l_pcb->pid = ++PID;
+	return l_pcb;
+
+}
+
+pcb_t *create_kernel_thread(void *func)
+{
+	pcb_t *l_pcb = get_new_pcb();
+	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)func;
+	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]) = (uint64_t)l_pcb;
+	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]);
+	return l_pcb;
+}
 
 void schedule(int a)
 {
@@ -63,22 +84,9 @@ void func1()
 
 void process_man()
 {
-
-	pcb0  = (pcb_t *)kmalloc(sizeof(pcb_t));
-	pcb0->pid = 0;
-	pcb1  = (pcb_t *)kmalloc(sizeof(pcb_t));
-	pcb1->pid = 1;
-	pcb2  = (pcb_t *)kmalloc(sizeof(pcb_t));
-	pcb2->pid = 2;
-	kprintf("PCB : %p %p\n", pcb1, pcb2);
-
-	*((uint64_t *)&pcb1->kstack[496]) = (uint64_t)func1;
-	*((uint64_t *)&pcb1->kstack[496-14*8]) = (uint64_t)pcb1;
-	pcb1->rsp = (uint64_t)&(pcb1->kstack[496-14*8]);
-	*((uint64_t *)&pcb2->kstack[496]) = (uint64_t)func2;
-	*((uint64_t *)&pcb2->kstack[496-14*8]) = (uint64_t)pcb2;
-	pcb2->rsp = (uint64_t)&(pcb2->kstack[496-14*8]);
-
+	pcb0 = get_new_pcb();
+	pcb1 = create_kernel_thread(func1);
+	pcb2 = create_kernel_thread(func2);
 	__context_switch(pcb0, pcb1);
 
 	kprintf("We will never written here\n");
