@@ -25,9 +25,9 @@ void *memcpy(void *dest, const void *src, int n);
 
 void start(uint32_t *modulep, void *physbase, void *physfree)
 {
-	//init_idt();
-	//timer_init();
-	//pic_init();
+	init_idt();
+	timer_init();
+	pic_init();
 	clear();
 	memory_init(modulep, physbase, physfree);
 	process_init();

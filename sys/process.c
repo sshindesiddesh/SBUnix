@@ -78,8 +78,15 @@ void func2()
 
 #endif
 
+void __switch_ring3(pcb_t *pcb, uint64_t func);
+void func2();
+pcb_t *new_pcb;
+
 void func1()
 {
+	kprintf("func1...\n");
+	//set_tss_rsp();
+	__switch_ring3(new_pcb, (uint64_t)func2);
 	while (1) {
 		kprintf("func 1\n");
 		yield();
@@ -88,9 +95,11 @@ void func1()
 
 void func2()
 {
+	kprintf("func 2\n");
 	while (1) {
 		kprintf("func 2\n");
-		yield();
+		//yield();
+		while (1);
 	}
 }
 
@@ -123,7 +132,7 @@ void process_init()
 {
 	pcb_t *pcb0 = get_new_pcb();
 	pcb_t *pcb_l = create_kernel_thread(func1);
-	create_kernel_thread(func2);
+	new_pcb = create_kernel_thread(func2);
 	create_kernel_thread(func3);
 	create_kernel_thread(func4);
 	create_kernel_thread(func5);
