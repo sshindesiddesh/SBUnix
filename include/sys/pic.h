@@ -1,5 +1,6 @@
 #ifndef _PIC_H
 #define _PIC_H
+#include <sys/defs.h>
 
 #define PIC1	0x20
 #define PIC2	0xA0

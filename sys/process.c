@@ -96,6 +96,8 @@ void func1()
 void func2()
 {
 	kprintf("func 2\n");
+	__asm__ volatile ("int $80"); 
+	while (1);
 	while (1) {
 		kprintf("func 2\n");
 		//yield();

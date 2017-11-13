@@ -13,3 +13,11 @@ isr21:
     call    __isr_keyboard_cb
     sti
     iretq
+
+/* Syscall */
+.global isr80
+isr80:
+    cli
+    call    __isr_syscall
+    sti
+    iretq

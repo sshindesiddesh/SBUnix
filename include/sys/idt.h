@@ -46,6 +46,7 @@ void init_idt();
 
 void isr20(void);
 void isr21(void);
+WEAK void isr80(void);
 WEAK void isr22(void);
 WEAK void isr23(void);
 WEAK void isr24(void);

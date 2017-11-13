@@ -85,6 +85,9 @@ void init_idt()
 	/* Keyboard Interrupt */
 	idt_populate_desc(IRQ1, (uint64_t)isr21);
 
+	/* Syscall Handler */
+	idt_populate_desc(0x80, (uint64_t)isr80);
+
 	idtr.address = (uint64_t)idt_desc;
 	/* TODO: Check for this -1 */
 	idtr.len = sizeof(idt_desc);
