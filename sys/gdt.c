@@ -71,7 +71,7 @@ static struct tss_t tss;
 void _x86_64_asm_lgdt(struct gdtr_t *gdtr, uint64_t cs_idx, uint64_t ds_idx);
 void _x86_64_asm_ltr(uint64_t tss_idx);
 void init_gdt() {
-  struct sys_segment_descriptor *sd = (struct sys_segment_descriptor*)&gdt[5]; // 6th&7th entry in GDT
+  struct sys_segment_descriptor *sd = (struct sys_segment_descriptor*)&gdt[6]; // 7th&8th entry in GDT
   sd->sd_lolimit = sizeof(struct tss_t) - 1;
   sd->sd_lobase = ((uint64_t)&tss);
   sd->sd_type = 9; // TSS
@@ -82,7 +82,7 @@ void init_gdt() {
   sd->sd_hibase = ((uint64_t)&tss) >> 24;
 
   _x86_64_asm_lgdt(&gdtr, 8, 16);
-  _x86_64_asm_ltr(0x28);
+  _x86_64_asm_ltr(0x30);
 }
 
 void set_tss_rsp(void *rsp) {
