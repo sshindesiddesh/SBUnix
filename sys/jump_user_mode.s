@@ -24,7 +24,7 @@ __switch_ring3:
 	orq $0x200, %rbx
 	pushq %rbx
 	/* CS */
-	pushq $0x1B
+	pushq $0x2B
 	/* Input entry pointer */
 	pushq %rsi
 
