@@ -5,15 +5,8 @@ __switch_ring3:
 
 	cli
 
-	movq $0x23, %rax
-	movq %rax, %ds
-	movq %rax, %es
-	movq %rax, %fs
-	movq %rax, %gs
-
 	/* Input user stack pointer to rax */
 	movq %rdi, %rax
-
 	/* SS */
 	pushq $0x23
 	/* User RSP */
@@ -29,5 +22,4 @@ __switch_ring3:
 	pushq %rsi
 
 	sti
-
 	iretq
