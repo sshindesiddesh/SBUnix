@@ -10,6 +10,8 @@ typedef struct PCB {
 	uint64_t rsp;
 	uint8_t kstack[KSTACK_SIZE];
 	struct PCB *next;
+	uint64_t u_stack;
+	uint64_t u_rsp;
 } pcb_t;
 
 pcb_t *get_new_pcb();

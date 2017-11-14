@@ -4,6 +4,7 @@
 
 #include <sys/memory.h>
 #include <sys/process.h>
+#include <sys/gdt.h>
 
 /* TODO: Bug : Scheduler schedukes few tasks repetatively.  Cannot see for finite. During infinite, something goes wrong */
 
@@ -21,6 +22,36 @@ pcb_t *get_new_pcb()
 
 }
 
+/* Create a kernel thread.
+ * Allocate a PCN block.
+ * Populate a dummy stack for it.
+ * Fill appropriate rsp.
+ * Add it to the scheduler list at the end.
+ */
+pcb_t *create_user_thread(void *func)
+{
+	pcb_t *l_pcb = get_new_pcb(), *t_pcb = head;
+	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)func;
+	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]) = (uint64_t)l_pcb;
+	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]);
+	if (head == NULL) {
+		head = l_pcb;
+	} else {
+		while (t_pcb->next != head)
+			t_pcb = t_pcb->next;
+		t_pcb->next = l_pcb;
+		
+	}
+
+	l_pcb->next = head;
+
+	uint64_t u_stack = (uint64_t)kmalloc(4096);
+	l_pcb->u_stack = u_stack;
+	l_pcb->u_rsp = (u_stack + 4096 - 8);
+	kprintf("URSP : %p\n", l_pcb->u_rsp);
+
+	return l_pcb;
+}
 /* Create a kernel thread.
  * Allocate a PCN block.
  * Populate a dummy stack for it.
@@ -78,15 +109,16 @@ void func2()
 
 #endif
 
-void __switch_ring3(pcb_t *pcb, uint64_t func);
+void __switch_ring3(uint64_t rsp, uint64_t func);
 void func2();
 pcb_t *new_pcb;
 
 void func1()
 {
 	kprintf("func1...\n");
-	//set_tss_rsp();
-	__switch_ring3(new_pcb, (uint64_t)func2);
+	__asm__ volatile ("int $0x80");
+	set_tss_rsp((void *)new_pcb->rsp);
+	__switch_ring3(new_pcb->u_rsp, (uint64_t)func2);
 	while (1) {
 		kprintf("func 1\n");
 		yield();
@@ -96,12 +128,11 @@ void func1()
 void func2()
 {
 	kprintf("func 2\n");
-	__asm__ volatile ("int $80"); 
-	while (1);
+	__asm__ volatile ("int $0x80");
+
 	while (1) {
 		kprintf("func 2\n");
-		//yield();
-		while (1);
+		yield();
 	}
 }
 
@@ -133,13 +164,13 @@ void func5()
 void process_init()
 {
 	pcb_t *pcb0 = get_new_pcb();
-	pcb_t *pcb_l = create_kernel_thread(func1);
-	new_pcb = create_kernel_thread(func2);
+	//pcb_t *pcb_l = create_kernel_thread(func1);
+	new_pcb = create_user_thread(func1);
 	create_kernel_thread(func3);
 	create_kernel_thread(func4);
 	create_kernel_thread(func5);
 	/* This happens only once and kernel should not return to this stack. */
-	__context_switch(pcb0, pcb_l);
+	__context_switch(pcb0, new_pcb);
 
 	kprintf("We will never written here\n");
 
