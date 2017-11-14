@@ -110,29 +110,35 @@ void func2()
 #endif
 
 void __switch_ring3(uint64_t rsp, uint64_t func);
+
 void func2();
+
 pcb_t *new_pcb;
 
 void func1()
 {
 	kprintf("func1...\n");
+	__asm__ volatile ("mov $5, %rax");
 	__asm__ volatile ("int $0x80");
 	set_tss_rsp((void *)new_pcb->rsp);
 	__switch_ring3(new_pcb->u_rsp, (uint64_t)func2);
 	while (1) {
 		kprintf("func 1\n");
-		yield();
 	}
 }
 
+/* User Process */
 void func2()
 {
 	kprintf("func 2\n");
+	__asm__ volatile ("mov $2, %rax");
 	__asm__ volatile ("int $0x80");
 
 	while (1) {
 		kprintf("func 2\n");
-		yield();
+		/* This is yield. Implemented as a system call. */
+		__asm__ volatile ("mov $2, %rax");
+		__asm__ volatile ("int $0x80");
 	}
 }
 
