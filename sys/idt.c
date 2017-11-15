@@ -4,20 +4,12 @@
 #include <sys/tarfs.h>
 #include <sys/ahci.h>
 #include <sys/idt.h>
+#include <sys/kutils.h>
 
 IDTDesc idt_desc[NO_OF_INT];
 idtr_t idtr;
 
 void _x86_64_asm_lidt (idtr_t* idtr);
-
-/* Function to Initialize memory */
-void *memset(void *ptr, int value, size_t len)
-{
-	uint8_t *p = (uint8_t *)ptr;
-	while (len--)
-		*p++ = value;
-	return ptr;
-}
 
 /* Populate IDT entry as per ID */
 void idt_populate_desc(uint8_t id, uint64_t int_handler, uint8_t dpl)
