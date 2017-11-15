@@ -108,6 +108,7 @@ uint64_t check_file_exists(char* filename)
 	{
 		tmp_tarfs = (struct posix_header_ustar *)(&_binary_tarfs_start + t);
 		size = octal_to_decimal(stoi(tmp_tarfs->size));
+		kprintf("\tfile name:%s size:%d", tmp_tarfs->name, size);
 		if (strlen1(tmp_tarfs->name) == 0)
 			return 999;
 		if (!strcmp1(tmp_tarfs->name, filename)) {
@@ -223,14 +224,16 @@ void tarfs_init()
 		new_entry->parent_index = get_parent_index(&(new_entry->name[0]), new_entry->type);
 		tarfs_fs[i] = *new_entry;
 		i++;
-		//if (i == 100)
-		//	break;
+		if (i == 100)
+			break;
 		if (size == 0)
 			t += 512;
 		else
 			t +=  (size % 512 == 0) ? size + 512 : size + (512 - size % 512) + 512;
 	}
-	kprintf("\nwhile complete");
+	for (i = 0; i < 20; i++)
+		kprintf("\t new netry %s", tarfs_fs[i].name);
+	//kprintf("\nwhile complete");
 }
 
 pcb_t * create_elf_process(char *filename, char *argv[])
