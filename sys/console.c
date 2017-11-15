@@ -2,6 +2,7 @@
 #include <sys/defs.h>
 #include <stdarg.h>
 #include <sys/console.h>
+#include <sys/kutils.h>
 
 unsigned short *textptr = (unsigned short *)0xB8000;
 unsigned short *clrptr = (unsigned short *)0xB8001;
@@ -13,34 +14,6 @@ void change_console_ptr()
 	//clear();
 	textptr = (unsigned short *)0xFFFFFFFF800B8000;
 	clrptr = (unsigned short *)0xFFFFFFFF800B8001;
-}
-
-
-/* Returns Length of the String */
-size_t strlen(const char *buf)
-{
-	size_t len = 0;
-	while (*buf++ != '\0') len++;
-	return len;
-}
-
-/* Memory Copy function */
-void *memcpy(void *dest, const void *src, int n)
-{
-	char *d = (char *)dest;
-	char *s = (char *)src;
-	int i;
-	for (i = 0; i < n; i++)
-		d[i] = s[i];
-	return d;
-}
-
-/* Memcopy function for 16 bit values */
-unsigned short *memsetw(unsigned short *dest, unsigned short src, size_t count)
-{
-    unsigned short *t = (unsigned short *)dest;
-    for( ; count != 0; count--) *t++ = src;
-    return dest;
 }
 
 /* Write character at specific position */
