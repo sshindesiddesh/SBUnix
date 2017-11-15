@@ -1,6 +1,12 @@
 #ifndef _TARFS_H
 #define _TARFS_H
 #include <sys/defs.h>
+#include <sys/process.h>
+
+#define FILE_TYPE 1
+#define DIRECTORY 2
+#define PAGE_TABLE_ALIGNLENT 0x1000
+#define ALIGN_DOWN(x)   (x & ~(PAGE_TABLE_ALIGNLENT-1))
 
 extern char _binary_tarfs_start;
 extern char _binary_tarfs_end;
@@ -25,11 +31,7 @@ struct posix_header_ustar {
   char pad[12];
 };
 
-#define FILE_TYPE 1
-#define DIRECTORY 2
-void tarfs_init();
-uint64_t check_file_exists(char* filename);
-//TARFS file system
+//TARFS file system entry
 typedef struct {
     char name[100];
     int size;
@@ -38,5 +40,8 @@ typedef struct {
     int parent_index;
 } tarfs_entry_t;
 
-
+void tarfs_init();
+uint64_t check_file_exists(char* filename);
+pcb_t * create_elf_process(char *filename, char *argv[]);
+vma_t *malloc_vma(mm_t *mm);
 #endif
