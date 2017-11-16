@@ -7,7 +7,7 @@
 #include <sys/console.h>
 #include <sys/idt.h>
 #include <sys/kutils.h>
-#define TARFS_DEBUG 1
+//#define TARFS_DEBUG 1
 
 static tarfs_entry_t tarfs_fs[100];
 
@@ -39,7 +39,7 @@ uint64_t check_file_exists(char* filename)
 {
 	struct posix_header_ustar* tmp_tarfs = (struct posix_header_ustar *)&_binary_tarfs_start;
 	int t = 512;
-	uint64_t size;
+	uint64_t size = 0;
 	while(strlen(tmp_tarfs->name) != 0)
 	{
 		tmp_tarfs = (struct posix_header_ustar *)(&_binary_tarfs_start + t);
@@ -56,11 +56,38 @@ uint64_t check_file_exists(char* filename)
 			return t + 512;
 		}
 		if (size == 0)
-                        t += 512;
+                        t = t + 512;
                 else
                         t +=  (size % 512 == 0) ? size + 512 : size + (512 - size % 512) + 512;
 	}
 	return 0;
+}
+
+uint64_t is_file_exists(char* filename)
+{
+    // print("\n Binary tarfs start:  %x", &_binary_tarfs_start);
+    struct posix_header_ustar* test_tarfs = (struct posix_header_ustar *)&_binary_tarfs_start;
+    int i = 1, temp = 512;
+    uint64_t size;
+    // print("\n Name %s \t Mode %s \t uid %s \t gid %s\t",test_tarfs->name, test_tarfs->mode, test_tarfs->uid, test_tarfs->gid);
+    while(strlen(test_tarfs->name) != 0)
+    {
+        test_tarfs = (struct posix_header_ustar *)(&_binary_tarfs_start + temp);
+        size = octal_to_decimal(stoi(test_tarfs->size));
+        // print("\nName of file is %s and size in octal is %d", test_tarfs->name, test_tarfs->size);
+        if(strlen(test_tarfs->name) == 0)
+            return 999;
+        if(!strcmp(test_tarfs->name, filename))
+            return temp + 512;
+        if(size == 0)
+            temp = temp + 512;
+        else
+            temp +=  (size%512==0) ? size + 512 : size + (512 - size%512) + 512;
+        // print("    %d", temp);
+        i += 1;
+    }
+    // print("%d", size);
+    return 0;
 }
 
 int is_proper_executable(Elf64_Ehdr* header)
@@ -106,6 +133,21 @@ vma_t *malloc_vma(mm_t *mm)
         return (vma_t *)tmp;
 }
 
+void allocate_virutal_region(pcb_t *pcb, va_t va, uint64_t size);
+
+void print_buf(uint32_t *buf, uint64_t size)
+{
+	int i;
+	for (i = 0; i < 16; i++) {
+		kprintf("%x ", buf[i]);
+		if (i != 0 && i%25 == 0)
+			kprintf("\n");
+	}
+	kprintf("\n");
+
+}
+
+
 pcb_t * load_elf_code(pcb_t * pcb, Elf64_Ehdr * elf_header, char * filename)
 {
 	Elf64_Phdr* pgm_header;
@@ -119,20 +161,22 @@ pcb_t * load_elf_code(pcb_t * pcb, Elf64_Ehdr * elf_header, char * filename)
 	for (int i = 0 ; i < elf_header->e_phnum; ++i) {
 		if ((int)pgm_header->p_type == 1) { /* 1 is PT_LOAD, specifies a loadable segment */
 			if (pgm_header->p_filesz > pgm_header->p_memsz)
-#ifdef TARFS_DEBUG
 				kprintf("something wrong in Elf binary..");
-#endif
-				//memcpy((void*) pgm_header->p_vaddr, (void*) elf_header + pgm_header->p_offset, pgm_header->p_filesz);
+				
+				print_buf((uint32_t *)elf_header + pgm_header->p_offset, pgm_header->p_filesz);
+				allocate_virutal_region(NULL, pgm_header->p_vaddr, pgm_header->p_filesz);
+				memcpy((void*) pgm_header->p_vaddr, (void*) elf_header + pgm_header->p_offset, pgm_header->p_filesz);
+				print_buf((uint32_t *)pgm_header->p_vaddr, pgm_header->p_filesz);
+				
 #if 0
 			else
 				memset((char*) pgm_header->p_vaddr + pgm_header->p_filesz, 0, pgm_header->p_memsz - pgm_header->p_filesz);
 			memcpy((char*) pgm_header->p_vaddr, (void *) elf_header + pgm_header->p_offset, pgm_header->p_filesz);
 #endif
 			new_node = malloc_vma(mms);
-#ifdef TARFS_DEBUG
 			if (!new_node)
 				kprintf("\t VMA not allocated");
-#endif
+
 			new_node->vma_start = pgm_header->p_vaddr;
 			new_node->vma_end = new_node->vma_start + pgm_header->p_memsz;
 			new_node->vma_flags = pgm_header->p_flags;
@@ -142,6 +186,7 @@ pcb_t * load_elf_code(pcb_t * pcb, Elf64_Ehdr * elf_header, char * filename)
 		pgm_header = pgm_header + 1;
 	}
 	pcb->entry = elf_header->e_entry;
+	kprintf("entry %p\n", pcb->entry);
 	pcb->heap_vma = (vma_t *)kmalloc(sizeof(vma_t));
 	vma_t *tmp = pcb->mm->vma_list;
 	while(tmp->next != NULL)
@@ -149,7 +194,7 @@ pcb_t * load_elf_code(pcb_t * pcb, Elf64_Ehdr * elf_header, char * filename)
 	pcb->heap_vma->vma_start = pcb->heap_vma->vma_end = ALIGN_DOWN((uint64_t)(tmp->vma_end + 0x1000));
 	pcb->heap_vma->vma_size = 0x1000;
 
-	//(pcb, (void *)pcb->heap_vma->vm_start, pcb->heap_vma->vm_mmsz);
+	allocate_virutal_region(pcb, pcb->heap_vma->vma_start, pcb->heap_vma->vma_size);
 	return pcb;	
 }
 
@@ -160,9 +205,9 @@ void tarfs_init()
 	tarfs_entry_t *new_entry;
 	new_entry = (tarfs_entry_t *)kmalloc(sizeof(tarfs_entry_t));
 	uint64_t size;
-	while(1) {
+	while (1) {
 		tarfs_itr = (struct posix_header_ustar *)(&_binary_tarfs_start + t);
-		if(strlen(tarfs_itr->name) == 0) {
+		if (strlen(tarfs_itr->name) == 0) {
 #ifdef TARFS_DEBUG
 			kprintf("\tFile name empty");
 #endif
@@ -200,14 +245,13 @@ void tarfs_init()
 
 pcb_t * create_elf_process(char *filename, char *argv[])
 {
-	int offset = check_file_exists(filename);
-	if (offset == 0 || offset == 999)
+	int offset = is_file_exists(filename);
+	//int offset = check_file_exists(filename);
+	if (offset == 0 || offset == 999) {
 		kprintf("\tFile not found");
-	else
+	} else
 	{
-#ifdef TARFS_DEBUG
 		kprintf("\tFile found at offset : %d",offset);
-#endif
 		/* load binary */
 		Elf64_Ehdr* elf_header = (Elf64_Ehdr *)(&_binary_tarfs_start + offset);
 		if (is_proper_executable(elf_header) != -1) {
@@ -217,8 +261,8 @@ pcb_t * create_elf_process(char *filename, char *argv[])
 			pcb_t * user_proc = (pcb_t *)kmalloc(sizeof(pcb_t));
 			mm_t * new_mm = (mm_t *)kmalloc(sizeof(mm_t));
 			user_proc->mm = new_mm;
-			//return load_elf_code(user_proc, elf_header, filename);
-			return NULL;
+			return load_elf_code(user_proc, elf_header, filename);
+			//return NULL;
 		}
 	}
 	return NULL;

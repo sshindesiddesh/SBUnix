@@ -1,7 +1,7 @@
 #include <sys/defs.h>
 #include <sys/kprintf.h>
 #include <sys/console.h>
-
+#include <sys/tarfs.h>
 #include <sys/memory.h>
 #include <sys/process.h>
 #include <sys/gdt.h>
@@ -196,14 +196,24 @@ void func5()
 void process_init()
 {
 	pcb_t *pcb0 = get_new_pcb();
+#if 0
 	new_pcb = create_user_thread(func1);
 	create_kernel_thread(func3);
 	create_kernel_thread(func4);
 	create_kernel_thread(func5);
 	/* This happens only once and kernel should not return to this stack. */
-	__context_switch(pcb0, new_pcb);
+#endif
+	pcb_t *elf_pcb = create_elf_process("bin/sbush", NULL);	
+	*((uint64_t *)&elf_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)elf_pcb->entry;
+        *((uint64_t *)&elf_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]) = (uint64_t)elf_pcb;
+        elf_pcb->rsp = (uint64_t)&(elf_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]);
 
-	kprintf("We will never written here\n");
+	if (elf_pcb && pcb0)
+                kprintf("both PCB allocated");
+
+	__context_switch(pcb0, elf_pcb);
+
+	kprintf("We will never return here\n");
 
 	while (1);
 }
