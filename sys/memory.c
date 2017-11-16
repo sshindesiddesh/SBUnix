@@ -6,15 +6,14 @@
 #include <sys/memory.h>
 #include <sys/debug.h>
 
-static pml_t *pml;
-static uint64_t phys_base;
-static uint64_t phys_free;
-static uint64_t phys_end;
-static page_disc_t *free_list_ptr = 0;
+pml_t *pml;
+uint64_t phys_base;
+uint64_t phys_free;
+uint64_t phys_end;
+page_disc_t *free_list_ptr = 0;
 static page_disc_t *pd_prev = 0;
 static uint64_t total_pages = 0;
 
-void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm);
 
 pa_t page2pa(page_disc_t *ptr)
 {
@@ -26,6 +25,31 @@ va_t pa2va(pa_t pa)
 	return (pa + (pa_t)KERNBASE);
 }
 
+pa_t get_free_pages(uint64_t n)
+{
+	if (!free_list_ptr)
+		return 0;
+#ifdef MALLOC_DEBUG
+	kprintf("GFP start : fp %p\n", free_list_ptr);
+#endif
+	int i = n;
+	page_disc_t *ptr = free_list_ptr;
+	while (i--) {
+		ptr->acc = 0;
+		ptr = free_list_ptr->next;
+	}
+
+	pa_t pa = page2pa(free_list_ptr);
+	free_list_ptr = ptr;
+#ifdef MALLOC_DEBUG
+	kprintf("GFP:pa %p\n", pa);
+	kprintf("GFP end : fp %p\n", free_list_ptr);
+#endif
+	/* TODO: Remove ?? -> ZERO OUT PAGE */
+	memset((void *)pa2va(pa), 0, PG_SIZE);
+	return pa;
+}
+
 va_t kmalloc(const uint64_t size)
 {
 	if (size <= 0)
@@ -33,7 +57,7 @@ va_t kmalloc(const uint64_t size)
 
 	int pgr = 0;
 	uint64_t t_size = size;
-	page_disc_t *fp = free_list_ptr;
+	pa_t pa;
 
 	if (size < PG_SIZE && size)
 		pgr = 1;
@@ -46,40 +70,59 @@ va_t kmalloc(const uint64_t size)
 #ifdef MALLOC_DEBUG
 	kprintf("Page req %d\n", pgr);
 #endif
-	if (!fp)
-		return 0;
-
-	va_t start_address = pa2va(page2pa(fp));
+	va_t start_address = 0;
 	int i;
 	for (i = 0; i < pgr; i++) {
-		fp->acc = 0;
-		//map_page_entry1((pml_t *)pa2va((pa_t)pml), pa2va(page2pa(fp)), 0x1000, page2pa(fp), 0);
-		memset((void *)pa2va(page2pa(fp)), 0, PG_SIZE);
+		pa = get_free_pages(1);
+		if (start_address == 0) {
+			start_address = pa2va(pa);
+		}
+		memset((void *)pa2va(pa), 0, PG_SIZE);
 #ifdef MALLOC_DEBUG
-		kprintf("Page Address %p\n", pa2va(page2pa(fp)));
+		kprintf("Address va pa%p\n", pa2va(pa), va);
 #endif
-		fp = fp->next;
 	}
-	free_list_ptr = fp;
 	return start_address;
 }
 
-pa_t get_free_pages(uint64_t n)
-{
-	if (!free_list_ptr)
-		return 0;
-	int i = n;
-	page_disc_t *ptr = free_list_ptr;
-	while (i--) {
-		free_list_ptr->acc = 0;
-		free_list_ptr = free_list_ptr->next;
-	}
+va_t start_va = 0x1000;
 
-	pa_t pa = page2pa(ptr);
-	
-	/* TODO: Remove ?? -> ZERO OUT PAGE */
-	memset((void *)pa2va(pa), 0, PG_SIZE);
-	return pa;
+va_t kmalloc_user(const uint64_t size)
+{
+	if (size <= 0)
+		return 0;
+
+
+	int pgr = 0;
+	uint64_t t_size = size;
+	pa_t pa;
+
+	if (size < PG_SIZE && size)
+		pgr = 1;
+	else {
+		pgr = t_size/PG_SIZE;
+		t_size -= (pgr * PG_SIZE);
+		if (t_size > 0)
+			pgr++;
+	}
+#ifdef MALLOC_DEBUG
+	kprintf("Page req %d\n", pgr);
+#endif
+	va_t start_address = start_va;
+	int i;
+	for (i = 0; i < pgr; i++) {
+		pa = get_free_pages(1);
+		map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)start_va, 0x1000, (pa_t)pa, PTE_U);
+		/* TODO : This memset leads to a Bug.
+		 * memset((void *)pa2va(page2pa(fp)), 0, PG_SIZE);
+		 */
+		memset((void *)start_va, 0, PG_SIZE);
+#ifdef MALLOC_DEBUG
+		kprintf("Address va pa%p\n", pa2va(pa), va);
+#endif
+		start_va += 0x1000;
+	}
+	return start_address;
 }
 
 void create_page_disc(uint64_t start, uint64_t length, void *physbase)
@@ -113,7 +156,7 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 	}
 }
 
-pte_t *get_pte_from_pgdir(pgdir_t *pgdir, va_t va)
+pte_t *get_pte_from_pgdir(pgdir_t *pgdir, va_t va, uint8_t perm)
 {
 	pte_t *pte_ptr;
 	pte_t  *pte;
@@ -122,9 +165,10 @@ pte_t *get_pte_from_pgdir(pgdir_t *pgdir, va_t va)
 #endif
 	if (!(pgdir[PDX(va)] & PTE_P)) {
 		pte_ptr = (pte_t *)(pte_t)get_free_pages(1);
-		pgdir[PDX(va)] = ((pgdir_t)pte_ptr | PTE_P | PTE_U | PTE_W);
+		pgdir[PDX(va)] = ((pgdir_t)pte_ptr | PTE_P | perm | PTE_W);
 	} else {
 		pte_ptr = (pte_t *)(pgdir[PDX(va)] & ~(0xFFF));
+		pgdir[PDX(va)] = ((pgdir_t)pte_ptr | PTE_P | perm | PTE_W);
 #ifdef PG_DEBUG
 		kprintf(" ISSUE PGDIR ");
 #endif
@@ -136,7 +180,7 @@ pte_t *get_pte_from_pgdir(pgdir_t *pgdir, va_t va)
 	return ((pte_t *)pte);
 }
 
-pte_t *get_pte_from_pdpe(pdpe_t *pdpe, va_t va)
+pte_t *get_pte_from_pdpe(pdpe_t *pdpe, va_t va, uint8_t perm)
 {
 	pgdir_t *pgdir;
 	pte_t  *pte;
@@ -145,19 +189,20 @@ pte_t *get_pte_from_pdpe(pdpe_t *pdpe, va_t va)
 #endif
 	if (!(pdpe[PDPE(va)] & PTE_P)) {
 		pgdir = (pgdir_t *)get_free_pages(1);
-		pdpe[PDPE(va)] = ((pdpe_t)pgdir | PTE_P | PTE_U | PTE_W);
+		pdpe[PDPE(va)] = ((pdpe_t)pgdir | PTE_P | perm | PTE_W);
 	} else {
-		pgdir = (pgdir_t *)(pdpe[PDPE(va)] & ~(0xFFF));
+		pgdir = (pgdir_t *)(pdpe[PDPE(va)] & (0xFFFFFFFFfffff000));
+		pdpe[PDPE(va)] = ((pdpe_t)pgdir | PTE_P | perm | PTE_W);
 #ifdef PG_DEBUG
 		kprintf(" ISSUE PDPE ");
 #endif
 	}
 
-	pte = get_pte_from_pgdir((pgdir_t *)pa2va((pa_t)pgdir), va);
+	pte = get_pte_from_pgdir((pgdir_t *)pa2va((pa_t)pgdir), va, perm);
 	return pte;
 }
 
-pte_t *get_pte_from_pml(pml_t *pml, va_t va)
+pte_t *get_pte_from_pml(pml_t *pml, va_t va, uint8_t perm)
 {
 	pdpe_t *pdpe;
 	pte_t  *pte;
@@ -167,29 +212,30 @@ pte_t *get_pte_from_pml(pml_t *pml, va_t va)
 #endif
 	if (!(pml[PML4(va)] & PTE_P)) {
 		pdpe = (pdpe_t *)get_free_pages(1);
-		pml[PML4(va)] = ((pml_t)pdpe | PTE_P | PTE_U | PTE_W);
+		pml[PML4(va)] = ((pml_t)pdpe | PTE_P | perm | PTE_W);
 	} else {
 		pdpe = (pdpe_t *)(pml[PML4(va)] & ~(0xFFF));
+		pml[PML4(va)] = ((pml_t)pdpe | PTE_P | perm | PTE_W);
 #ifdef PG_DEBUG
 		kprintf(" ISSUE PML");
 #endif
 	}
-	pte = get_pte_from_pdpe((pdpe_t *)pa2va((pa_t)pdpe), va);
+	pte = get_pte_from_pdpe((pdpe_t *)pa2va((pa_t)pdpe), va, perm);
 	return pte;
 }
 
-void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm)
+void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint8_t perm)
 {
 	pte_t *pte_ptr;
 	int i;
 	for (i = 0; i < size; i += PG_SIZE) {
-		pte_ptr = get_pte_from_pml(pml, va + i);
+		pte_ptr = get_pte_from_pml(pml, va + i, perm);
 		if (pte_ptr) {
 #ifdef PG_DEBUG
 			kprintf(" v %p p %p ptr %p\n", va + i, pa + i, pte_ptr);
 #endif
 			*pte_ptr = pa + i;
-			*pte_ptr = ((*pte_ptr) | PTE_P | PTE_U | PTE_W);
+			*pte_ptr = ((*pte_ptr) | PTE_P | PTE_W | perm);
 		}
 	}
 }
@@ -201,10 +247,9 @@ void page_table_init()
 	kprintf("pml %p ", pml);
 #endif
 	/* TODO: Map only these regions ? */
-	//map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)page2pa(free_list_ptr) - (pa_t)phys_base) + (uint64_t)0x2000, (pa_t)phys_base, 0);
 	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, 0);
-	/* TODO: 4 pages required ? */
-	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 2 * 0x1000, (pa_t)0xB8000, 0);
+	/* TODO: 2 pages required ? */
+	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, 0);
 }
 
 void memory_init(uint32_t *modulep, void *physbase, void *physfree)
@@ -238,7 +283,23 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	__asm__ volatile("mov %0, %%cr3":: "b"(pml));
 	change_console_ptr();
 	kprintf("Hello World\n");
-	kprintf("Alloc 1 %p \n", kmalloc(1));
-	kprintf("Alloc 5000 %p \n", kmalloc(5000));
-	kprintf("Alloc 10000 %p \n", kmalloc(10000));
+	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, PTE_U);
+	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, PTE_U);
+	va_t *ptr;
+	ptr = (va_t *)kmalloc_user(0x1000);
+	ptr[0] = 'h';
+	ptr[1] = '\0';
+	kprintf("Alloc Done %s\n", ptr);
+	ptr = (va_t *)kmalloc_user(0x1000);
+	ptr[0] = 'w';
+	ptr[1] = '\0';
+	kprintf("Alloc Done %s\n", ptr);
+	ptr = (va_t *)kmalloc(0x1000);
+	ptr[0] = 'H';
+	ptr[1] = '\0';
+	kprintf("Alloc Done %s\n", ptr);
+	ptr = (va_t *)kmalloc(0x1000);
+	ptr[0] = 'W';
+	ptr[1] = '\0';
+	kprintf("Alloc Done %s\n", ptr);
 }

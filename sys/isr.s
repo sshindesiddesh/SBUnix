@@ -77,3 +77,14 @@ isr80:
 	popq %rbp
 	sti
 	iretq
+
+.global excpE
+excpE:
+	cli
+	popq %rsi
+	pushq %rdi
+	movq %cr2, %rdi
+	call    __page_fault_handler
+	popq %rdi
+	sti
+	iretq
