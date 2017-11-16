@@ -46,48 +46,209 @@ void init_idt();
 
 void isr20(void);
 void isr21(void);
-WEAK void isr80(void);
-WEAK void isr22(void);
-WEAK void isr23(void);
-WEAK void isr24(void);
-WEAK void isr25(void);
-WEAK void isr26(void);
-WEAK void isr27(void);
+WEAK void isr80(void)
+{
+	kprintf("Exception 80\n");
+	while (1);
+}
+WEAK void isr22(void)
+{
+	kprintf("Exception 22\n");
+	while (1);
+}
+WEAK void isr23(void)
+{
+	kprintf("Exception 23\n");
+	while (1);
+}
+WEAK void isr24(void)
+{
+	kprintf("Exception 24\n");
+	while (1);
+}
+WEAK void isr25(void)
+{
+	kprintf("Exception 25\n");
+	while (1);
+}
+WEAK void isr26(void)
+{
+	kprintf("Exception 26\n");
+	while (1);
+}
+WEAK void isr27(void)
+{
+	kprintf("Exception 27\n");
+	while (1);
+}
 
 
-WEAK void excp0(void);
-WEAK void excp1(void);
-WEAK void excp2(void);
-WEAK void excp3(void);
-WEAK void excp4(void);
-WEAK void excp5(void);
-WEAK void excp6(void);
-WEAK void excp7(void);
-WEAK void excp8(void);
-WEAK void excp9(void);
-WEAK void excpA(void);
-WEAK void excpB(void);
-WEAK void excpC(void);
-WEAK void excpD(void);
-WEAK void excpE(void);
-WEAK void excpF(void);
+WEAK void excp0(void)
+{
+	kprintf("Exception 0\n");
+	while (1);
+}
+WEAK void excp1(void)
+{
+	kprintf("Exception 1\n");
+	while (1);
+}
+WEAK void excp2(void)
+{
+	kprintf("Exception 2\n");
+	while (1);
+}
+WEAK void excp3(void)
+{
+	kprintf("Exception 3\n");
+	while (1);
+}
+WEAK void excp4(void)
+{
+	kprintf("Exception 4\n");
+	while (1);
+}
+WEAK void excp5(void)
+{
+	kprintf("Exception 5\n");
+	while (1);
+}
+WEAK void excp6(void)
+{
+	kprintf("Exception 6\n");
+	while (1);
+}
+WEAK void excp7(void)
+{
+	kprintf("Exception 7\n");
+	while (1);
+}
+WEAK void excp8(void)
+{
+	kprintf("Exception 8\n");
+	while (1);
+}
+WEAK void excp9(void)
+{
+	kprintf("Exception 9\n");
+	while (1);
+}
+WEAK void excpA(void)
+{
+	kprintf("Exception A\n");
+	while (1);
+}
+WEAK void excpB(void)
+{
+	kprintf("Exception B\n");
+	while (1);
+}
+WEAK void excpC(void)
+{
+	kprintf("Exception C\n");
+	while (1);
+}
+WEAK void excpD(void)
+{
+	kprintf("Exception D\n");
+	while (1);
+}
 
-WEAK void excp10(void);
-WEAK void excp11(void);
-WEAK void excp12(void);
-WEAK void excp13(void);
-WEAK void excp14(void);
-WEAK void excp15(void);
-WEAK void excp16(void);
-WEAK void excp17(void);
-WEAK void excp18(void);
-WEAK void excp19(void);
-WEAK void excp1A(void);
-WEAK void excp1B(void);
-WEAK void excp1C(void);
-WEAK void excp1D(void);
-WEAK void excp1E(void);
-WEAK void excp1F(void);
+#if 0
+void WEAK excpE(void)
+{
+	kprintf("Exception E\n");
+	while (1);
+}
+#endif
+void WEAK excpE(void);
+
+WEAK void excpF(void)
+{
+	kprintf("Exception F\n");
+	while (1);
+}
+
+WEAK void excp10(void)
+{
+	kprintf("Exception 10\n");
+	while (1);
+}
+WEAK void excp11(void)
+{
+	kprintf("Exception 11\n");
+	while (1);
+}
+WEAK void excp12(void)
+{
+	kprintf("Exception 12\n");
+	while (1);
+}
+WEAK void excp13(void)
+{
+	kprintf("Exception 13\n");
+	while (1);
+}
+WEAK void excp14(void)
+{
+	kprintf("Exception 14\n");
+	while (1);
+}
+WEAK void excp15(void)
+{
+	kprintf("Exception 15\n");
+	while (1);
+}
+WEAK void excp16(void)
+{
+	kprintf("Exception 16\n");
+	while (1);
+}
+WEAK void excp17(void)
+{
+	kprintf("Exception 17\n");
+	while (1);
+}
+WEAK void excp18(void)
+{
+	kprintf("Exception 18\n");
+	while (1);
+}
+WEAK void excp19(void)
+{
+	kprintf("Exception 19\n");
+	while (1);
+}
+WEAK void excp1A(void)
+{
+	kprintf("Exception 1A\n");
+	while (1);
+}
+WEAK void excp1B(void)
+{
+	kprintf("Exception 1B\n");
+	while (1);
+}
+WEAK void excp1C(void)
+{
+	kprintf("Exception 1C\n");
+	while (1);
+}
+WEAK void excp1D(void)
+{
+	kprintf("Exception 1D\n");
+	while (1);
+}
+WEAK void excp1E(void)
+{
+	kprintf("Exception 1E\n");
+	while (1);
+}
+WEAK void excp1F(void)
+{
+	kprintf("Exception 1F\n");
+	while (1);
+}
 
 void *memset(void *ptr, int value, size_t len);
 #endif

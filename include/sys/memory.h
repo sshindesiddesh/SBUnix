@@ -52,4 +52,6 @@ typedef uint64_t pgdir_t;
 })
 
 va_t kmalloc(const uint64_t size);
+va_t kmalloc_user(const uint64_t size);
+void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint8_t perm);
 #endif

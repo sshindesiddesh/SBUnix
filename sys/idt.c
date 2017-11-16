@@ -5,6 +5,7 @@
 #include <sys/ahci.h>
 #include <sys/idt.h>
 #include <sys/kutils.h>
+#include <sys/memory.h>
 
 IDTDesc idt_desc[NO_OF_INT];
 idtr_t idtr;
@@ -26,6 +27,23 @@ void idt_populate_desc(uint8_t id, uint64_t int_handler, uint8_t dpl)
 	idt_desc_p->type_attr = 0x8E | (dpl << 5);
 	/* Single Kernel Stack */
 	idt_desc_p->ist = 0;
+}
+
+va_t pa2va(pa_t pa);
+
+pa_t va2pa(va_t va)
+{
+	return (va - (va_t)KERNBASE);
+}
+
+extern pml_t *pml;
+extern uint64_t phys_base;
+extern uint64_t phys_free;
+extern uint64_t phys_end;
+void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
+{
+	kprintf("!!!Pagefault : Address: %p Error %x !!!\n", faultAddr, err_code);
+	while (1);
 }
 
 void init_idt()

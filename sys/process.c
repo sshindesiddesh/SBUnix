@@ -22,6 +22,7 @@ pcb_t *get_new_pcb()
 
 }
 
+uint64_t u_test;
 /* Create a kernel thread.
  * Allocate a PCN block.
  * Populate a dummy stack for it.
@@ -45,11 +46,12 @@ pcb_t *create_user_thread(void *func)
 
 	l_pcb->next = head;
 
-	uint64_t u_stack = (uint64_t)kmalloc(4096);
+	uint64_t u_stack = (uint64_t)kmalloc_user(0x1000);
 	l_pcb->u_stack = u_stack;
 	l_pcb->u_rsp = (u_stack + 4096 - 8);
-	kprintf("URSP : %p\n", l_pcb->u_rsp);
+	kprintf("URSP : %p %d\n", l_pcb->u_rsp, *(uint64_t *)(l_pcb->u_rsp));
 
+	u_test = (uint64_t)kmalloc_user(0x1000);
 	return l_pcb;
 }
 /* Create a kernel thread.
@@ -87,7 +89,7 @@ void yield()
 	__context_switch(cur_pcb, head);
 }
 
-/* Dummy Test Thread Functions */
+/* Dummy Test Kernel Thread Functions */
 #if 0
 void func1()
 {
@@ -118,8 +120,6 @@ pcb_t *new_pcb;
 void func1()
 {
 	kprintf("func1...\n");
-	__asm__ volatile ("mov $5, %rax");
-	__asm__ volatile ("int $0x80");
 	set_tss_rsp((void *)new_pcb->rsp);
 	__switch_ring3(new_pcb->u_rsp, (uint64_t)func2);
 	while (1) {
@@ -127,18 +127,44 @@ void func1()
 	}
 }
 
+/* Function to try all the syscalls */
+void try_syscall()
+{
+	/* Default */
+	__asm__ volatile ("mov $5, %rax");
+	__asm__ volatile ("int $0x80");
+
+	/* Write */
+	char *buf = "Hello World\n";
+	kprintf("buf %p\n", buf);
+	__asm__ volatile (
+		"movq $1, %%rax;"
+		"movq %0, %%rbx;"
+		: "=m"(buf)
+		:
+		: "rax", "rbx", "rcx", "rdx"
+		);
+	__asm__ volatile ("int $0x80");
+
+	/* Yield */
+	__asm__ volatile ("mov $2, %rax");
+	__asm__ volatile ("int $0x80");
+}
+
+
 /* User Process */
 void func2()
 {
 	kprintf("func 2\n");
-	__asm__ volatile ("mov $2, %rax");
-	__asm__ volatile ("int $0x80");
-
+	try_syscall();
 	while (1) {
 		kprintf("func 2\n");
 		/* This is yield. Implemented as a system call. */
 		__asm__ volatile ("mov $2, %rax");
 		__asm__ volatile ("int $0x80");
+
+		/* On purpose for test */
+		while (1);
 	}
 }
 
@@ -170,7 +196,6 @@ void func5()
 void process_init()
 {
 	pcb_t *pcb0 = get_new_pcb();
-	//pcb_t *pcb_l = create_kernel_thread(func1);
 	new_pcb = create_user_thread(func1);
 	create_kernel_thread(func3);
 	create_kernel_thread(func4);
