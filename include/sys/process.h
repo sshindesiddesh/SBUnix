@@ -1,6 +1,7 @@
 #ifndef _PROCESS_H_
 #define _PROCESS_H_
 
+#include <sys/memory.h>
 #define KSTACK_SIZE	4096
 /* 14 is the number of push/pop in context switch */
 #define CON_STACK_SIZE	(14*8)
@@ -12,6 +13,7 @@ typedef struct PCB {
 	struct PCB *next;
 	uint64_t u_stack;
 	uint64_t u_rsp;
+	pml_t *pml4;
 	struct MM_struct *mm;
 	uint64_t entry;
 	struct VMA *heap_vma;

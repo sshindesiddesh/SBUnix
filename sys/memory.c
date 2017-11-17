@@ -268,9 +268,9 @@ void page_table_init()
 	kprintf("pml %p ", pml);
 #endif
 	/* TODO: Map only these regions ? */
-	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, 0);
+	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, PTE_U);
 	/* TODO: 2 pages required ? */
-	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, 0);
+	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, PTE_U);
 }
 
 void memory_init(uint32_t *modulep, void *physbase, void *physfree)
@@ -304,8 +304,8 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	__asm__ volatile("mov %0, %%cr3":: "b"(pml));
 	change_console_ptr();
 	kprintf("Hello World\n");
-	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, PTE_U);
-	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, PTE_U);
+	//map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, PTE_U);
+	//map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, PTE_U);
 	va_t *ptr;
 	ptr = (va_t *)kmalloc_user(0x1000);
 	ptr[0] = 'h';

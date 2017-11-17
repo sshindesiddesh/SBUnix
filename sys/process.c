@@ -83,6 +83,9 @@ void yield()
 {
 	pcb_t *cur_pcb = head;
 	head = head->next;
+	//set_tss_rsp((void *)head->rsp);
+	//kprintf("head %p pid %x", head, head->pid);
+	//kprintf("rsp\n", head->rsp);
 #ifdef PROC_DEBUG
 	kprintf("SCH: PID %d", head->pid);
 #endif
@@ -139,10 +142,10 @@ void try_syscall()
 	kprintf("buf %p\n", buf);
 	__asm__ volatile (
 		"movq $1, %%rax;"
-		"movq %0, %%rbx;"
+		"movq %0, %%rdi;"
 		: "=m"(buf)
 		:
-		: "rax", "rbx", "rcx", "rdx"
+		: "rax", "rbx", "rcx", "rdx", "rsp"
 		);
 	__asm__ volatile ("int $0x80");
 
@@ -156,15 +159,15 @@ void try_syscall()
 void func2()
 {
 	kprintf("func 2\n");
-	try_syscall();
+	//try_syscall();
 	while (1) {
 		kprintf("func 2\n");
 		/* This is yield. Implemented as a system call. */
-		__asm__ volatile ("mov $2, %rax");
-		__asm__ volatile ("int $0x80");
-
+		//__asm__ volatile ("mov $2, %rax");
+		//__asm__ volatile ("int $0x80");
+		yield();
 		/* On purpose for test */
-		while (1);
+		//while (1);
 	}
 }
 
@@ -196,22 +199,13 @@ void func5()
 void process_init()
 {
 	pcb_t *pcb0 = get_new_pcb();
-#if 0
 	new_pcb = create_user_thread(func1);
 	create_kernel_thread(func3);
 	create_kernel_thread(func4);
-	create_kernel_thread(func5);
+	//create_kernel_thread(func5);
 	/* This happens only once and kernel should not return to this stack. */
-#endif
-	pcb_t *elf_pcb = create_elf_process("bin/sbush", NULL);	
-	*((uint64_t *)&elf_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)elf_pcb->entry;
-        *((uint64_t *)&elf_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]) = (uint64_t)elf_pcb;
-        elf_pcb->rsp = (uint64_t)&(elf_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]);
 
-	if (elf_pcb && pcb0)
-                kprintf("both PCB allocated");
-
-	__context_switch(pcb0, elf_pcb);
+	__context_switch(pcb0, new_pcb);
 
 	kprintf("We will never return here\n");
 

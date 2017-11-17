@@ -18,6 +18,12 @@ __context_switch:
 	pushq %r14
 	pushq %r15
 
+	/* pushq %rdi
+	movq 8(%rsi), %rdi
+	callq set_tss_rsp
+	popq %rdi
+	*/
+
 	pushq %rdi
 	movq %rsp, 8(%rdi)
 	movq 8(%rsi), %rsp
