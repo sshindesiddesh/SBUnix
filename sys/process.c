@@ -5,6 +5,7 @@
 #include <sys/memory.h>
 #include <sys/process.h>
 #include <sys/gdt.h>
+#include <sys/syscall.h>
 
 /* TODO: Bug : Scheduler schedukes few tasks repetatively.  Cannot see for finite. During infinite, something goes wrong */
 
@@ -157,10 +158,9 @@ void try_syscall()
 void thread1()
 {
 	while (1) {
-		kprintf("thread 1\n");
+		__syscall_write("thread 1\n");
 		/* This is yield. Implemented as a system call. */
-		__asm__ volatile ("movq $2, %rax");
-		__asm__ volatile ("int $0x80");
+		__syscall_yield();
 
 	}
 }
@@ -175,10 +175,9 @@ void func1()
 void thread2()
 {
 	while (1) {
-		kprintf("thread 2\n");
+		__syscall_write("thread 2\n");
 		/* This is yield. Implemented as a system call. */
-		__asm__ volatile ("movq $2, %rax");
-		__asm__ volatile ("int $0x80");
+		__syscall_yield();
 
 	}
 }
@@ -192,8 +191,9 @@ void func3()
 void func5()
 {
 	while (1) {
-		kprintf("func 5\n");
+		__syscall_write("func 5\n");
 		yield();
+		__syscall_yield();
 	}
 }
 
