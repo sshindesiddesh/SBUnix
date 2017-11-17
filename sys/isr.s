@@ -37,6 +37,7 @@ pop_all:
 isr20:
     cli
     call    __isr_timer_cb
+    call    __syscall_yield
     sti
     iretq
 
