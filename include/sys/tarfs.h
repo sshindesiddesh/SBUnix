@@ -74,5 +74,7 @@ fd_t *file_open(char *path, uint64_t mode);
 dir_t *opendir(char *path);
 int closedir(dir_t * dir);
 tarfs_entry_t * create_tarfs_entry(char *name, uint64_t type, uint64_t start, uint64_t end, uint64_t inode_no, tarfs_entry_t *parent);
+int is_proper_executable(Elf64_Ehdr* header);
+void * get_posix_header(char* filename);
 
 #endif

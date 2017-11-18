@@ -7,8 +7,58 @@
 #include <sys/console.h>
 #include <sys/idt.h>
 #include <sys/kutils.h>
-#define TARFS_DEBUG 1
+//#define TARFS_DEBUG 1
 #define O_RDONLY 1
+
+/* check whether input executable is proper by checking 1-3 MAgic numbers in ELF header, returns 0 on success */
+int is_proper_executable(Elf64_Ehdr* header)
+{
+	if (header == NULL)
+		return -1;
+	else {
+		if (header->e_ident[1] == 'E' && header->e_ident[2] == 'L' && header->e_ident[3] == 'F')
+		{
+//#ifdef TARFS_DEBUG
+			kprintf("\t executable verified");
+//#endif
+			return 0;
+		}
+	}
+	return -1;
+}
+
+/* check whether given file exists and return its posix header offset in tarfs */
+void * get_posix_header(char* filename)
+{
+	tarfs_entry_t *curr_node, *temp_node;
+        char *name, *temp_path;
+        int i = 0;
+        curr_node = root;
+
+        temp_path = (char *)kmalloc(64);
+        strcpy(temp_path, filename);
+
+        name = strtok(temp_path, "/");
+        if (name == NULL)
+                return NULL;
+
+	while (name != NULL) {
+		temp_node = curr_node;
+		for (i = 2; i < curr_node->end; i++) {
+			if (strcmp(name, curr_node->child[i]->name) == 0) {
+				curr_node = (tarfs_entry_t *)curr_node->child[i];
+				break;
+			}
+		}
+		if (i == temp_node->end)
+			return NULL;
+		name = strtok(NULL, "/");
+	}
+	if (curr_node->type == FILE_TYPE)
+		return (void *)curr_node->start;
+	else
+		return NULL;
+}
 
 /* read from a file into input buffer, returns number of bytes read */
 int file_read(fd_t *fd, char *buf, uint64_t length)
@@ -216,6 +266,10 @@ void tarfs_init()
 		tarfs_itr = (struct posix_header_ustar *)((uint64_t)tarfs_itr + size + sizeof(struct posix_header_ustar));
 		end = (uint32_t *)tarfs_itr;
 	}
+	struct posix_header_ustar *header = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
+	Elf64_Ehdr *elf_header = (Elf64_Ehdr *)header;
+	if (is_proper_executable(elf_header) == 0)
+		kprintf(" done");
 #ifdef TARFS_DEBUG
 	kprintf("opendir /rootfs/bin :");
 	dir_t * new = opendir("/rootfs/bin");
@@ -232,9 +286,3 @@ void tarfs_init()
 		kprintf("dir closed");
 #endif
 }
-
-uint64_t check_file_exists(char* filename)
-{
-	return 0;
-}
-
