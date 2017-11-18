@@ -80,14 +80,9 @@ pcb_t *create_kernel_thread(void *func)
 	return l_pcb;
 }
 
-uint64_t start_scheduling = 0;
-
 /* Yield from process */
 void yield()
 {
-	if (start_scheduling == 0)
-		return;
-
 	pcb_t *cur_pcb = head;
 
 	if (head == head->next)
@@ -165,7 +160,7 @@ void thread1()
 	while (1) {
 		__syscall_write("thread 1\n");
 		/* This is yield. Implemented as a system call. */
-		//__syscall_yield();
+		__syscall_yield();
 
 	}
 }
@@ -173,7 +168,6 @@ void thread1()
 void func1()
 {
 	set_tss_rsp((void *)&usr_pcb_1->kstack[KSTACK_SIZE - 8]);
-	start_scheduling = 1;
 	__switch_ring3(usr_pcb_1->u_rsp, (uint64_t)thread1);
 }
 
@@ -183,7 +177,7 @@ void thread2()
 	while (1) {
 		__syscall_write("thread 2\n");
 		/* This is yield. Implemented as a system call. */
-		//__syscall_yield();
+		__syscall_yield();
 
 	}
 }
@@ -199,7 +193,7 @@ void func5()
 	while (1) {
 		__syscall_write("func 5\n");
 		yield();
-		//__syscall_yield();
+		__syscall_yield();
 	}
 }
 
