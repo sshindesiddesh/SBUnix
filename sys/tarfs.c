@@ -18,9 +18,9 @@ int is_proper_executable(Elf64_Ehdr* header)
 	else {
 		if (header->e_ident[1] == 'E' && header->e_ident[2] == 'L' && header->e_ident[3] == 'F')
 		{
-//#ifdef TARFS_DEBUG
+#ifdef TARFS_DEBUG
 			kprintf("\t executable verified");
-//#endif
+#endif
 			return 0;
 		}
 	}

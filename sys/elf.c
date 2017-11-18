@@ -20,8 +20,6 @@ void print_buf(uint8_t *buf, uint64_t size)
 
 }
 
-void allocate_vma(pcb_t *pcb, vma_t *vma);
-
 int load_elf_code(pcb_t *pcb, void *start)
 {
 	Elf64_Ehdr *elf_hdr = (Elf64_Ehdr *)start;

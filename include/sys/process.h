@@ -16,15 +16,21 @@ typedef enum vma_type {
 
 typedef struct PCB {
 	uint64_t pid;
+	/* offset : 8 Do not move this. Used in assembly with offset */
 	uint64_t rsp;
-	uint8_t kstack[KSTACK_SIZE];
-	struct PCB *next;
-	pml_t *pml4;
-	uint64_t u_stack;
-	uint64_t u_rsp;
-	struct mm_struct *mm;
+	/* offset : 0x10 Do not move this. Used in assembly with offset */
+	pml_t pml4;
+	/* offset : 0x18 Do not move this. Used in assembly with offset */
 	uint64_t entry;
+	/* offset : 0x20 Do not move this. Used in assembly with offset */
+	/* User Space stack */
+	uint64_t u_rsp;
+	/* Kernel Space stack */
+	uint8_t kstack[KSTACK_SIZE];
+	uint8_t is_usr;
+	struct mm_struct *mm;
 	struct vma *heap_vma;
+	struct PCB *next;
 } pcb_t;
 
 typedef struct mm_struct {
@@ -50,4 +56,8 @@ void schedule(int a);
 void process_init();
 /* Yield from process */
 void yield(void);
+
+va_t kmalloc_user(pcb_t *pcb, const uint64_t size);
+void allocate_vma(pcb_t *pcb, vma_t *vma);
+
 #endif

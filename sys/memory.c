@@ -65,7 +65,7 @@ void allocate_vma(pcb_t *pcb, vma_t *vma)
 	int i = 0;
 	for (; i <= va_size; i += PG_SIZE) {
 		pa = get_free_pages(1);
-		map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)va_start, 0x1000, (pa_t)pa, PTE_U);
+		map_page_entry((pml_t *)pa2va((pa_t)pcb->pml4), (va_t)va_start, 0x1000, (pa_t)pa, PTE_U);
 		memset((void *)va_start, 0, PG_SIZE);
 #ifdef MALLOC_DEBUG
 		kprintf("Address va pa%p\n", pa2va(pa), va);
@@ -109,9 +109,11 @@ va_t kmalloc(const uint64_t size)
 	return start_address;
 }
 
+/* Currently this is a global variable shared by all user processes.
+ * Make it specific to a user. */
 va_t start_va = 0x1000;
 
-va_t kmalloc_user(const uint64_t size)
+va_t kmalloc_user(pcb_t *pcb, const uint64_t size)
 {
 	if (size <= 0)
 		return 0;
@@ -136,11 +138,9 @@ va_t kmalloc_user(const uint64_t size)
 	int i;
 	for (i = 0; i < pgr; i++) {
 		pa = get_free_pages(1);
-		map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)start_va, 0x1000, (pa_t)pa, PTE_U);
-		/* TODO : This memset leads to a Bug.
-		 * memset((void *)pa2va(page2pa(fp)), 0, PG_SIZE);
-		 */
-		memset((void *)start_va, 0, PG_SIZE);
+		map_page_entry((pml_t *)pa2va((pa_t)pcb->pml4), (va_t)start_va, 0x1000, (pa_t)pa, PTE_U);
+		/* Kernel cannot write these pages as these pages are mapped in users page tables. */
+		/* memset((void *)start_va, 0, PG_SIZE); */
 #ifdef MALLOC_DEBUG
 		kprintf("Address va pa%p\n", pa2va(pa), va);
 #endif
@@ -276,6 +276,20 @@ void page_table_init()
 	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, 0);
 }
 
+/* This function sets kernel and console page tables for a user process. */
+void set_proc_page_table(pcb_t *pcb)
+{
+	if (pcb->is_usr) {
+		pml_t *usr_pml = (pml_t *)get_free_pages(1);
+		uint64_t *v_usr_pml = (uint64_t *)pa2va((uint64_t)usr_pml);
+		uint64_t *v_kern_pml = (uint64_t *)pa2va((uint64_t)pml);
+		v_usr_pml[511] = v_kern_pml[511];
+		pcb->pml4 = (uint64_t)usr_pml;
+	} else {
+		pcb->pml4 = (uint64_t)pml;
+	}
+}
+
 void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 {
 	struct smap_t {
@@ -307,8 +321,11 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	__asm__ volatile("mov %0, %%cr3":: "b"(pml));
 	change_console_ptr();
 	kprintf("Hello World\n");
+#if 0
+	/* No need to map something to user space. Paging betweeen processes is working. */
 	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, PTE_U);
 	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, PTE_U);
+	/* Kmalloc_user signature has changed, write more concrete kmalloc_user test cases */
 	va_t *ptr;
 	ptr = (va_t *)kmalloc_user(0x1000);
 	ptr[0] = 'h';
@@ -326,4 +343,5 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	ptr[0] = 'W';
 	ptr[1] = '\0';
 	kprintf("Alloc Done %s\n", ptr);
+#endif
 }

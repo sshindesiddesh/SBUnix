@@ -10,33 +10,36 @@
 
 /* TODO: Bug : Scheduler schedukes few tasks repetatively.  Cannot see for finite. During infinite, something goes wrong */
 
+extern pml_t *pml;
+
 /* Head of the running linked list for yield */
 pcb_t *head = NULL;
 
 /* Global PID assigner */
 static uint64_t PID = -1;
 
+void set_proc_page_table(pcb_t *pcb);
+
 pcb_t *get_new_pcb()
 {
 	pcb_t *l_pcb = (pcb_t *)kmalloc(sizeof(pcb_t));
 	l_pcb->pid = ++PID;
 	return l_pcb;
-
 }
 
-uint64_t u_test;
 /* Create a kernel thread.
  * Allocate a PCN block.
  * Populate a dummy stack for it.
  * Fill appropriate rsp.
  * Add it to the scheduler list at the end.
  */
-pcb_t *create_user_thread(void *func)
+pcb_t *create_user_process(void *func)
 {
 	pcb_t *l_pcb = get_new_pcb(), *t_pcb = head;
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)func;
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]) = (uint64_t)l_pcb;
 	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]);
+
 	if (head == NULL) {
 		head = l_pcb;
 	} else {
@@ -48,12 +51,15 @@ pcb_t *create_user_thread(void *func)
 
 	l_pcb->next = head;
 
-	uint64_t u_stack = (uint64_t)kmalloc_user(0x1000);
-	l_pcb->u_stack = u_stack;
-	l_pcb->u_rsp = (u_stack + 4096 - 8);
-	kprintf("URSP : %p %d\n", l_pcb->u_rsp, *(uint64_t *)(l_pcb->u_rsp));
+	l_pcb->is_usr = 1;
 
-	u_test = (uint64_t)kmalloc_user(0x1000);
+	set_proc_page_table(l_pcb);
+
+	uint64_t u_stack = (uint64_t)kmalloc_user(l_pcb, 0x1000);
+	//uint64_t u_stack = (uint64_t)kmalloc(0x1000);
+	l_pcb->u_rsp = (u_stack + 4096 - 8);
+	kprintf("URSP : %p\n", l_pcb->u_rsp);
+
 	return l_pcb;
 }
 
@@ -63,21 +69,26 @@ pcb_t *create_user_thread(void *func)
  * Fill appropriate rsp.
  * Add it to the scheduler list at the end.
  */
-pcb_t *create_kernel_thread(void *func)
+pcb_t *create_kernel_process(void *func)
 {
 	pcb_t *l_pcb = get_new_pcb(), *t_pcb = head;
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)func;
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]) = (uint64_t)l_pcb;
 	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]);
+
+	l_pcb->is_usr = 0;
+
 	if (head == NULL) {
 		head = l_pcb;
 	} else {
 		while (t_pcb->next != head)
 			t_pcb = t_pcb->next;
 		t_pcb->next = l_pcb;
-		
 	}
 	l_pcb->next = head;
+
+	set_proc_page_table(l_pcb);
+
 	return l_pcb;
 }
 
@@ -97,10 +108,12 @@ void yield(void)
 #ifdef PROC_DEBUG
 	kprintf("SCH: PID %d", head->pid);
 #endif
+	__asm__ volatile("mov %0, %%cr3":: "b"(head->pml4));
 	__context_switch(cur_pcb, head);
 }
 
-void __switch_ring3(uint64_t rsp, uint64_t func);
+//void __switch_ring3(uint64_t rsp, uint64_t func);
+void __switch_ring3(pcb_t *pcb);
 
 void func2();
 
@@ -133,11 +146,10 @@ void try_syscall()
 }
 
 
-/* User Process */
 void thread1()
 {
 	while (1) {
-		__syscall_write("thread 1\n");
+		__syscall_info();
 		/* This is yield. Implemented as a system call. */
 #if	!PREEMPTIVE_SCHED
 		__syscall_yield();
@@ -149,7 +161,9 @@ void thread1()
 void func1()
 {
 	set_tss_rsp((void *)&usr_pcb_1->kstack[KSTACK_SIZE - 8]);
-	__switch_ring3(usr_pcb_1->u_rsp, (uint64_t)thread1);
+	//__switch_ring3(usr_pcb_1->u_rsp, (uint64_t)thread1);
+	usr_pcb_1->entry = (uint64_t)thread1;
+	__switch_ring3(usr_pcb_1);
 }
 
 /* User Process */
@@ -168,13 +182,15 @@ void thread2()
 void func3()
 {
 	set_tss_rsp((void *)&usr_pcb_2->kstack[KSTACK_SIZE - 8]);
-	__switch_ring3(usr_pcb_2->u_rsp, (uint64_t)thread2);
+	usr_pcb_2->entry = (uint64_t)thread2;
+	__switch_ring3(usr_pcb_1);
 }
 
-void func5()
+/* This is a kernel process */
+void init_process()
 {
 	while (1) {
-		__syscall_write("func 5\n");
+		__syscall_write("init\n");
 #if	!PREEMPTIVE_SCHED
 		__syscall_yield();
 #endif
@@ -183,12 +199,12 @@ void func5()
 
 int load_elf_code(pcb_t *pcb, void *start);
 
-void elf_thread()
+void elf_process()
 {
 	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
 	load_elf_code(usr_pcb_1, (void *)start);
 	set_tss_rsp((void *)&usr_pcb_1->kstack[KSTACK_SIZE - 8]);
-	__switch_ring3(usr_pcb_1->u_rsp, (uint64_t)usr_pcb_1->entry);
+	__switch_ring3(usr_pcb_1);
 }
 
 
@@ -196,9 +212,9 @@ void elf_thread()
 void process_init()
 {
 	pcb_t *pcb0 = get_new_pcb();
-	pcb_t *pcb1 = create_kernel_thread(func5);
+	pcb_t *pcb1 = create_kernel_process(init_process);
 
-	usr_pcb_1 = create_user_thread(elf_thread);
+	usr_pcb_1 = create_user_process(elf_process);
 	/* This happens only once and kernel should not return to this stack. */
 	__context_switch(pcb0, pcb1);
 
