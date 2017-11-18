@@ -30,6 +30,7 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
 	pic_init();
 	clear();
 	memory_init(modulep, physbase, physfree);
+	tarfs_init();
 	process_init();
 	//ahci_init();
 }

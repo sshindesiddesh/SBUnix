@@ -181,27 +181,27 @@ void func5()
 	}
 }
 
+int load_elf_code(pcb_t *pcb, void *start);
+
+void elf_thread()
+{
+	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
+	load_elf_code(usr_pcb_1, (void *)start);
+	set_tss_rsp((void *)&usr_pcb_1->kstack[KSTACK_SIZE - 8]);
+	__switch_ring3(usr_pcb_1->u_rsp, (uint64_t)usr_pcb_1->entry);
+}
+
+
 /* Initialise kernel thread creation. */
 void process_init()
 {
 	pcb_t *pcb0 = get_new_pcb();
-	usr_pcb_1 = create_user_thread(func1);
-	usr_pcb_2 = create_user_thread(func3);
-	create_kernel_thread(func5);
-#if 0
-	pcb_t *elf_pcb = create_elf_process("bin/sbush", NULL);	
-	*((uint64_t *)&elf_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)elf_pcb->entry;
-        *((uint64_t *)&elf_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]) = (uint64_t)elf_pcb;
-        elf_pcb->rsp = (uint64_t)&(elf_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]);
+	pcb_t *pcb1 = create_kernel_thread(func5);
 
-	if (elf_pcb && pcb0)
-                kprintf("both PCB allocated");
-
-#endif
+	usr_pcb_1 = create_user_thread(elf_thread);
 	/* This happens only once and kernel should not return to this stack. */
-	__context_switch(pcb0, usr_pcb_1);
+	__context_switch(pcb0, pcb1);
 
 	kprintf("We will never return here\n");
-
 	while (1);
 }

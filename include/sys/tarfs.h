@@ -2,6 +2,7 @@
 #define _TARFS_H
 #include <sys/defs.h>
 #include <sys/process.h>
+#include <sys/elf64.h>
 
 #define FILE_TYPE 0
 #define DIRECTORY 5

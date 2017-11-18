@@ -50,17 +50,20 @@ pa_t get_free_pages(uint64_t n)
 	return pa;
 }
 
-void allocate_virutal_region(pcb_t *pcb, va_t va, uint64_t size)
+void allocate_vma(pcb_t *pcb, vma_t *vma)
 {
-		kprintf("aloc virt region va %p, size %x\n", va, size);
 #ifdef MALLOC_DEBUG
+		kprintf("va %p, size %x\n", va, size);
 #endif
-	va_t va_start = (va/PG_SIZE*PG_SIZE);
-	uint64_t va_size = size/PG_SIZE*PG_SIZE + PG_SIZE;
-	kprintf("va start %p, va size %x\n", va_start, va_size);
+	va_t va_start = (vma->start/PG_SIZE*PG_SIZE);
+	uint64_t va_size = (vma->end/PG_SIZE*PG_SIZE) - va_start + 0x1000;
+
+#ifdef MALLOC_DEBUG
+	kprintf("va start %x, va size %x\n", va_start, va_size);
+#endif
 	pa_t pa;
-	int i;
-	for (i = 0; i <= va_size; i += PG_SIZE) {
+	int i = 0;
+	for (; i <= va_size; i += PG_SIZE) {
 		pa = get_free_pages(1);
 		map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)va_start, 0x1000, (pa_t)pa, PTE_U);
 		memset((void *)va_start, 0, PG_SIZE);
