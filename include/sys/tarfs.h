@@ -3,8 +3,8 @@
 #include <sys/defs.h>
 #include <sys/process.h>
 
-#define FILE_TYPE 1
-#define DIRECTORY 2
+#define FILE_TYPE 0
+#define DIRECTORY 5
 #define PAGE_TABLE_ALIGNLENT 0x1000
 #define ALIGN_DOWN(x)   (x & ~(PAGE_TABLE_ALIGNLENT-1))
 
@@ -31,17 +31,48 @@ struct posix_header_ustar {
   char pad[12];
 };
 
-//TARFS file system entry
-typedef struct {
-    char name[100];
-    int size;
-    int type;
-    uint64_t addr_header;
-    int parent_index;
-} tarfs_entry_t;
+/* TARFS file system entry */
+typedef struct tarfs_entry_t tarfs_entry_t;
+typedef struct fd_t fd_t;
+typedef struct dirent_t dirent_t;
+typedef struct dir_t dir_t;
 
+struct tarfs_entry_t {
+	char name[64];
+	int type;
+	uint64_t start;
+	uint64_t end;
+	uint64_t current;
+	tarfs_entry_t *child[20];
+	uint64_t inode_no;
+};
+
+struct fd_t {
+	uint64_t perm;
+	uint64_t inode_no;
+	tarfs_entry_t *node;
+};
+
+struct dirent_t {
+	uint64_t inode_no;
+	char name[64];
+};
+
+struct dir_t {
+	tarfs_entry_t *node;
+	dirent_t cur_dirent;
+	int fd;
+	uint64_t current;
+	char buf[64];
+};
+
+tarfs_entry_t *root; /* this is the "/" node and root of the complete tarfs tree structure */
 void tarfs_init();
 uint64_t check_file_exists(char* filename);
-pcb_t * create_elf_process(char *filename, char *argv[]);
-vma_t *malloc_vma(mm_t *mm);
+int file_read(fd_t *fd, char *buf, uint64_t length);
+fd_t *file_open(char *path, uint64_t mode);
+dir_t *opendir(char *path);
+int closedir(dir_t * dir);
+tarfs_entry_t * create_tarfs_entry(char *name, uint64_t type, uint64_t start, uint64_t end, uint64_t inode_no, tarfs_entry_t *parent);
+
 #endif

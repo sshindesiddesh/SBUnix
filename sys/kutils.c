@@ -1,6 +1,99 @@
 #include <sys/defs.h>
 #include <sys/kutils.h>
 
+char *mystrtok_r(char *bstr, const char *delim, char **save)
+{
+        char *temp = bstr;
+        if(temp == NULL)
+        {
+                if(*save == NULL)
+                {
+                        return NULL;
+                }
+                temp = *save;
+        }
+        else
+        {
+                *save = NULL;
+        }
+// Find a non delimiter character
+        while(*temp)
+        {
+                const char *temp2 = delim;
+                while(*temp2)
+                {
+                        if(*temp == *temp2)
+                        {
+                                // This is a delimiter character
+                                *temp = '\0';
+                                break;
+                        }
+                        temp2++;
+                }
+                if(*temp != '\0')
+                {
+// Found the non delimiter character
+                        break;
+                }
+                temp++;
+        }
+        if(*temp == '\0')
+        {
+                // No token found in remaining string.
+                *save = NULL;
+                return NULL;
+        }
+// Find a delimiter character
+        char *retval = temp;
+        while(*temp)
+        {
+                const char *temp2 = delim;
+                while(*temp2)
+                {
+                        if(*temp == *temp2)
+                        {
+                                // This is a delimiter character
+                                *save = temp + 1;
+                                *temp = '\0';
+                                break;
+                        }
+                        temp2++;
+                }
+if(*save > temp)
+                {
+                        // Found a delimiter character, stop searching for remaining occurrences
+                        break;
+                }
+                temp++;
+        }
+        if(*save <= temp)
+        {
+                // Reached the end of original string, but no delimiter character found.
+                // Mark save as NULL so that function can return NULL in next call, indicating the end of tokens in given string.
+                *save = NULL;
+        }
+
+        return retval;
+}
+char *strtok(char *bstr, const char *delim)
+{
+        static char *save = NULL;
+        return mystrtok_r(bstr, delim, &save);
+}
+
+size_t strncmp(const char *s1, const char *s2, int len)
+{
+        if (!s1 || !s2)
+                return -1;
+
+        size_t cnt = 0;
+
+        while (len--)
+                if (*s1++ != *s2++)
+                        cnt++;
+        return cnt;
+}
+
 char* strcpy(char *dst, const char *src)
 {
 	char *temp = dst;

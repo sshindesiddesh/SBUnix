@@ -7,263 +7,234 @@
 #include <sys/console.h>
 #include <sys/idt.h>
 #include <sys/kutils.h>
-//#define TARFS_DEBUG 1
+#define TARFS_DEBUG 1
+#define O_RDONLY 1
 
-static tarfs_entry_t tarfs_fs[100];
-
-int get_parent_index(char* dir, int type)
-{ 
-	char name[100];
-	int len = strlen(dir);
-	strcpy(&name[0], dir);
-	if (type == FILE_TYPE)
-		len = len - 2;
+/* read from a file into input buffer, returns number of bytes read */
+int file_read(fd_t *fd, char *buf, uint64_t length)
+{
+	if (fd) {
+		if (length > ((fd->node->end) - (fd->node->start)))
+			length = fd->node->end - fd->node->start;
+		memcpy((char *)buf, (char *)(fd->node->start), length);
+#ifdef TARFS_DEBUG
+		kprintf("\nbuffer read: %s", buf);
+#endif
+		return length;
+	}
 	else
-		len = len - 1;
-	while(name[len] != '/') {
-        	len--;
-        	if(len == 0)
-            		return 9999;
-    	}
-	name[++len] = '\0';
-	int i = 0;
-	while(strcmp(&name[0], &(tarfs_fs[i].name[0])) !=  0)
-		i++;
-#ifdef TARFS_DEBUG
-	kprintf("\tparent : %d", i);
-#endif
-	return i;
-}	
-
-uint64_t check_file_exists(char* filename)
-{
-	struct posix_header_ustar* tmp_tarfs = (struct posix_header_ustar *)&_binary_tarfs_start;
-	int t = 512;
-	uint64_t size = 0;
-	while(strlen(tmp_tarfs->name) != 0)
-	{
-		tmp_tarfs = (struct posix_header_ustar *)(&_binary_tarfs_start + t);
-		size = octal_to_decimal(stoi(tmp_tarfs->size));
-#ifdef TARFS_DEBUG
-		kprintf("\tfile name:%s size:%d", tmp_tarfs->name, size);
-#endif
-		if (strlen(tmp_tarfs->name) == 0)
-			return 999;
-		if (!strcmp(tmp_tarfs->name, filename)) {
-#ifdef TARFS_DEBUG
-			kprintf("\t file found.!!");
-#endif
-			return t + 512;
-		}
-		if (size == 0)
-                        t = t + 512;
-                else
-                        t +=  (size % 512 == 0) ? size + 512 : size + (512 - size % 512) + 512;
-	}
-	return 0;
-}
-
-uint64_t is_file_exists(char* filename)
-{
-    // print("\n Binary tarfs start:  %x", &_binary_tarfs_start);
-    struct posix_header_ustar* test_tarfs = (struct posix_header_ustar *)&_binary_tarfs_start;
-    int i = 1, temp = 512;
-    uint64_t size;
-    // print("\n Name %s \t Mode %s \t uid %s \t gid %s\t",test_tarfs->name, test_tarfs->mode, test_tarfs->uid, test_tarfs->gid);
-    while(strlen(test_tarfs->name) != 0)
-    {
-        test_tarfs = (struct posix_header_ustar *)(&_binary_tarfs_start + temp);
-        size = octal_to_decimal(stoi(test_tarfs->size));
-        // print("\nName of file is %s and size in octal is %d", test_tarfs->name, test_tarfs->size);
-        if(strlen(test_tarfs->name) == 0)
-            return 999;
-        if(!strcmp(test_tarfs->name, filename))
-            return temp + 512;
-        if(size == 0)
-            temp = temp + 512;
-        else
-            temp +=  (size%512==0) ? size + 512 : size + (512 - size%512) + 512;
-        // print("    %d", temp);
-        i += 1;
-    }
-    // print("%d", size);
-    return 0;
-}
-
-int is_proper_executable(Elf64_Ehdr* header)
-{
-	if (header == NULL)
 		return -1;
-	else {
-		if (header->e_ident[1] == 'E' && header->e_ident[2] == 'L' && header->e_ident[3] == 'F')
-		{
-#ifdef TARFS_DEBUG
-			kprintf("\t executable verified");
-#endif	
-			return 0;
+}
+
+/* open a file or directory, returns file/directory descriptor fd_t */
+fd_t *file_open(char *path, uint64_t mode)
+{
+	tarfs_entry_t *node, *temp_node;
+	char *name, *temp_path;
+	int i = 0;
+	fd_t *ret_fd = (fd_t *)kmalloc(sizeof(fd_t));
+	node = root;
+
+	temp_path = (char *)kmalloc(64);
+	strcpy(temp_path, path);
+
+	name = strtok(temp_path, "/");
+	if (name == NULL)
+		return NULL;
+
+	if (strcmp(name, "rootfs") == 0) {
+		while (name != NULL) {
+			temp_node = node;
+			for (i = 2; i < node->end; i++) {
+				if (strcmp(name, node->child[i]->name) == 0) {
+					node = (tarfs_entry_t *)node->child[i];
+					break;
+				}
+			}
+		if (i >= temp_node->end)
+			return NULL;
+		name = strtok(NULL, "/");
 		}
+		if ((node->type == DIRECTORY && mode == (O_RDONLY)) || (node->type == FILE_TYPE)) {
+			ret_fd->node = node;
+                        ret_fd->perm = mode;
+                        return ret_fd;
+                } else {
+                        return NULL;
+                }
 	}
-	return -1;
+	else
+		return NULL;
 }
 
-vma_t *malloc_vma(mm_t *mm)
+/* close a directory */
+int closedir(dir_t * dir)
 {
-        vma_t *vm_tail;
-        char  *tmp;
-        tmp = (char *)kmalloc(sizeof(vma_t));
-        if(mm->vma_list == NULL) {
-#ifdef TARFS_DEBUG
-		kprintf("\t first VMA");
-#endif
-                tmp = (char *)kmalloc(sizeof(vma_t));
-                vm_tail = (vma_t *)tmp;
-                mm->vma_list = vm_tail;
-        }
-        else {
-#ifdef TARFS_DEBUG
-                kprintf("\t not first VMA");
-#endif
-                vm_tail = mm->vma_list;
-                while (vm_tail->next != NULL)
-                        vm_tail = vm_tail->next;
-                tmp = (char *)vm_tail + sizeof(vma_t);
-                vm_tail->next = (vma_t *)tmp;
-        }
-        mm->vma_count += 1;
-        return (vma_t *)tmp;
-}
-
-void allocate_virutal_region(pcb_t *pcb, va_t va, uint64_t size);
-
-void print_buf(uint32_t *buf, uint64_t size)
-{
-	int i;
-	for (i = 0; i < 16; i++) {
-		kprintf("%x ", buf[i]);
-		if (i != 0 && i%25 == 0)
-			kprintf("\n");
+	if ((dir->node->type == DIRECTORY) && (dir->current > 1)) {
+		dir->node = NULL;
+		dir->current = 0;
+		return 0;
 	}
-	kprintf("\n");
-
+	else
+		return -1;
 }
-
-
-pcb_t * load_elf_code(pcb_t * pcb, Elf64_Ehdr * elf_header, char * filename)
+	
+/* open a directory, returns a descriptor to dir */
+dir_t *opendir(char *path)
 {
-	Elf64_Phdr* pgm_header;
-	mm_t *mms = pcb->mm;
-#ifdef TARFS_DEBUG
-	if (!mms)
-		kprintf("\tPCB MM empty");
-#endif
-	vma_t *new_node;
-	pgm_header = (Elf64_Phdr *) ((void *)elf_header + elf_header->e_phoff);
-	for (int i = 0 ; i < elf_header->e_phnum; ++i) {
-		if ((int)pgm_header->p_type == 1) { /* 1 is PT_LOAD, specifies a loadable segment */
-			if (pgm_header->p_filesz > pgm_header->p_memsz)
-				kprintf("something wrong in Elf binary..");
-				
-				print_buf((uint32_t *)elf_header + pgm_header->p_offset, pgm_header->p_filesz);
-				allocate_virutal_region(NULL, pgm_header->p_vaddr, pgm_header->p_filesz);
-				memcpy((void*) pgm_header->p_vaddr, (void*) elf_header + pgm_header->p_offset, pgm_header->p_filesz);
-				print_buf((uint32_t *)pgm_header->p_vaddr, pgm_header->p_filesz);
-				
-#if 0
-			else
-				memset((char*) pgm_header->p_vaddr + pgm_header->p_filesz, 0, pgm_header->p_memsz - pgm_header->p_filesz);
-			memcpy((char*) pgm_header->p_vaddr, (void *) elf_header + pgm_header->p_offset, pgm_header->p_filesz);
-#endif
-			new_node = malloc_vma(mms);
-			if (!new_node)
-				kprintf("\t VMA not allocated");
+        tarfs_entry_t *node, *temp_node;
+        char *name, *temp_path;
+        int i = 0;
+	dir_t * ret_dir;
+        node = root;
 
-			new_node->vma_start = pgm_header->p_vaddr;
-			new_node->vma_end = new_node->vma_start + pgm_header->p_memsz;
-			new_node->vma_flags = pgm_header->p_flags;
-			new_node->vma_file = (uint64_t)elf_header;
-			new_node->vma_offset = pgm_header->p_offset;
+        temp_path = (char *)kmalloc(64);
+        strcpy(temp_path, path);
+
+        name = strtok(temp_path, "/");
+        if (name == NULL)
+                return NULL;
+
+        while (name !=NULL) {
+		temp_node = node;
+		for (i = 2; i < node->end; i++) {
+			if (strcmp(name, node->child[i]->name) == 0) {
+				node = node->child[i];
+				break;
+			}
 		}
-		pgm_header = pgm_header + 1;
+		if (i == temp_node->end)
+			return NULL;
+		name = strtok(NULL, "/");
 	}
-	pcb->entry = elf_header->e_entry;
-	kprintf("entry %p\n", pcb->entry);
-	pcb->heap_vma = (vma_t *)kmalloc(sizeof(vma_t));
-	vma_t *tmp = pcb->mm->vma_list;
-	while(tmp->next != NULL)
-		tmp = tmp->next;
-	pcb->heap_vma->vma_start = pcb->heap_vma->vma_end = ALIGN_DOWN((uint64_t)(tmp->vma_end + 0x1000));
-	pcb->heap_vma->vma_size = 0x1000;
+	if (node->type == DIRECTORY) {
+		ret_dir = (dir_t *)kmalloc(sizeof(dir_t));
+		ret_dir->current = 2;
+                ret_dir->node = node;
+#ifdef TARFS_DEBUG
+		kprintf(" return :%s ", ret_dir->node->name);
+#endif
+		return ret_dir;
+	}
+	else
+		return NULL;
+}
 
-	allocate_virutal_region(pcb, pcb->heap_vma->vma_start, pcb->heap_vma->vma_size);
-	return pcb;	
+/* create node for given Dir or file in tarfs tree structure, return tarfs_entry */
+tarfs_entry_t * create_tarfs_entry(char *name, uint64_t type, uint64_t start, uint64_t end, uint64_t inode_no, tarfs_entry_t *parent)
+{
+#ifdef TARFS_DEBUG
+	kprintf(" new_entry: %s %d %p %p %d %s ", name, type, start, end, inode_no, parent->name);
+#endif
+	tarfs_entry_t *entry = (tarfs_entry_t *)kmalloc(sizeof(tarfs_entry_t));
+	strcpy(entry->name, name);
+	entry->type = type;
+	entry->start = start;
+	entry->end = end;
+	entry->inode_no = inode_no;
+	entry->child[0] = entry;
+	entry->child[1] = parent;
+	
+	return entry;
+}
+
+/* parse individual entry(file or dir) found in tarfs */
+void parse_tarfs_entry(char *path, int type, uint64_t start, uint64_t end)
+{
+	tarfs_entry_t *temp1, *temp2, *temp3;
+	char *name, *temp_path;
+	int i = 0;
+
+	temp_path = (char *)kmalloc(64);
+        strcpy(temp_path, path);
+
+	temp1 = root->child[2];
+	name = strtok(temp_path, "/");
+        if (name == NULL)
+		return;
+
+	while (name != NULL) {
+		temp2 = temp1;
+		for (i = 2; i < temp1->end; i++) {
+			if (strcmp(name, temp1->child[i]->name) == 0) {
+				temp1 = (tarfs_entry_t *)temp1->child[i];
+				break;
+			}
+		}
+		if (i == temp2->end) {
+			temp3 = create_tarfs_entry(name, type, start, end, 0, temp2);
+#ifdef TARFS_DEBUG
+			kprintf(" p :%s c:%s ", temp2->name, temp3->name);
+#endif
+			temp1->child[temp1->end] = temp3;
+			temp1->end += 1;
+		}
+		name = strtok(NULL, "/");
+	}
 }
 
 void tarfs_init()
 {
-	struct posix_header_ustar *tarfs_itr = (struct posix_header_ustar *)&_binary_tarfs_start;
-	int t = 0, i = 0; //, j, k;
-	tarfs_entry_t *new_entry;
-	new_entry = (tarfs_entry_t *)kmalloc(sizeof(tarfs_entry_t));
+	tarfs_entry_t *entry;
+
+	/* allocate and place first node "/" */
+	root = (tarfs_entry_t *)kmalloc(sizeof(tarfs_entry_t));
+	strcpy(root->name,"/");
+	root->type = DIRECTORY;
+	root->start = 0;
+	root->end = 2;
+	root->current = 0;
+	root->child[0] = root;
+	root->child[1] = root;
+	root->inode_no = 0;
+	
+	/* allocate and place rootfs as child of "/" */
+	entry = create_tarfs_entry("rootfs", DIRECTORY, 0, 2, 0, root);
+	root->end += 1;
+	root->child[2] = entry;
+
+	/* TARFS starts at _binary_tarfs_start (use its address (&) to find the start of tarfs) */
 	uint64_t size;
-	while (1) {
-		tarfs_itr = (struct posix_header_ustar *)(&_binary_tarfs_start + t);
-		if (strlen(tarfs_itr->name) == 0) {
+	struct posix_header_ustar *tarfs_itr = (struct posix_header_ustar *)&_binary_tarfs_start;
+	uint32_t *end = (uint32_t *)tarfs_itr;
+
+	/* parse till end is reached */
+	while(*end++ || *end++ || *end) {
 #ifdef TARFS_DEBUG
-			kprintf("\tFile name empty");
+		kprintf(" entry: %s", tarfs_itr->name);
 #endif
-			break;
-		}
-#ifdef TARFS_DEBUG
-		kprintf("\t %s", tarfs_itr->name);
-#endif
-		strcpy(&new_entry->name[0], tarfs_itr->name);
 		size = 0;
-		/* detecting the size of file */
 		size = octal_to_decimal(stoi(tarfs_itr->size));
-		new_entry->size = size;
-		new_entry->addr_header = (uint64_t)&_binary_tarfs_start + t;
-		if (strcmp(tarfs_itr->typeflag, "5") == 0)
-                        new_entry->type = DIRECTORY;
-                else
-                        new_entry->type = FILE_TYPE;
-		
-		new_entry->parent_index = get_parent_index(&(new_entry->name[0]), new_entry->type);
-		tarfs_fs[i] = *new_entry;
-		i++;
-		if (i == 100)
-			break;
-		if (size == 0)
-			t += 512;
+		if(size % 512 != 0) {
+			size = (size/512)*512;
+			size += 512;
+		}
+		if (strcmp(tarfs_itr->typeflag, "5") == 0) /* */
+			parse_tarfs_entry(tarfs_itr->name, DIRECTORY, 0, 2);
 		else
-			t +=  (size % 512 == 0) ? size + 512 : size + (512 - size % 512) + 512;
+			parse_tarfs_entry(tarfs_itr->name, FILE_TYPE, (uint64_t)(tarfs_itr + 1), (uint64_t)((void *)tarfs_itr + size + sizeof(struct posix_header_ustar)));
+		tarfs_itr = (struct posix_header_ustar *)((uint64_t)tarfs_itr + size + sizeof(struct posix_header_ustar));
+		end = (uint32_t *)tarfs_itr;
 	}
 #ifdef TARFS_DEBUG
-	for (i = 0; i < 20; i++)
-		kprintf("\t new netry %s", tarfs_fs[i].name);
+	kprintf("opendir /rootfs/bin :");
+	dir_t * new = opendir("/rootfs/bin");
+	if (new)
+		kprintf("opendir success ");
+	fd_t * new_fd = file_open("/rootfs/bin/abc.txt", 1);
+	if(new_fd)
+		kprintf(" file open success fd : %p ", new_fd);
+	char *buf = (char *)kmalloc(1024);
+	int a = file_read(new_fd, buf, 27);
+	if (a != -1)
+		kprintf("read content: %s ", buf);
+	if (closedir(new) == 0)
+		kprintf("dir closed");
 #endif
 }
 
-pcb_t * create_elf_process(char *filename, char *argv[])
+uint64_t check_file_exists(char* filename)
 {
-	int offset = is_file_exists(filename);
-	//int offset = check_file_exists(filename);
-	if (offset == 0 || offset == 999) {
-		kprintf("\tFile not found");
-	} else
-	{
-		kprintf("\tFile found at offset : %d",offset);
-		/* load binary */
-		Elf64_Ehdr* elf_header = (Elf64_Ehdr *)(&_binary_tarfs_start + offset);
-		if (is_proper_executable(elf_header) != -1) {
-#ifdef TARFS_DEBUG
-			kprintf("\tElf proper");
-#endif
-			pcb_t * user_proc = (pcb_t *)kmalloc(sizeof(pcb_t));
-			mm_t * new_mm = (mm_t *)kmalloc(sizeof(mm_t));
-			user_proc->mm = new_mm;
-			return load_elf_code(user_proc, elf_header, filename);
-			//return NULL;
-		}
-	}
-	return NULL;
+	return 0;
 }
+
