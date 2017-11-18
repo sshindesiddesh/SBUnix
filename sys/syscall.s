@@ -1,3 +1,4 @@
+#include <sys/config.h>
 .text
 
 .global __syscall_yield

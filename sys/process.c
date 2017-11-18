@@ -6,6 +6,7 @@
 #include <sys/process.h>
 #include <sys/gdt.h>
 #include <sys/syscall.h>
+#include <sys/config.h>
 
 /* TODO: Bug : Scheduler schedukes few tasks repetatively.  Cannot see for finite. During infinite, something goes wrong */
 
@@ -81,7 +82,7 @@ pcb_t *create_kernel_thread(void *func)
 }
 
 /* Yield from process */
-void yield()
+void yield(void)
 {
 	pcb_t *cur_pcb = head;
 
@@ -98,28 +99,6 @@ void yield()
 #endif
 	__context_switch(cur_pcb, head);
 }
-
-/* Dummy Test Kernel Thread Functions */
-#if 0
-void func1()
-{
-	int b = 0;
-	while (1) {
-		kprintf("World %d\n", b++);
-		yield();
-	}
-}
-
-void func2()
-{
-	int a = 0;
-	while (1) {
-		kprintf("Hello %d\n", a++);
-		yield();
-	}
-}
-
-#endif
 
 void __switch_ring3(uint64_t rsp, uint64_t func);
 
@@ -160,7 +139,9 @@ void thread1()
 	while (1) {
 		__syscall_write("thread 1\n");
 		/* This is yield. Implemented as a system call. */
+#if	!PREEMPTIVE_SCHED
 		__syscall_yield();
+#endif
 
 	}
 }
@@ -177,7 +158,9 @@ void thread2()
 	while (1) {
 		__syscall_write("thread 2\n");
 		/* This is yield. Implemented as a system call. */
+#if	!PREEMPTIVE_SCHED
 		__syscall_yield();
+#endif
 
 	}
 }
@@ -192,8 +175,9 @@ void func5()
 {
 	while (1) {
 		__syscall_write("func 5\n");
-		yield();
+#if	!PREEMPTIVE_SCHED
 		__syscall_yield();
+#endif
 	}
 }
 

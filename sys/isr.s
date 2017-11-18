@@ -16,7 +16,7 @@ isr20:
 	pushq %r14
 	pushq %r15
 	callq __isr_timer_cb
-	callq yield
+	callq pre_empt_yield
 	popq %r15
 	popq %r14
 	popq %r13

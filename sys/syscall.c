@@ -3,7 +3,6 @@
 
 void yield();
 
-
 uint64_t __isr_syscall(syscall_in *in)
 {
 	if (in->syscall_no == 1) {
