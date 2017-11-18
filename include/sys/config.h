@@ -1,0 +1,13 @@
+#ifndef _KERN_CONFIG_H
+#define _KERN_CONFIG_H
+
+#define ENABLE_TIMER		0
+#define ENABLE_KEYBOARD		0
+
+#define PREEMPTIVE_SCHED	0
+#if PREEMPTIVE_SCHED
+#undef	ENABLE_TIMER
+#define	ENABLE_TIMER		1
+#endif
+
+#endif

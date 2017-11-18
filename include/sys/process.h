@@ -44,4 +44,6 @@ pcb_t *create_kernel_thread(void *func);
 void __context_switch(pcb_t *me, pcb_t *next);
 void schedule(int a);
 void process_init();
+/* Yield from process */
+void yield(void);
 #endif

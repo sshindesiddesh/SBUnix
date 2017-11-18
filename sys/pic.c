@@ -5,6 +5,7 @@
 #include <sys/ahci.h>
 #include <sys/pic.h>
 #include <sys/idt.h>
+#include <sys/config.h>
 
 void pic_ack(uint8_t irq_id)
 {
@@ -65,17 +66,20 @@ void pic_init()
 	outb(PIC2_DATA, 0x02);
 
 	/* Mask everything */
-	/* except Timer Interrupt */
-	/* except Keyboard Interrupt */
-	outb(PIC1_DATA, 0x3F);
-	outb(PIC2_DATA, 0x3F);
-	/* Timer currently disabled */
-	set_mask(0x20);
-	/* Keyboard currently disabled */
-	set_mask(0x21);
-#if 0
+	outb(PIC1_DATA, 0x00);
+	outb(PIC2_DATA, 0x00);
+
+	/* Explicit masking is done becuase the above masking is not working.
+	 * TODO: Fix this. */
+#if 	ENABLE_TIMER
 	clr_mask(0x20);
+#else
+	set_mask(0x20);
+#endif
+#if	ENABLE_KEYBOARD
 	clr_mask(0x21);
+#else
+	set_mask(0x21);
 #endif
 	set_mask(0x22);
 	set_mask(0x23);

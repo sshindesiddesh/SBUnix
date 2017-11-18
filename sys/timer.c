@@ -1,6 +1,8 @@
 #include <sys/timer.h>
 #include <sys/kprintf.h>
 #include <sys/pic.h>
+#include <sys/config.h>
+#include <sys/process.h>
 
 void timer_init()
 {
@@ -29,4 +31,11 @@ void __isr_timer_cb(uint64_t count)
 	}
 	/* Acknowledge PIC */
 	pic_ack(0x20);
+}
+
+void pre_empt_yield(void)
+{
+#if	PREEMPTIVE_SCHED
+	yield();
+#endif
 }
