@@ -1,6 +1,9 @@
 #ifndef _KUTILS_H
 #define _KUTILS_H
 #include <sys/defs.h>
+char *mystrtok_r(char *bstr, const char *delim, char **save);
+char *strtok(char *bstr, const char *delim);
+size_t strncmp(const char *s1, const char *s2, int len);
 char* strcpy(char *dst, const char *src);
 size_t strlen(const char *buf);
 size_t strcmp(const char *s1, const char *s2);
