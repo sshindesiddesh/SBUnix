@@ -56,7 +56,6 @@ pcb_t *create_user_process(void *func)
 	set_proc_page_table(l_pcb);
 
 	uint64_t u_stack = (uint64_t)kmalloc_user(l_pcb, 0x1000);
-	//uint64_t u_stack = (uint64_t)kmalloc(0x1000);
 	l_pcb->u_rsp = (u_stack + 4096 - 8);
 	kprintf("URSP : %p\n", l_pcb->u_rsp);
 
@@ -112,7 +111,6 @@ void yield(void)
 	__context_switch(cur_pcb, head);
 }
 
-//void __switch_ring3(uint64_t rsp, uint64_t func);
 void __switch_ring3(pcb_t *pcb);
 
 void func2();
@@ -140,16 +138,13 @@ void try_syscall()
 		);
 	__asm__ volatile ("int $0x80");
 
-	/* Yield */
-	__asm__ volatile ("mov $2, %rax");
-	__asm__ volatile ("int $0x80");
 }
 
 
 void thread1()
 {
 	while (1) {
-		__syscall_info();
+		__syscall_write("thread 1\n");
 		/* This is yield. Implemented as a system call. */
 #if	!PREEMPTIVE_SCHED
 		__syscall_yield();
@@ -161,12 +156,10 @@ void thread1()
 void func1()
 {
 	set_tss_rsp((void *)&usr_pcb_1->kstack[KSTACK_SIZE - 8]);
-	//__switch_ring3(usr_pcb_1->u_rsp, (uint64_t)thread1);
 	usr_pcb_1->entry = (uint64_t)thread1;
 	__switch_ring3(usr_pcb_1);
 }
 
-/* User Process */
 void thread2()
 {
 	while (1) {
@@ -213,6 +206,8 @@ void process_init()
 {
 	pcb_t *pcb0 = get_new_pcb();
 	pcb_t *pcb1 = create_kernel_process(init_process);
+	create_kernel_process(thread2);
+	create_kernel_process(thread1);
 
 	usr_pcb_1 = create_user_process(elf_process);
 	/* This happens only once and kernel should not return to this stack. */
