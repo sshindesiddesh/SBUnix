@@ -5,6 +5,7 @@
 #include <sys/idt.h>
 #include <sys/memory.h>
 #include <sys/debug.h>
+#include <sys/config.h>
 
 pml_t *pml;
 uint64_t phys_base;
@@ -280,11 +281,16 @@ void page_table_init()
 void set_proc_page_table(pcb_t *pcb)
 {
 	if (pcb->is_usr) {
+#if	ENABLE_USER_PAGING
 		pml_t *usr_pml = (pml_t *)get_free_pages(1);
 		uint64_t *v_usr_pml = (uint64_t *)pa2va((uint64_t)usr_pml);
 		uint64_t *v_kern_pml = (uint64_t *)pa2va((uint64_t)pml);
 		v_usr_pml[511] = v_kern_pml[511];
 		pcb->pml4 = (uint64_t)usr_pml;
+	/* If use paging is not enabled, set every processes pml as kernel's pml */
+#else
+		pcb->pml4 = (uint64_t)pml;
+#endif
 	} else {
 		pcb->pml4 = (uint64_t)pml;
 	}
@@ -321,10 +327,15 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	__asm__ volatile("mov %0, %%cr3":: "b"(pml));
 	change_console_ptr();
 	kprintf("Hello World\n");
-#if 0
+
+#if	ENABLE_USER_PAGING
+#else
 	/* No need to map something to user space. Paging betweeen processes is working. */
 	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, PTE_U);
 	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, PTE_U);
+#endif
+
+#if 0
 	/* Kmalloc_user signature has changed, write more concrete kmalloc_user test cases */
 	va_t *ptr;
 	ptr = (va_t *)kmalloc_user(0x1000);
