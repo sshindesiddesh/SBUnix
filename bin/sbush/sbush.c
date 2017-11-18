@@ -319,8 +319,53 @@ int pros_pipes(char *s[])
         return 0;
 }
 
+
+ssize_t write_1(char *buf)
+{
+	uint64_t ip1 = (uint64_t)buf;
+	size_t out = 0;
+	__asm__ (
+		/* System Call Number */
+		"movq $1, %%rax\n"
+		/* Param 1 */
+		"movq %0, %%rdi\n"
+#if 0
+		/* Param 2 */
+		"movq %2, %%rsi\n"
+		/* Param 3 */
+		"movq %3, %%rdx\n"
+		/* Param 4 */
+		"movq %1, %%rcx\n"
+		/* Param 5 */
+		"movq %1, %%r8\n"
+		/* Param 6 */
+		"movq %1, %%r9\n"
+#endif
+		"int $0x80\n"
+		//: "=r"(out)/* output parameters, we aren't outputting anything, no none */
+		:
+		/* (none) */
+		: /* input parameters mapped to %0 and %1, repsectively */
+		"m" (ip1)
+		: /* registers that we are "clobbering", unneeded since we are calling exit */
+		"rax", "rdi", "rsi", "rdx"
+	);
+	return out;
+}
+
+
 int main(int argc, char* argv[], char *envp[])
 {
+	char *buf = "hello_world\n";
+
+	while (1) {
+		__asm__ volatile("movq $0, %rax");
+		__asm__ volatile("int $0x80");
+		write_1(buf);
+		__asm__ volatile("movq $2, %rax");
+		__asm__ volatile("int $0x80");
+	}
+
 	/* Set env pointer */
 	set_ep(envp);
 	/* Set default environment with known system paths */
