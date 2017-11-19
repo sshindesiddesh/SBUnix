@@ -337,6 +337,7 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags)
 	vma->start = rstart;
 	vma->end = vma->start + rsize;
 	vma->type = HEAP;
+	vma->flags = flags;
 
 	if (mm->tail) {
 		mm->tail->next = vma;
