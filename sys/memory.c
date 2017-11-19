@@ -6,6 +6,7 @@
 #include <sys/memory.h>
 #include <sys/debug.h>
 #include <sys/config.h>
+#include <sys/process.h>
 
 pml_t *pml;
 uint64_t phys_base;
@@ -398,6 +399,7 @@ void print_vmas(vma_t *head)
 		kprintf("st:%x en:%x\t", head->start, head->end);
 		head = head->next;
 	}
+	kprintf("\n");
 }
 
 vma_t *get_empty_vma(va_t addr, uint64_t size, mm_struct_t *mm)
@@ -416,16 +418,19 @@ vma_t *get_empty_vma(va_t addr, uint64_t size, mm_struct_t *mm)
 	while (h) {
 		/* Address already mapped, so kernel cannot map */
 		/* 4 possible combinations of intersections */
+
+		/* addr lies in head. cannot map */
 		if (addr >= h->start && addr < h->end) {
 			return 0;
-		} else if (end >= h->start && (end < h->end)) {
+		/*  */
+		} else if (end > h->start && end < h->end) {
 			return 0;
 		} else if (h->start >= addr && h->start < end) {
 			return 0;
-		} else if (h->end >= addr && h->end < end) {
+		} else if (h->end > addr && h->end < end) {
 			return 0;
 		/* if entire vma mapping is before current vma */
-		} else if ((addr < h->start) && ((addr + size) < h->start)) {
+		} else if ((addr < h->start) && (end <= h->start)) {
 			vma = (vma_t *)kmalloc(PG_SIZE);
 			/* Before head*/
 			if (!h_p) {
@@ -473,6 +478,75 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags)
 	return vma->start;
 }
 
+va_t munmap(va_t va_start, uint64_t size)
+{
+	/* Kernel chooses */
+	if (va_start == 0) {
+	}
+
+	uint64_t addr = round_down(va_start, PG_SIZE);
+	uint64_t end = addr + round_up(size, PG_SIZE);
+
+	pcb_t *pcb = cur_pcb;
+	mm_struct_t *mm = pcb->mm;
+
+	vma_t *h = mm->head, *vma, *h_p = 0;
+
+	/* Head is NULL */
+	if (!h) {
+		return -1;
+	}
+
+	while (h) {
+		/* 4 possible combinations of intersections */
+		/* smaller inbetween range : unmap in between existing vma. 
+		 * split them into two (h->start:addr) and (end:h->end) */
+		if (addr > h->start && end < h->end) {
+			/* First vma */
+			h->end = addr;
+			/*second vma*/
+			vma = (vma_t *)kmalloc(PG_SIZE);
+			vma->start = end;
+			vma->end = h->end;
+			vma->flags = h->flags;
+			/* update links */
+			vma->next = h->next;
+			h->next = vma;
+		/* exact or larger range : unmap for exact or larger vma. remove it */
+		} else if (addr <= h->start && end >= h->end) {
+			vma = h;
+			if (!h_p) {
+				mm->head = h->next;
+				h_p = 0;
+				h = h->next;
+				continue;
+			} else {
+				h_p->next = h->next;
+			}
+			/* TODO: kfree vma */
+			/* kfree(vma) */
+		/* smaller left range : unmap for lower portion of vma. update the start address of vma.
+		 * h->start = end . new vma (end, h->end) */
+		} else if (h->start >= addr && h->start <= end) {
+			vma = h;
+			h->start = end;
+			/* TODO: kfree(vma) */
+		/* smaller right range : unmap for higher portion of vma. update the end address of vma.
+		 * h->end = addr . new vma (h->start, start) */
+		} else if (addr >= h->start && addr <= h->end) {
+			vma = h;
+			h->end = addr;
+			/* TODO: kfree(vma) */
+		}
+		h_p = h;
+		h = h->next;
+	}
+
+	return 0;
+}
+
+pcb_t *create_kernel_process(void *func);
+
 void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 {
 	struct smap_t {
@@ -504,6 +578,19 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	__asm__ volatile("mov %0, %%cr3":: "b"(pml));
 	change_console_ptr();
 	kprintf("Hello World\n");
+
+#if 0
+	pcb_t *pcb0 = create_kernel_process(NULL);
+	cur_pcb = pcb0;
+	mmap(0x1000, 0x1000*2, 0);
+	mmap(0x5000, 0x1000*2, 0);
+	mmap(0x3000, 0x1000*2, 0);
+	mmap(0x7000, 0x1000*2, 0);
+	print_vmas(pcb0->mm->head);
+	munmap(0x1000, 0x1000*7);
+	print_vmas(pcb0->mm->head);
+	while (1);
+#endif
 
 #if	ENABLE_USER_PAGING
 #else
