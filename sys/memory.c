@@ -7,6 +7,7 @@
 #include <sys/debug.h>
 #include <sys/config.h>
 #include <sys/process.h>
+#include <sys/kutils.h>
 
 pml_t *pml;
 uint64_t phys_base;
@@ -249,6 +250,7 @@ pte_t *get_pte_from_pml_unmap(pml_t *pml, va_t va, uint8_t perm)
 
 void unmap_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm)
 {
+	kprintf("unmap : va %p, size %x\n", va, size);
 	pte_t *pte_ptr;
 	int i;
 	for (i = 0; i < size; i += PG_SIZE) {
@@ -515,6 +517,9 @@ va_t munmap(va_t va_start, uint64_t size)
 		/* exact or larger range : unmap for exact or larger vma. remove it */
 		} else if (addr <= h->start && end >= h->end) {
 			vma = h;
+			/* TODO: kfree */
+			/* free range -> (vma->start:vma->end) */
+			unmap_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)vma->start, vma->end - vma->start, 0, 0);
 			if (!h_p) {
 				mm->head = h->next;
 				h_p = 0;
@@ -523,20 +528,22 @@ va_t munmap(va_t va_start, uint64_t size)
 			} else {
 				h_p->next = h->next;
 			}
-			/* TODO: kfree vma */
-			/* kfree(vma) */
 		/* smaller left range : unmap for lower portion of vma. update the start address of vma.
 		 * h->start = end . new vma (end, h->end) */
 		} else if (h->start >= addr && h->start <= end) {
 			vma = h;
-			h->start = end;
 			/* TODO: kfree(vma) */
+			/* free range -> (vma->start:end) */
+			unmap_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)vma->start, end - vma->start, 0, 0);
+			h->start = end;
 		/* smaller right range : unmap for higher portion of vma. update the end address of vma.
-		 * h->end = addr . new vma (h->start, start) */
+		 * h->end = addr . new vma (h->start, addr) */
 		} else if (addr >= h->start && addr <= h->end) {
 			vma = h;
-			h->end = addr;
 			/* TODO: kfree(vma) */
+			/* free range -> (addr:vma->end) */
+			unmap_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)addr, vma->end - addr, 0, 0);
+			h->end = addr;
 		}
 		h_p = h;
 		h = h->next;
@@ -582,14 +589,17 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 #if 0
 	pcb_t *pcb0 = create_kernel_process(NULL);
 	cur_pcb = pcb0;
-	mmap(0x1000, 0x1000*2, 0);
+	char *buf = (char *)mmap(0x1000, 0x1000*2, 0);
+	strcpy(buf, "Hello World\n");
+	kprintf("%s\n", buf);
+	munmap((uint64_t)buf, 0x1000);
+	kprintf("%s\n", buf);
 	mmap(0x5000, 0x1000*2, 0);
 	mmap(0x3000, 0x1000*2, 0);
 	mmap(0x7000, 0x1000*2, 0);
 	print_vmas(pcb0->mm->head);
 	munmap(0x1000, 0x1000*7);
 	print_vmas(pcb0->mm->head);
-	while (1);
 #endif
 
 #if	ENABLE_USER_PAGING
