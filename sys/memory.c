@@ -70,7 +70,10 @@ void allocate_vma(pcb_t *pcb, vma_t *vma)
 	for (; i <= va_size; i += PG_SIZE) {
 		pa = get_free_pages(1);
 		map_page_entry((pml_t *)pa2va((pa_t)pcb->pml4), (va_t)va_start, 0x1000, (pa_t)pa, PTE_U);
-		memset((void *)va_start, 0, PG_SIZE);
+		/* Kernel allocates vmas for the user process. So it does not have the va in page tables.
+		 * and hence should not zero out it.
+		 * And zero out is done is get_free_pages() only. */
+		/* memset((void *)va_start, 0, PG_SIZE); */
 #ifdef MALLOC_DEBUG
 		kprintf("Address va pa%p\n", pa2va(pa), va);
 #endif
@@ -299,17 +302,17 @@ void set_proc_page_table(pcb_t *pcb)
 	}
 }
 
-ret_t check_addr_in_vma_list(va_t addr, vma_t *head)
+vma_t *check_addr_in_vma_list(va_t addr, vma_t *head)
 {
 	if (!head)
-		return ERROR;
+		return 0;
 	vma_t *vma = head;
 	while (vma) {
 		if (addr >= vma->start && addr < vma->end)
-			return SUCCESS;
+			return vma;
 		vma = vma->next;
 	}
-	return ERROR;
+	return 0;
 }
 
 va_t mmap(va_t va_start, uint64_t size, uint64_t flags)
@@ -325,7 +328,7 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags)
 
 	int i = va_start;
 	for (; i < va_start + rsize; i += PG_SIZE) {
-		if (check_addr_in_vma_list(i, mm->head) == SUCCESS) {
+		if (check_addr_in_vma_list(i, mm->head) != 0) {
 			return 0;
 		}
 	}
@@ -333,6 +336,7 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags)
 	vma_t *vma = (vma_t *)kmalloc(PG_SIZE);
 	vma->start = rstart;
 	vma->end = vma->start + rsize;
+	vma->type = HEAP;
 
 	if (mm->tail) {
 		mm->tail->next = vma;

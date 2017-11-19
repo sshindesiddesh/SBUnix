@@ -6,6 +6,8 @@
 #define PG_DEBUG
 /* Kmalloc Debug */
 #define MALLOC_DEBUG
+/* VMA Debug */
+#define VMA_DEBUG
 #endif
 
 #endif

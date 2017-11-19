@@ -6,6 +6,10 @@
 #include <sys/idt.h>
 #include <sys/kutils.h>
 #include <sys/memory.h>
+#include <sys/process.h>
+
+/* Head of the running linked list for yield */
+extern pcb_t *cur_pcb;
 
 IDTDesc idt_desc[NO_OF_INT];
 idtr_t idtr;
@@ -42,8 +46,19 @@ extern uint64_t phys_free;
 extern uint64_t phys_end;
 void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 {
+#ifdef	VMA_DEBUG
 	kprintf("!!!Pagefault : Address: %p Error %x !!!\n", faultAddr, err_code);
-	while (1);
+#endif
+	vma_t *vma = check_addr_in_vma_list(faultAddr, cur_pcb->mm->head);
+	if (!vma) {
+		kprintf("!!!Segmentation Fault!!!");
+		while (1);
+	}
+	if (vma->type == HEAP) {
+		allocate_vma(cur_pcb, vma);
+	} else if (vma->type == STACK) {
+
+	}
 }
 
 void init_idt()

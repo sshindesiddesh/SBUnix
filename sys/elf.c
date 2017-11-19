@@ -46,6 +46,8 @@ int load_elf_code(pcb_t *pcb, void *start)
 			vma->start = p_hdr->p_vaddr;
 			vma->end = p_hdr->p_vaddr + p_hdr->p_filesz;
 			vma->flags = p_hdr->p_flags;
+			/* TODO: Check this */
+			vma->type = OTHER;
 			vma->file = 0;
 #if 0
 			if (!mm->head) {
