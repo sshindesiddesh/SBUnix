@@ -1,7 +1,6 @@
 #ifndef _TARFS_H
 #define _TARFS_H
 #include <sys/defs.h>
-#include <sys/process.h>
 #include <sys/elf64.h>
 
 #define FILE_TYPE 0
@@ -11,6 +10,7 @@
 
 extern char _binary_tarfs_start;
 extern char _binary_tarfs_end;
+enum { RD_ONLY = 0, WR_ONLY = 1, O_RDWR = 2 };
 
 struct posix_header_ustar {
   char name[100];
@@ -51,6 +51,7 @@ struct tarfs_entry_t {
 struct fd_t {
 	uint64_t perm;
 	uint64_t inode_no;
+	uint64_t current;
 	tarfs_entry_t *node;
 };
 

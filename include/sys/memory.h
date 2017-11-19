@@ -1,8 +1,10 @@
 #ifndef _MEMORY_H
 #define _MEMORY_H
+#include <sys/tarfs.h>
 
 #define PG_SIZE 4096
 #define KERNBASE        (0xffffffff80000000)
+#define MAX_FD_CNT 100
 
 #define PTE_P           0x001   // Present
 #define PTE_W           0x002   // Writeable
@@ -80,6 +82,8 @@ typedef struct PCB {
 	uint8_t is_usr;
 	struct mm_struct_t *mm;
 	struct PCB *next;
+	fd_t *fd[MAX_FD_CNT];
+	char current_dir[100];
 } pcb_t;
 
 typedef struct mm_struct_t {
