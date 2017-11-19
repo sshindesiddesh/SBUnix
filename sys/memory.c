@@ -69,7 +69,7 @@ void allocate_vma(pcb_t *pcb, vma_t *vma)
 	int i = 0;
 	for (; i <= va_size; i += PG_SIZE) {
 		pa = get_free_pages(1);
-		map_page_entry((pml_t *)pa2va((pa_t)pcb->pml4), (va_t)va_start, 0x1000, (pa_t)pa, PTE_U);
+		map_page_entry((pml_t *)pa2va((pa_t)pcb->pml4), (va_t)va_start, 0x1000, (pa_t)pa, PTE_P | vma->flags);
 		/* Kernel allocates vmas for the user process. So it does not have the va in page tables.
 		 * and hence should not zero out it.
 		 * And zero out is done is get_free_pages() only. */
@@ -145,7 +145,7 @@ va_t kmalloc_user(pcb_t *pcb, const uint64_t size)
 	int i;
 	for (i = 0; i < pgr; i++) {
 		pa = get_free_pages(1);
-		map_page_entry((pml_t *)pa2va((pa_t)pcb->pml4), (va_t)start_va, 0x1000, (pa_t)pa, PTE_U);
+		map_page_entry((pml_t *)pa2va((pa_t)pcb->pml4), (va_t)start_va, 0x1000, (pa_t)pa, PTE_P | PTE_W | PTE_U);
 		/* Kernel cannot write these pages as these pages are mapped in users page tables. */
 		/* memset((void *)start_va, 0, PG_SIZE); */
 #ifdef MALLOC_DEBUG
@@ -196,10 +196,10 @@ pte_t *get_pte_from_pgdir(pgdir_t *pgdir, va_t va, uint8_t perm)
 #endif
 	if (!(pgdir[PDX(va)] & PTE_P)) {
 		pte_ptr = (pte_t *)(pte_t)get_free_pages(1);
-		pgdir[PDX(va)] = ((pgdir_t)pte_ptr | PTE_P | perm | PTE_W);
+		pgdir[PDX(va)] = ((pgdir_t)pte_ptr | perm);
 	} else {
 		pte_ptr = (pte_t *)(pgdir[PDX(va)] & ~(0xFFF));
-		pgdir[PDX(va)] = ((pgdir_t)pte_ptr | PTE_P | perm | PTE_W);
+		pgdir[PDX(va)] = ((pgdir_t)pte_ptr | perm);
 #ifdef PG_DEBUG
 		kprintf(" ISSUE PGDIR ");
 #endif
@@ -220,10 +220,10 @@ pte_t *get_pte_from_pdpe(pdpe_t *pdpe, va_t va, uint8_t perm)
 #endif
 	if (!(pdpe[PDPE(va)] & PTE_P)) {
 		pgdir = (pgdir_t *)get_free_pages(1);
-		pdpe[PDPE(va)] = ((pdpe_t)pgdir | PTE_P | perm | PTE_W);
+		pdpe[PDPE(va)] = ((pdpe_t)pgdir | perm);
 	} else {
 		pgdir = (pgdir_t *)(pdpe[PDPE(va)] & (0xFFFFFFFFfffff000));
-		pdpe[PDPE(va)] = ((pdpe_t)pgdir | PTE_P | perm | PTE_W);
+		pdpe[PDPE(va)] = ((pdpe_t)pgdir | perm);
 #ifdef PG_DEBUG
 		kprintf(" ISSUE PDPE ");
 #endif
@@ -243,10 +243,10 @@ pte_t *get_pte_from_pml(pml_t *pml, va_t va, uint8_t perm)
 #endif
 	if (!(pml[PML4(va)] & PTE_P)) {
 		pdpe = (pdpe_t *)get_free_pages(1);
-		pml[PML4(va)] = ((pml_t)pdpe | PTE_P | perm | PTE_W);
+		pml[PML4(va)] = ((pml_t)pdpe | perm);
 	} else {
 		pdpe = (pdpe_t *)(pml[PML4(va)] & ~(0xFFF));
-		pml[PML4(va)] = ((pml_t)pdpe | PTE_P | perm | PTE_W);
+		pml[PML4(va)] = ((pml_t)pdpe | perm);
 #ifdef PG_DEBUG
 		kprintf(" ISSUE PML");
 #endif
@@ -255,7 +255,7 @@ pte_t *get_pte_from_pml(pml_t *pml, va_t va, uint8_t perm)
 	return pte;
 }
 
-void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint8_t perm)
+void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm)
 {
 	pte_t *pte_ptr;
 	int i;
@@ -266,7 +266,7 @@ void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint8_t perm)
 			kprintf(" v %p p %p ptr %p\n", va + i, pa + i, pte_ptr);
 #endif
 			*pte_ptr = pa + i;
-			*pte_ptr = ((*pte_ptr) | PTE_P | PTE_W | perm);
+			*pte_ptr = ((*pte_ptr) | perm);
 		}
 	}
 }
@@ -278,9 +278,9 @@ void page_table_init()
 	kprintf("pml %p ", pml);
 #endif
 	/* TODO: Map only these regions ? */
-	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, 0);
+	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, PTE_P | PTE_W);
 	/* TODO: 2 pages required ? */
-	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, 0);
+	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, PTE_P | PTE_W);
 }
 
 /* This function sets kernel and console page tables for a user process. */
@@ -384,8 +384,8 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 #if	ENABLE_USER_PAGING
 #else
 	/* No need to map something to user space. Paging betweeen processes is working. */
-	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, PTE_U);
-	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, PTE_U);
+	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, PTE_P | PTE_W | PTE_U);
+	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, PTE_P | PTE_W | PTE_U);
 #endif
 
 #if 0
