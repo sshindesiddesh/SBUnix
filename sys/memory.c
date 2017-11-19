@@ -14,6 +14,9 @@ uint64_t phys_end;
 page_disc_t *free_list_ptr = 0;
 static page_disc_t *pd_prev = 0;
 static uint64_t total_pages = 0;
+/* Head of the running linked list for yield */
+extern pcb_t *cur_pcb;
+
 
 
 pa_t page2pa(page_disc_t *ptr)
@@ -294,6 +297,52 @@ void set_proc_page_table(pcb_t *pcb)
 	} else {
 		pcb->pml4 = (uint64_t)pml;
 	}
+}
+
+ret_t check_addr_in_vma_list(va_t addr, vma_t *head)
+{
+	if (!head)
+		return ERROR;
+	vma_t *vma = head;
+	while (vma) {
+		if (addr >= vma->start && addr < vma->end)
+			return SUCCESS;
+		vma = vma->next;
+	}
+	return ERROR;
+}
+
+va_t mmap(va_t va_start, uint64_t size, uint64_t flags)
+{
+	/* Kernel chooses */
+	if (va_start == 0) {
+	}
+
+	uint64_t rstart = round_down(va_start, PG_SIZE);
+	uint64_t rsize = round_up(size, PG_SIZE);
+	pcb_t *pcb = cur_pcb;
+	mm_struct_t *mm = pcb->mm;
+
+	int i = va_start;
+	for (; i < va_start + rsize; i += PG_SIZE) {
+		if (check_addr_in_vma_list(i, mm->head) == SUCCESS) {
+			return 0;
+		}
+	}
+
+	vma_t *vma = (vma_t *)kmalloc(PG_SIZE);
+	vma->start = rstart;
+	vma->end = vma->start + rsize;
+
+	if (mm->tail) {
+		mm->tail->next = vma;
+		mm->tail = mm->tail->next;
+	} else {
+		mm->tail = vma;
+		mm->head = vma;
+	}
+
+	return vma->start;
 }
 
 void memory_init(uint32_t *modulep, void *physbase, void *physfree)

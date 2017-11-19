@@ -13,7 +13,7 @@
 extern pml_t *pml;
 
 /* Head of the running linked list for yield */
-pcb_t *head = NULL;
+pcb_t *cur_pcb = NULL;
 
 /* Global PID assigner */
 static uint64_t PID = -1;
@@ -35,21 +35,21 @@ pcb_t *get_new_pcb()
  */
 pcb_t *create_user_process(void *func)
 {
-	pcb_t *l_pcb = get_new_pcb(), *t_pcb = head;
+	pcb_t *l_pcb = get_new_pcb(), *t_pcb = cur_pcb;
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)func;
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]) = (uint64_t)l_pcb;
 	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]);
 
-	if (head == NULL) {
-		head = l_pcb;
+	if (cur_pcb == NULL) {
+		cur_pcb = l_pcb;
 	} else {
-		while (t_pcb->next != head)
+		while (t_pcb->next != cur_pcb)
 			t_pcb = t_pcb->next;
 		t_pcb->next = l_pcb;
 		
 	}
 
-	l_pcb->next = head;
+	l_pcb->next = cur_pcb;
 
 	l_pcb->is_usr = 1;
 
@@ -57,7 +57,7 @@ pcb_t *create_user_process(void *func)
 
 	uint64_t u_stack = (uint64_t)kmalloc_user(l_pcb, 0x1000);
 	l_pcb->u_rsp = (u_stack + 4096 - 8);
-	kprintf("URSP : %p\n", l_pcb->u_rsp);
+	l_pcb->mm = (mm_struct_t *)kmalloc(0x1000);
 
 	return l_pcb;
 }
@@ -70,21 +70,23 @@ pcb_t *create_user_process(void *func)
  */
 pcb_t *create_kernel_process(void *func)
 {
-	pcb_t *l_pcb = get_new_pcb(), *t_pcb = head;
+	pcb_t *l_pcb = get_new_pcb(), *t_pcb = cur_pcb;
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)func;
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]) = (uint64_t)l_pcb;
 	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]);
 
 	l_pcb->is_usr = 0;
 
-	if (head == NULL) {
-		head = l_pcb;
+	if (cur_pcb == NULL) {
+		cur_pcb = l_pcb;
 	} else {
-		while (t_pcb->next != head)
+		while (t_pcb->next != cur_pcb)
 			t_pcb = t_pcb->next;
 		t_pcb->next = l_pcb;
 	}
-	l_pcb->next = head;
+	l_pcb->next = cur_pcb;
+
+	l_pcb->mm = (mm_struct_t *)kmalloc(0x1000);
 
 	set_proc_page_table(l_pcb);
 
@@ -94,23 +96,23 @@ pcb_t *create_kernel_process(void *func)
 /* Yield from process */
 void yield(void)
 {
-	pcb_t *cur_pcb = head;
+	pcb_t *prv_pcb = cur_pcb;
 
-	if (head == head->next)
+	if (cur_pcb == cur_pcb->next)
 		return;
 
-	head = head->next;
+	cur_pcb = cur_pcb->next;
 
 	/* This is hardcoded for now as rsp is not updated after returning from the syscall. TODO: Check this. */
-	set_tss_rsp((void *)&head->kstack[KSTACK_SIZE - 8]);
+	set_tss_rsp((void *)&cur_pcb->kstack[KSTACK_SIZE - 8]);
 	
 #ifdef PROC_DEBUG
-	kprintf("SCH: PID %d", head->pid);
+	kprintf("SCH: PID %d", cur_pcb->pid);
 #endif
 #if	ENABLE_USER_PAGING
-	__asm__ volatile("mov %0, %%cr3":: "b"(head->pml4));
+	__asm__ volatile("mov %0, %%cr3":: "b"(cur_pcb->pml4));
 #endif
-	__context_switch(cur_pcb, head);
+	__context_switch(prv_pcb, cur_pcb);
 }
 
 void __switch_ring3(pcb_t *pcb);
@@ -201,7 +203,6 @@ void elf_process()
 	set_tss_rsp((void *)&usr_pcb_1->kstack[KSTACK_SIZE - 8]);
 	__switch_ring3(usr_pcb_1);
 }
-
 
 /* Initialise kernel thread creation. */
 void process_init()

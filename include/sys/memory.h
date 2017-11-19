@@ -25,19 +25,6 @@
 #define PDX(la)         ((((uint64_t) (la)) >> PDXSHIFT) & 0x1FF)
 #define PTX(la)         ((((uint64_t) (la)) >> PTXSHIFT) & 0x1FF)
 
-//extern char kernmem, physbase;
-typedef struct page_dir {
-        struct page_dir *next;
-        int acc;
-} page_disc_t;
-
-typedef uint64_t pml_t;
-typedef uint64_t pdpe_t;
-typedef uint64_t pte_t;
-typedef uint64_t va_t;
-typedef uint64_t pa_t;
-typedef uint64_t pgdir_t;
-
 /* round down to nearest multiple of num */
 #define round_down(num, base)                \
 ({                                           \
@@ -51,7 +38,74 @@ typedef uint64_t pgdir_t;
     (round_down((uint64_t) (num) + __base - 1, __base)); \
 })
 
+#define KSTACK_SIZE	4096
+/* 14 is the number of push/pop in context switch */
+#define CON_STACK_SIZE	(14*8)
+
+//extern char kernmem, physbase;
+typedef struct page_dir {
+        struct page_dir *next;
+        int acc;
+} page_disc_t;
+
+typedef uint64_t pml_t;
+typedef uint64_t pdpe_t;
+typedef uint64_t pte_t;
+typedef uint64_t va_t;
+typedef uint64_t pa_t;
+typedef uint64_t pgdir_t;
+typedef struct mm_struct_t mm_struct_t;
+
+typedef enum vma_type {
+	TEXT = 0,
+	DATA,
+	STACK,
+	HEAP,
+	OTHER
+} vma_type;
+
+typedef struct PCB {
+	uint64_t pid;
+	/* offset : 8 Do not move this. Used in assembly with offset */
+	uint64_t rsp;
+	/* offset : 0x10 Do not move this. Used in assembly with offset */
+	pml_t pml4;
+	/* offset : 0x18 Do not move this. Used in assembly with offset */
+	uint64_t entry;
+	/* offset : 0x20 Do not move this. Used in assembly with offset */
+	/* User Space stack */
+	uint64_t u_rsp;
+	/* Kernel Space stack */
+	uint8_t kstack[KSTACK_SIZE];
+	uint8_t is_usr;
+	struct mm_struct_t *mm;
+	struct PCB *next;
+} pcb_t;
+
+typedef struct mm_struct_t {
+        struct vma *head, *tail;
+        uint32_t vma_cnt;
+} mm_t;
+
+typedef struct vma {
+        struct mm_struct_t *vm_mm;
+        uint64_t start;
+        uint64_t end;
+	vma_type type;
+        struct vma *next;
+        uint64_t flags;
+        uint64_t file;
+	uint64_t offset;
+} vma_t;
+
+typedef enum ret_t {
+	ERROR = -1,
+	SUCCESS = 0,
+} ret_t;
+
 va_t kmalloc(const uint64_t size);
 void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint8_t perm);
+ret_t check_addr_in_vma_list(va_t addr, vma_t *head);
+va_t mmap(va_t va_start, uint64_t size, uint64_t flags);
 
 #endif

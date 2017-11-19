@@ -266,10 +266,6 @@ void tarfs_init()
 		tarfs_itr = (struct posix_header_ustar *)((uint64_t)tarfs_itr + size + sizeof(struct posix_header_ustar));
 		end = (uint32_t *)tarfs_itr;
 	}
-	struct posix_header_ustar *header = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
-	Elf64_Ehdr *elf_header = (Elf64_Ehdr *)header;
-	if (is_proper_executable(elf_header) == 0)
-		kprintf(" done");
 #ifdef TARFS_DEBUG
 	kprintf("opendir /rootfs/bin :");
 	dir_t * new = opendir("/rootfs/bin");
