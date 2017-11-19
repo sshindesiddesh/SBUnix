@@ -317,6 +317,65 @@ vma_t *check_addr_in_vma_list(va_t addr, vma_t *head)
 	return 0;
 }
 
+/* Helper function for debugging */
+void print_vmas(vma_t *head)
+{
+	while (head) {
+		kprintf("st:%x en:%x\t", head->start, head->end);
+		head = head->next;
+	}
+}
+
+vma_t *get_empty_vma(va_t addr, uint64_t size, mm_struct_t *mm)
+{
+	vma_t *h = mm->head, *vma, *h_p = 0;
+	uint64_t end = addr + size;
+
+	/* Head is NULL */
+	if (!h) {
+		vma = (vma_t *)kmalloc(PG_SIZE);
+		vma->next = 0;
+		mm->head = vma;
+		return vma;
+	}
+
+	while (h) {
+		/* Address already mapped, so kernel cannot map */
+		/* 4 possible combinations of intersections */
+		if (addr >= h->start && addr < h->end) {
+			return 0;
+		} else if (end >= h->start && (end < h->end)) {
+			return 0;
+		} else if (h->start >= addr && h->start < end) {
+			return 0;
+		} else if (h->end >= addr && h->end < end) {
+			return 0;
+		/* if entire vma mapping is before current vma */
+		} else if ((addr < h->start) && ((addr + size) < h->start)) {
+			vma = (vma_t *)kmalloc(PG_SIZE);
+			/* Before head*/
+			if (!h_p) {
+				mm->head = vma;
+				vma->next = h;
+				return vma;
+			/* Somewhere Middle */
+			} else {
+				h_p->next = vma;
+				vma->next = h;
+				return vma;
+			}
+		}
+		h_p = h;
+		h = h->next;
+	}
+
+	/* vma needs to appended at the end */
+	vma = (vma_t *)kmalloc(PG_SIZE);
+	h_p->next = vma;
+	vma->next = 0;
+	return vma;
+}
+
 va_t mmap(va_t va_start, uint64_t size, uint64_t flags)
 {
 	/* Kernel chooses */
@@ -325,30 +384,18 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags)
 
 	uint64_t rstart = round_down(va_start, PG_SIZE);
 	uint64_t rsize = round_up(size, PG_SIZE);
+
 	pcb_t *pcb = cur_pcb;
 	mm_struct_t *mm = pcb->mm;
 
-	int i = va_start;
-	for (; i < va_start + rsize; i += PG_SIZE) {
-		if (check_addr_in_vma_list(i, mm->head) != 0) {
-			return 0;
-		}
-	}
+	vma_t *vma = get_empty_vma(rstart, rsize, mm);
+	if (!vma)
+		return 0;
 
-	vma_t *vma = (vma_t *)kmalloc(PG_SIZE);
 	vma->start = rstart;
 	vma->end = vma->start + rsize;
 	vma->type = HEAP;
 	vma->flags = flags;
-
-	if (mm->tail) {
-		mm->tail->next = vma;
-		mm->tail = mm->tail->next;
-	} else {
-		mm->tail = vma;
-		mm->head = vma;
-	}
-
 	return vma->start;
 }
 
