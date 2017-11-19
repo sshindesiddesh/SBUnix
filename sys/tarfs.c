@@ -31,16 +31,16 @@ int is_proper_executable(Elf64_Ehdr* header)
 void * get_posix_header(char* filename)
 {
 	tarfs_entry_t *curr_node, *temp_node;
-        char *name, *temp_path;
-        int i = 0;
-        curr_node = root;
+	char *name;
+	int i = 0;
+	curr_node = root;
 
-        temp_path = (char *)kmalloc(64);
-        strcpy(temp_path, filename);
+	char temp_path[100] = "\0";
+	strcpy(temp_path, filename);
 
-        name = strtok(temp_path, "/");
-        if (name == NULL)
-                return NULL;
+	name = strtok(temp_path, "/");
+	if (name == NULL)
+		return NULL;
 
 	while (name != NULL) {
 		temp_node = curr_node;
@@ -81,62 +81,67 @@ int tarfs_read(uint64_t fd_cnt, void *buf, uint64_t length)
 int tarfs_open(char *path, uint64_t mode)
 {
 	tarfs_entry_t *node, *temp_node;
-	char *name, *temp_path;
+	char *name;
+	char temp_path[100];
 	int i = 0, fd_cnt = 2;
 	fd_t *ret_fd = (fd_t *)kmalloc(sizeof(fd_t));
 	node = root;
 
-	temp_path = (char *)kmalloc(64);
 	strcpy(temp_path, path);
+
+	/* handle relative path */
+	if (temp_path[0] != '/')
+		node = cur_pcb->current_node;
 
 	name = strtok(temp_path, "/");
 	if (name == NULL)
 		return -1;
 
-	if (strcmp(name, "rootfs") == 0) {
-		while (name != NULL) {
-			temp_node = node;
-			if (strcmp(name, ".") == 0)
-				node = node->child[0];
-			else if (strcmp(name, "..") == 0)
-				node = node->child[1];
-			else {
-				for (i = 2; i < node->end; i++) {
-					if (strcmp(name, node->child[i]->name) == 0) {
-						node = (tarfs_entry_t *)node->child[i];
-						break;
-					}
+	/* handle . and .. in the path */
+	if ((strcmp(name, "..") == 0) || (strcmp(name, ".") == 0))
+		node = cur_pcb->current_node;
+	while (name != NULL) {
+		temp_node = node;
+		if (strcmp(name, ".") == 0)
+			node = node->child[0];
+		else if (strcmp(name, "..") == 0)
+			node = node->child[1];
+		else {
+			for (i = 2; i < node->end; i++) {
+				if (strcmp(name, node->child[i]->name) == 0) {
+					node = (tarfs_entry_t *)node->child[i];
+					break;
 				}
 			}
+		}
 		if (i >= temp_node->end)
 			return -1;
 		name = strtok(NULL, "/");
-		}
-		if ((node->type == DIRECTORY && mode == RD_ONLY) || (node->type == FILE_TYPE)) {
-			ret_fd->node = node;
-                        ret_fd->perm = mode;
-			ret_fd->current = node->start;
-                } else {
-                        return -1;
-                }
-		while ((cur_pcb->fd[++fd_cnt] != NULL) && fd_cnt < MAX_FD_CNT);
-		if (fd_cnt >= MAX_FD_CNT)
-			return -1;
-		else {
-			cur_pcb->fd[fd_cnt] = ret_fd;
-			return fd_cnt;
-		}
 	}
-	else
+	if ((node->type == DIRECTORY && mode == RD_ONLY) || (node->type == FILE_TYPE)) {
+		ret_fd->node = node;
+		ret_fd->perm = mode;
+		ret_fd->current = node->start;
+	} else {
 		return -1;
+	}
+	while ((cur_pcb->fd[++fd_cnt] != NULL) && fd_cnt < MAX_FD_CNT);
+	if (fd_cnt >= MAX_FD_CNT)
+		return -1;
+	else {
+		cur_pcb->fd[fd_cnt] = ret_fd;
+		return fd_cnt;
+	}
 }
 
 int tarfs_close(int fd_c)
 {
-	/* close all open file descriptors for current pcb */
+	/* close all open file descriptor for current pcb */
 	/* TODO free allocations doen previously */
-	if (cur_pcb->fd[fd_c])
+	if (cur_pcb->fd[fd_c]) {
+		kprintf(" closing fd_c :%d ", fd_c);
 		cur_pcb->fd[fd_c] = NULL;
+	}
 	return 0;
 }
 
@@ -166,14 +171,14 @@ int tarfs_closedir(dir_t * dir)
 /* open a directory, returns a descriptor to dir */
 dir_t *tarfs_opendir(char *path)
 {
-        tarfs_entry_t *node, *temp_node;
-        char *name, *temp_path;
-        int i = 0;
+	tarfs_entry_t *node, *temp_node;
+	char *name, *temp_path;
+	int i = 0;
 	dir_t * ret_dir;
-        node = root;
+	node = root;
 
-        temp_path = (char *)kmalloc(64);
-        strcpy(temp_path, path);
+	temp_path = (char *)kmalloc(64);
+	strcpy(temp_path, path);
 
 	if (strcmp(path, "/") == 0) { /* special handling for "/" */
 		ret_dir = (dir_t *)kmalloc(sizeof(dir_t));
@@ -184,16 +189,27 @@ dir_t *tarfs_opendir(char *path)
 #endif
 		return ret_dir;
 	}
+	/* handle relative path */
+	if (temp_path[0] != '/')
+		node = cur_pcb->current_node;
 	name = strtok(temp_path, "/");
 	if (name == NULL)
 		return NULL;
-
-	while (name !=NULL) {
+	/* handle . and .. in the path */
+	if ((strcmp(name, "..") == 0) || (strcmp(name, ".") == 0))
+		node = cur_pcb->current_node;
+	while (name != NULL) {
 		temp_node = node;
-		for (i = 2; i < node->end; i++) {
-			if (strcmp(name, node->child[i]->name) == 0) {
-				node = node->child[i];
-				break;
+		if (strcmp(name, ".") == 0)
+			node = node->child[0];
+		else if (strcmp(name, "..") == 0)
+			node = node->child[1];
+		else {
+			for (i = 2; i < node->end; i++) {
+				if (strcmp(name, node->child[i]->name) == 0) {
+					node = node->child[i];
+					break;
+				}
 			}
 		}
 		if (i == temp_node->end)
@@ -216,10 +232,25 @@ dir_t *tarfs_opendir(char *path)
 /* change the current working directory return 1 on success, -1 on failure */
 int tarfs_chdir(char * path)
 {
-	dir_t *dir = tarfs_opendir(path);
+	char temp_path[100] = "\0";
+	strcpy(temp_path, path);
+
+	if (temp_path[0] != '/') {
+		/* handling relative chdir */
+		char t2[100] = "\0";
+		strcpy(t2, cur_pcb->current_dir);
+		char *t;
+		t = strcat(t2, temp_path);
+		strcpy(temp_path, t);
+	}
+
+	dir_t *dir = tarfs_opendir(temp_path);
 	if ((dir == NULL) || (dir->node == NULL ))
 		return -1;
-	strcpy(cur_pcb->current_dir, path);
+
+	strcpy(cur_pcb->current_dir, temp_path);
+	/* handle change of current node as well */
+        cur_pcb->current_node = dir->node;
 	return 1;
 }
 
@@ -246,15 +277,15 @@ tarfs_entry_t * create_tarfs_entry(char *name, uint64_t type, uint64_t start, ui
 void parse_tarfs_entry(char *path, int type, uint64_t start, uint64_t end)
 {
 	tarfs_entry_t *temp1, *temp2, *temp3;
-	char *name, *temp_path;
+	char *name;
 	int i = 0;
 
-	temp_path = (char *)kmalloc(64);
-        strcpy(temp_path, path);
+	char temp_path[100] = "\0";
+	strcpy(temp_path, path);
 
 	temp1 = root->child[2];
 	name = strtok(temp_path, "/");
-        if (name == NULL)
+	if (name == NULL)
 		return;
 
 	while (name != NULL) {
