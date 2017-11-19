@@ -33,8 +33,6 @@ void idt_populate_desc(uint8_t id, uint64_t int_handler, uint8_t dpl)
 	idt_desc_p->ist = 0;
 }
 
-va_t pa2va(pa_t pa);
-
 pa_t va2pa(va_t va)
 {
 	return (va - (va_t)KERNBASE);
@@ -49,6 +47,10 @@ void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 #ifdef	VMA_DEBUG
 	kprintf("!!!Pagefault : Address: %p Error %x !!!\n", faultAddr, err_code);
 #endif
+	if (!cur_pcb) {
+		kprintf("!!!Segmentation Fault!!!");
+		while (1);
+	}
 	vma_t *vma = check_addr_in_vma_list(faultAddr, cur_pcb->mm->head);
 	if (!vma) {
 		kprintf("!!!Segmentation Fault!!!");

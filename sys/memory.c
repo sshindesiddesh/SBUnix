@@ -189,6 +189,80 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 	}
 }
 
+pte_t *get_pte_from_pgdir_unmap(pgdir_t *pgdir, va_t va, uint8_t perm)
+{
+	pte_t *pte_ptr = 0;
+	pte_t  *pte = 0;
+#ifdef PG_DEBUG
+	kprintf(" pgdir %p ", pgdir);
+#endif
+	if ((pgdir[PDX(va)] & PTE_P)) {
+		pte_ptr = (pte_t *)(pgdir[PDX(va)] & ~(0xFFF));
+#ifdef PG_DEBUG
+		kprintf(" ISSUE PGDIR ");
+#endif
+		pte_ptr = (pte_t *)pa2va((pa_t)pte_ptr);
+
+		pte = &pte_ptr[PTX(va)];
+		return ((pte_t *)pte);
+	}
+	return 0;
+}
+
+pte_t *get_pte_from_pdpe_unmap(pdpe_t *pdpe, va_t va, uint8_t perm)
+{
+	pgdir_t *pgdir = 0;
+	pte_t  *pte = 0;
+#ifdef PG_DEBUG
+	kprintf(" PDPE %p ", pdpe);
+#endif
+	if ((pdpe[PDPE(va)] & PTE_P)) {
+		pgdir = (pgdir_t *)(pdpe[PDPE(va)] & ~(0xFFF));
+#ifdef PG_DEBUG
+		kprintf(" ISSUE PDPE ");
+#endif
+		pte = get_pte_from_pgdir_unmap((pgdir_t *)pa2va((pa_t)pgdir), va, perm);
+		return pte;
+	}
+	return 0;
+}
+
+pte_t *get_pte_from_pml_unmap(pml_t *pml, va_t va, uint8_t perm)
+{
+	pdpe_t *pdpe = 0;
+	pte_t  *pte = 0;
+
+#ifdef PG_DEBUG
+	kprintf(" PML %x ", PML4(va));
+#endif
+	if ((pml[PML4(va)] & PTE_P)) {
+		pdpe = (pdpe_t *)(pml[PML4(va)] & ~(0xFFF));
+#ifdef PG_DEBUG
+		kprintf(" ISSUE PML");
+#endif
+		pte = get_pte_from_pdpe_unmap((pdpe_t *)pa2va((pa_t)pdpe), va, perm);
+		return pte;
+	}
+	return 0;
+}
+
+void unmap_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm)
+{
+	pte_t *pte_ptr;
+	int i;
+	for (i = 0; i < size; i += PG_SIZE) {
+		pte_ptr = get_pte_from_pml_unmap(pml, va + i, perm);
+		if (pte_ptr) {
+#ifdef PG_DEBUG
+			kprintf(" v %p p %p ptr %p\n", va + i, pa + i, pte_ptr);
+#endif
+			*pte_ptr = 0;
+		}
+	}
+	/* Flush TLB entries */
+	__flush_tlb();
+}
+
 pte_t *get_pte_from_pgdir(pgdir_t *pgdir, va_t va, uint8_t perm)
 {
 	pte_t *pte_ptr;

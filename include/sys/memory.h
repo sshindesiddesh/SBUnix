@@ -111,5 +111,7 @@ va_t kmalloc(const uint64_t size);
 void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm);
 vma_t *check_addr_in_vma_list(va_t addr, vma_t *head);
 va_t mmap(va_t va_start, uint64_t size, uint64_t flags);
-
+void __flush_tlb();
+va_t pa2va(pa_t pa);
+pa_t va2pa(va_t va);
 #endif
