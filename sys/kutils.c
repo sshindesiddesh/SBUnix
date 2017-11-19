@@ -1,6 +1,18 @@
 #include <sys/defs.h>
 #include <sys/kutils.h>
 
+char *strcat(char *dst, char* src)
+{
+       size_t dst_len = strlen(dst);
+       size_t i;
+
+       for (i = 0; src[i] != '\0'; i++)
+	   dst[dst_len + i] = src[i];
+       dst[dst_len + i] = '\0';
+
+       return dst;
+}
+
 char *mystrtok_r(char *bstr, const char *delim, char **save)
 {
         char *temp = bstr;

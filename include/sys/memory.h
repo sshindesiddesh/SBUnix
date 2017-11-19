@@ -84,6 +84,7 @@ typedef struct PCB {
 	struct PCB *next;
 	fd_t *fd[MAX_FD_CNT];
 	char current_dir[100];
+	tarfs_entry_t *current_node;
 } pcb_t;
 
 typedef struct mm_struct_t {

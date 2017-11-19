@@ -71,12 +71,14 @@ struct dir_t {
 tarfs_entry_t *root; /* this is the "/" node and root of the complete tarfs tree structure */
 void tarfs_init();
 uint64_t check_file_exists(char* filename);
-int file_read(fd_t *fd, char *buf, uint64_t length);
-fd_t *file_open(char *path, uint64_t mode);
-dir_t *opendir(char *path);
-int closedir(dir_t * dir);
+int tarfs_read(uint64_t fd_cnt, void *buf, uint64_t length);
+int tarfs_open(char *path, uint64_t mode);
+dir_t *tarfs_opendir(char *path);
+int tarfs_closedir(dir_t * dir);
 tarfs_entry_t * create_tarfs_entry(char *name, uint64_t type, uint64_t start, uint64_t end, uint64_t inode_no, tarfs_entry_t *parent);
 int is_proper_executable(Elf64_Ehdr* header);
 void * get_posix_header(char* filename);
+int tarfs_chdir(char * path);
+int tarfs_close(int fd_c);
 
 #endif
