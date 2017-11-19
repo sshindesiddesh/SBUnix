@@ -3,7 +3,6 @@
 
 #define ENABLE_TIMER		0
 #define ENABLE_KEYBOARD		0
-#define ENABLE_KEYBOARD		0
 /* User paging should be disabled for using user processes code in kernel space
  * e.g. simple functions. */
 #define ENABLE_USER_PAGING	1
