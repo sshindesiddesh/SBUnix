@@ -54,13 +54,15 @@ pa_t get_free_pages(uint64_t n)
 	return pa;
 }
 
+
+/* Assumed Aligned addresses. MMAP should be the only one callling this. */
 void allocate_vma(pcb_t *pcb, vma_t *vma)
 {
 #ifdef MALLOC_DEBUG
 		kprintf("va %p, size %x\n", va, size);
 #endif
 	va_t va_start = (vma->start/PG_SIZE*PG_SIZE);
-	uint64_t va_size = (vma->end/PG_SIZE*PG_SIZE) - va_start + 0x1000;
+	uint64_t va_size = vma->end - va_start;
 
 #ifdef MALLOC_DEBUG
 	kprintf("va start %x, va size %x\n", va_start, va_size);
