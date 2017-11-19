@@ -3,12 +3,12 @@
 #include <sys/defs.h>
 #include <sys/memory.h>
 #include <sys/elf64.h>
-#include <sys/process.h>
 #include <sys/console.h>
 #include <sys/idt.h>
 #include <sys/kutils.h>
-//#define TARFS_DEBUG 1
-#define O_RDONLY 1
+#include <sys/process.h>
+
+extern pcb_t *cur_pcb;
 
 /* check whether input executable is proper by checking 1-3 MAgic numbers in ELF header, returns 0 on success */
 int is_proper_executable(Elf64_Ehdr* header)
@@ -61,12 +61,13 @@ void * get_posix_header(char* filename)
 }
 
 /* read from a file into input buffer, returns number of bytes read */
-int file_read(fd_t *fd, char *buf, uint64_t length)
+int tarfs_read(uint64_t fd_cnt, void *buf, uint64_t length)
 {
-	if (fd) {
-		if (length > ((fd->node->end) - (fd->node->start)))
-			length = fd->node->end - fd->node->start;
-		memcpy((char *)buf, (char *)(fd->node->start), length);
+	if ((cur_pcb->fd[fd_cnt] != NULL) && (cur_pcb->fd[fd_cnt]->perm != WR_ONLY)) {
+		if (length > ((cur_pcb->fd[fd_cnt]->node->end) - (cur_pcb->fd[fd_cnt]->current)))
+			length = (cur_pcb->fd[fd_cnt]->node->end) - (cur_pcb->fd[fd_cnt]->current);
+		memcpy((void *)buf, (void *)(cur_pcb->fd[fd_cnt]->current), length);
+		cur_pcb->fd[fd_cnt]->current += length;
 #ifdef TARFS_DEBUG
 		kprintf("\nbuffer read: %s", buf);
 #endif
@@ -76,12 +77,12 @@ int file_read(fd_t *fd, char *buf, uint64_t length)
 		return -1;
 }
 
-/* open a file or directory, returns file/directory descriptor fd_t */
-fd_t *file_open(char *path, uint64_t mode)
+/* open a file or directory, returns file/directory descriptor number on success, -1 on failure */
+int tarfs_open(char *path, uint64_t mode)
 {
 	tarfs_entry_t *node, *temp_node;
 	char *name, *temp_path;
-	int i = 0;
+	int i = 0, fd_cnt = 2;
 	fd_t *ret_fd = (fd_t *)kmalloc(sizeof(fd_t));
 	node = root;
 
@@ -90,35 +91,68 @@ fd_t *file_open(char *path, uint64_t mode)
 
 	name = strtok(temp_path, "/");
 	if (name == NULL)
-		return NULL;
+		return -1;
 
 	if (strcmp(name, "rootfs") == 0) {
 		while (name != NULL) {
 			temp_node = node;
-			for (i = 2; i < node->end; i++) {
-				if (strcmp(name, node->child[i]->name) == 0) {
-					node = (tarfs_entry_t *)node->child[i];
-					break;
+			if (strcmp(name, ".") == 0)
+				node = node->child[0];
+			else if (strcmp(name, "..") == 0)
+				node = node->child[1];
+			else {
+				for (i = 2; i < node->end; i++) {
+					if (strcmp(name, node->child[i]->name) == 0) {
+						node = (tarfs_entry_t *)node->child[i];
+						break;
+					}
 				}
 			}
 		if (i >= temp_node->end)
-			return NULL;
+			return -1;
 		name = strtok(NULL, "/");
 		}
-		if ((node->type == DIRECTORY && mode == (O_RDONLY)) || (node->type == FILE_TYPE)) {
+		if ((node->type == DIRECTORY && mode == RD_ONLY) || (node->type == FILE_TYPE)) {
 			ret_fd->node = node;
                         ret_fd->perm = mode;
-                        return ret_fd;
+			ret_fd->current = node->start;
                 } else {
-                        return NULL;
+                        return -1;
                 }
+		while ((cur_pcb->fd[++fd_cnt] != NULL) && fd_cnt < MAX_FD_CNT);
+		if (fd_cnt >= MAX_FD_CNT)
+			return -1;
+		else {
+			cur_pcb->fd[fd_cnt] = ret_fd;
+			return fd_cnt;
+		}
 	}
 	else
-		return NULL;
+		return -1;
 }
 
+int tarfs_close(int fd_c)
+{
+	/* close all open file descriptors for current pcb */
+	/* TODO free allocations doen previously */
+	if (cur_pcb->fd[fd_c])
+		cur_pcb->fd[fd_c] = NULL;
+	return 0;
+}
+
+/* read dirents from given directory */
+dirent_t *tarfs_readdir(dir_t * dir)
+{
+	if (dir->node->end < 3 || dir->current == dir->node->end || dir->current == 0)
+		return NULL;
+	else {
+		strcpy(dir->cur_dirent.name, dir->node->child[dir->current]->name);
+		dir->current += 1;
+		return &dir->cur_dirent;
+	}
+}
 /* close a directory */
-int closedir(dir_t * dir)
+int tarfs_closedir(dir_t * dir)
 {
 	if ((dir->node->type == DIRECTORY) && (dir->current > 1)) {
 		dir->node = NULL;
@@ -130,7 +164,7 @@ int closedir(dir_t * dir)
 }
 	
 /* open a directory, returns a descriptor to dir */
-dir_t *opendir(char *path)
+dir_t *tarfs_opendir(char *path)
 {
         tarfs_entry_t *node, *temp_node;
         char *name, *temp_path;
@@ -141,11 +175,20 @@ dir_t *opendir(char *path)
         temp_path = (char *)kmalloc(64);
         strcpy(temp_path, path);
 
-        name = strtok(temp_path, "/");
-        if (name == NULL)
-                return NULL;
+	if (strcmp(path, "/") == 0) { /* special handling for "/" */
+		ret_dir = (dir_t *)kmalloc(sizeof(dir_t));
+		ret_dir->current = 2;
+		ret_dir->node = root;
+#ifdef TARFS_DEBUG
+		kprintf(" return :%s ", ret_dir->node->name);
+#endif
+		return ret_dir;
+	}
+	name = strtok(temp_path, "/");
+	if (name == NULL)
+		return NULL;
 
-        while (name !=NULL) {
+	while (name !=NULL) {
 		temp_node = node;
 		for (i = 2; i < node->end; i++) {
 			if (strcmp(name, node->child[i]->name) == 0) {
@@ -170,6 +213,16 @@ dir_t *opendir(char *path)
 		return NULL;
 }
 
+/* change the current working directory return 1 on success, -1 on failure */
+int tarfs_chdir(char * path)
+{
+	dir_t *dir = tarfs_opendir(path);
+	if ((dir == NULL) || (dir->node == NULL ))
+		return -1;
+	strcpy(cur_pcb->current_dir, path);
+	return 1;
+}
+
 /* create node for given Dir or file in tarfs tree structure, return tarfs_entry */
 tarfs_entry_t * create_tarfs_entry(char *name, uint64_t type, uint64_t start, uint64_t end, uint64_t inode_no, tarfs_entry_t *parent)
 {
@@ -184,6 +237,7 @@ tarfs_entry_t * create_tarfs_entry(char *name, uint64_t type, uint64_t start, ui
 	entry->inode_no = inode_no;
 	entry->child[0] = entry;
 	entry->child[1] = parent;
+	entry->current = start;
 	
 	return entry;
 }
@@ -250,35 +304,39 @@ void tarfs_init()
 
 	/* parse till end is reached */
 	while(*end++ || *end++ || *end) {
-#ifdef TARFS_DEBUG
-		kprintf(" entry: %s", tarfs_itr->name);
-#endif
 		size = 0;
 		size = octal_to_decimal(stoi(tarfs_itr->size));
+#ifdef TARFS_DEBUG
+		kprintf(" entry: %s, size %d ", tarfs_itr->name, size);
+#endif
+		if (strcmp(tarfs_itr->typeflag, "5") == 0) /* directory entry */
+			parse_tarfs_entry(tarfs_itr->name, DIRECTORY, 0, 2);
+		else
+			parse_tarfs_entry(tarfs_itr->name, FILE_TYPE, (uint64_t)(tarfs_itr + 1), (uint64_t)((void *)tarfs_itr + size + sizeof(struct posix_header_ustar)));
 		if(size % 512 != 0) {
 			size = (size/512)*512;
 			size += 512;
 		}
-		if (strcmp(tarfs_itr->typeflag, "5") == 0) /* */
-			parse_tarfs_entry(tarfs_itr->name, DIRECTORY, 0, 2);
-		else
-			parse_tarfs_entry(tarfs_itr->name, FILE_TYPE, (uint64_t)(tarfs_itr + 1), (uint64_t)((void *)tarfs_itr + size + sizeof(struct posix_header_ustar)));
 		tarfs_itr = (struct posix_header_ustar *)((uint64_t)tarfs_itr + size + sizeof(struct posix_header_ustar));
 		end = (uint32_t *)tarfs_itr;
 	}
 #ifdef TARFS_DEBUG
-	kprintf("opendir /rootfs/bin :");
-	dir_t * new = opendir("/rootfs/bin");
-	if (new)
+	struct posix_header_ustar *header = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
+	kprintf("header : %p", header);
+	Elf64_Ehdr *elf_header = (Elf64_Ehdr *)header;
+	if (is_proper_executable(elf_header) == 0)
+		kprintf(" binary verified");
+	dir_t *dir;
+	char *path = "/";
+	dir = opendir(path);
+	if (dir) {
 		kprintf("opendir success ");
-	fd_t * new_fd = file_open("/rootfs/bin/abc.txt", 1);
-	if(new_fd)
-		kprintf(" file open success fd : %p ", new_fd);
-	char *buf = (char *)kmalloc(1024);
-	int a = file_read(new_fd, buf, 27);
-	if (a != -1)
-		kprintf("read content: %s ", buf);
-	if (closedir(new) == 0)
-		kprintf("dir closed");
+		dirent_t *dentry;
+		while((dentry = readdir(dir)) != NULL)
+			kprintf("\t%s", dentry->name);
+		}
+	}
+	else
+		kprintf(" open failed");
 #endif
 }
