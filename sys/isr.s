@@ -6,6 +6,8 @@ isr20:
 	pushq %rbx
 	pushq %rcx
 	pushq %rdx
+	pushq %rdi
+	pushq %rsi
 	pushq %rbp
 	pushq %r8
 	pushq %r9
@@ -25,6 +27,8 @@ isr20:
 	popq %r10
 	popq %r9
 	popq %r8
+	popq %rsi
+	popq %rdi
 	popq %rbp
 	popq %rdx
 	popq %rcx
@@ -42,6 +46,8 @@ isr21:
 	pushq %rcx
 	pushq %rdx
 	pushq %rbp
+	pushq %rdi
+	pushq %rsi
 	pushq %r8
 	pushq %r9
 	pushq %r10
@@ -59,6 +65,8 @@ isr21:
 	popq %r10
 	popq %r9
 	popq %r8
+	popq %rsi
+	popq %rdi
 	popq %rbp
 	popq %rdx
 	popq %rcx
@@ -71,6 +79,21 @@ isr21:
 .global isr80
 isr80:
 	cli
+	pushq %rbx
+	pushq %rcx
+	pushq %rdx
+	pushq %rbp
+	pushq %rdi
+	pushq %rsi
+	pushq %r8
+	pushq %r9
+	pushq %r10
+	pushq %r11
+	pushq %r12
+	pushq %r13
+	pushq %r14
+	pushq %r15
+
 	pushq %rax
 	pushq %rdi
 	pushq %rsi
@@ -86,7 +109,23 @@ isr80:
 	popq %rdx
 	popq %rsi
 	popq %rdi
+/* rax not popped as rax contains the output value */
+	addq $8, %rsp
+
+	popq %r15
+	popq %r14
+	popq %r13
+	popq %r12
+	popq %r11
+	popq %r10
+	popq %r9
+	popq %r8
+	popq %rsi
 	popq %rdi
+	popq %rbp
+	popq %rdx
+	popq %rcx
+	popq %rbx
 	sti
 	iretq
 
@@ -126,6 +165,7 @@ excpE:
 	popq %rbx
 	popq %rax
 	popq %rsi
+	/* There is extra push for error no in the page fault handler */
 	addq $8, %rsp
 	sti
 	iretq

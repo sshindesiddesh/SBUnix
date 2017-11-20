@@ -6,6 +6,8 @@
 #include <sys/memory.h>
 #include <sys/debug.h>
 #include <sys/config.h>
+#include <sys/process.h>
+#include <sys/kutils.h>
 
 pml_t *pml;
 uint64_t phys_base;
@@ -18,7 +20,6 @@ static uint64_t total_pages = 0;
 extern pcb_t *cur_pcb;
 
 
-
 pa_t page2pa(page_disc_t *ptr)
 {
 	return ((pa_t)((((uint64_t)ptr - (uint64_t)phys_free - (uint64_t)KERNBASE)/sizeof(page_disc_t)*PG_SIZE)));
@@ -27,6 +28,11 @@ pa_t page2pa(page_disc_t *ptr)
 va_t pa2va(pa_t pa)
 {
 	return (pa + (pa_t)KERNBASE);
+}
+
+pa_t va2pa(va_t va)
+{
+	return (va - (va_t)KERNBASE);
 }
 
 pa_t get_free_pages(uint64_t n)
@@ -39,7 +45,8 @@ pa_t get_free_pages(uint64_t n)
 	int i = n;
 	page_disc_t *ptr = free_list_ptr;
 	while (i--) {
-		ptr->acc = 0;
+		/* TODO: Check if this should be incremented here or in the mapping. */
+		ptr->ref_cnt++;
 		ptr = free_list_ptr->next;
 	}
 
@@ -53,7 +60,6 @@ pa_t get_free_pages(uint64_t n)
 	memset((void *)pa2va(pa), 0, PG_SIZE);
 	return pa;
 }
-
 
 /* Assumed Aligned addresses. MMAP should be the only one callling this. */
 void allocate_vma(pcb_t *pcb, vma_t *vma)
@@ -167,11 +173,12 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 
 	uint64_t i = start/PG_SIZE;
 	for (; i < no_page; i++) {
+	/* TODO: use pages below physfree */
 		if (i*PG_SIZE < (uint64_t)phys_free) {
-			pd_cur[i].acc = 0;
+			pd_cur[i].ref_cnt = 0;
 			pd_cur[i].next = 0;
 		} else if (i < ((phys_free + end*sizeof(page_disc_t))/PG_SIZE)) {
-			pd_cur[i].acc = 0;
+			pd_cur[i].ref_cnt = 0;
 			pd_cur[i].next = 0;
 		} else {
 			if (free_list_ptr == 0) {
@@ -180,7 +187,7 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 				kprintf("FP %p \n", free_list_ptr);
 #endif
 			}
-			pd_cur[i].acc = 1;
+			pd_cur[i].ref_cnt++;
 			pd_cur[i].next = 0;
 			if (pd_prev)
 				pd_prev->next = (pd_cur + i);
@@ -248,6 +255,7 @@ pte_t *get_pte_from_pml_unmap(pml_t *pml, va_t va, uint8_t perm)
 
 void unmap_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm)
 {
+	kprintf("unmap : va %p, size %x\n", va, size);
 	pte_t *pte_ptr;
 	int i;
 	for (i = 0; i < size; i += PG_SIZE) {
@@ -398,6 +406,7 @@ void print_vmas(vma_t *head)
 		kprintf("st:%x en:%x\t", head->start, head->end);
 		head = head->next;
 	}
+	kprintf("\n");
 }
 
 vma_t *get_empty_vma(va_t addr, uint64_t size, mm_struct_t *mm)
@@ -416,16 +425,19 @@ vma_t *get_empty_vma(va_t addr, uint64_t size, mm_struct_t *mm)
 	while (h) {
 		/* Address already mapped, so kernel cannot map */
 		/* 4 possible combinations of intersections */
+
+		/* addr lies in head. cannot map */
 		if (addr >= h->start && addr < h->end) {
 			return 0;
-		} else if (end >= h->start && (end < h->end)) {
+		/*  */
+		} else if (end > h->start && end < h->end) {
 			return 0;
 		} else if (h->start >= addr && h->start < end) {
 			return 0;
-		} else if (h->end >= addr && h->end < end) {
+		} else if (h->end > addr && h->end < end) {
 			return 0;
 		/* if entire vma mapping is before current vma */
-		} else if ((addr < h->start) && ((addr + size) < h->start)) {
+		} else if ((addr < h->start) && (end <= h->start)) {
 			vma = (vma_t *)kmalloc(PG_SIZE);
 			/* Before head*/
 			if (!h_p) {
@@ -473,6 +485,80 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags)
 	return vma->start;
 }
 
+va_t munmap(va_t va_start, uint64_t size)
+{
+	/* Kernel chooses */
+	if (va_start == 0) {
+	}
+
+	uint64_t addr = round_down(va_start, PG_SIZE);
+	uint64_t end = addr + round_up(size, PG_SIZE);
+
+	pcb_t *pcb = cur_pcb;
+	mm_struct_t *mm = pcb->mm;
+
+	vma_t *h = mm->head, *vma, *h_p = 0;
+
+	/* Head is NULL */
+	if (!h) {
+		return -1;
+	}
+
+	while (h) {
+		/* 4 possible combinations of intersections */
+		/* smaller inbetween range : unmap in between existing vma. 
+		 * split them into two (h->start:addr) and (end:h->end) */
+		if (addr > h->start && end < h->end) {
+			/* First vma */
+			h->end = addr;
+			/*second vma*/
+			vma = (vma_t *)kmalloc(PG_SIZE);
+			vma->start = end;
+			vma->end = h->end;
+			vma->flags = h->flags;
+			/* update links */
+			vma->next = h->next;
+			h->next = vma;
+		/* exact or larger range : unmap for exact or larger vma. remove it */
+		} else if (addr <= h->start && end >= h->end) {
+			vma = h;
+			/* TODO: kfree */
+			/* free range -> (vma->start:vma->end) */
+			unmap_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)vma->start, vma->end - vma->start, 0, 0);
+			if (!h_p) {
+				mm->head = h->next;
+				h_p = 0;
+				h = h->next;
+				continue;
+			} else {
+				h_p->next = h->next;
+			}
+		/* smaller left range : unmap for lower portion of vma. update the start address of vma.
+		 * h->start = end . new vma (end, h->end) */
+		} else if (h->start >= addr && h->start <= end) {
+			vma = h;
+			/* TODO: kfree(vma) */
+			/* free range -> (vma->start:end) */
+			unmap_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)vma->start, end - vma->start, 0, 0);
+			h->start = end;
+		/* smaller right range : unmap for higher portion of vma. update the end address of vma.
+		 * h->end = addr . new vma (h->start, addr) */
+		} else if (addr >= h->start && addr <= h->end) {
+			vma = h;
+			/* TODO: kfree(vma) */
+			/* free range -> (addr:vma->end) */
+			unmap_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)addr, vma->end - addr, 0, 0);
+			h->end = addr;
+		}
+		h_p = h;
+		h = h->next;
+	}
+
+	return 0;
+}
+
+pcb_t *create_kernel_process(void *func);
+
 void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 {
 	struct smap_t {
@@ -504,6 +590,22 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	__asm__ volatile("mov %0, %%cr3":: "b"(pml));
 	change_console_ptr();
 	kprintf("Hello World\n");
+
+#if 0
+	pcb_t *pcb0 = create_kernel_process(NULL);
+	cur_pcb = pcb0;
+	char *buf = (char *)mmap(0x1000, 0x1000*2, 0);
+	strcpy(buf, "Hello World\n");
+	kprintf("%s\n", buf);
+	munmap((uint64_t)buf, 0x1000);
+	kprintf("%s\n", buf);
+	mmap(0x5000, 0x1000*2, 0);
+	mmap(0x3000, 0x1000*2, 0);
+	mmap(0x7000, 0x1000*2, 0);
+	print_vmas(pcb0->mm->head);
+	munmap(0x1000, 0x1000*7);
+	print_vmas(pcb0->mm->head);
+#endif
 
 #if	ENABLE_USER_PAGING
 #else

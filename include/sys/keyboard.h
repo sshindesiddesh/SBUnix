@@ -18,4 +18,5 @@ static char shift_key_map[] = {
 };
 
 void __isr_keyboard_cb();
+void update_read_buf(char key);
 #endif

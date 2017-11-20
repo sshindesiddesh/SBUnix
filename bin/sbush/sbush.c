@@ -320,20 +320,19 @@ int pros_pipes(char *s[])
 }
 
 
-ssize_t write_1(char *buf)
+ssize_t write1(int fd, const void *buf, size_t nbytes)
 {
-	uint64_t ip1 = (uint64_t)buf;
-	size_t out = 0;
+	size_t out;
 	__asm__ (
 		/* System Call Number */
 		"movq $1, %%rax\n"
 		/* Param 1 */
-		"movq %0, %%rdi\n"
-#if 0
+		"movq %1, %%rdi\n"
 		/* Param 2 */
 		"movq %2, %%rsi\n"
 		/* Param 3 */
 		"movq %3, %%rdx\n"
+#if 0
 		/* Param 4 */
 		"movq %1, %%rcx\n"
 		/* Param 5 */
@@ -342,27 +341,27 @@ ssize_t write_1(char *buf)
 		"movq %1, %%r9\n"
 #endif
 		"int $0x80\n"
-		//: "=r"(out)/* output parameters, we aren't outputting anything, no none */
-		:
+		/* Output of the system call */
+		"movq %%rax, %0\n"
+		: "=m"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"m" (ip1)
+		"m" (fd), "m" (buf), "m" (nbytes)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax", "rdi", "rsi", "rdx"
 	);
 	return out;
 }
 
-
 int main(int argc, char* argv[], char *envp[])
 {
 	char *buf = "hello_world\n";
 
 	while (1) {
-		__asm__ volatile("movq $0, %rax");
+		__asm__ volatile("movq $99, %rax");
 		__asm__ volatile("int $0x80");
-		write_1(buf);
-		__asm__ volatile("movq $2, %rax");
+		write1(0, buf, 5);
+		__asm__ volatile("movq $24, %rax");
 		__asm__ volatile("int $0x80");
 	}
 

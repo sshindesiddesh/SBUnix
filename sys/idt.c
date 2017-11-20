@@ -33,11 +33,6 @@ void idt_populate_desc(uint8_t id, uint64_t int_handler, uint8_t dpl)
 	idt_desc_p->ist = 0;
 }
 
-pa_t va2pa(va_t va)
-{
-	return (va - (va_t)KERNBASE);
-}
-
 extern pml_t *pml;
 extern uint64_t phys_base;
 extern uint64_t phys_free;
