@@ -46,7 +46,6 @@ pcb_t *create_user_process(void *func)
 		while (t_pcb->next != cur_pcb)
 			t_pcb = t_pcb->next;
 		t_pcb->next = l_pcb;
-		
 	}
 
 	l_pcb->next = cur_pcb;
@@ -55,8 +54,6 @@ pcb_t *create_user_process(void *func)
 
 	set_proc_page_table(l_pcb);
 
-	uint64_t u_stack = (uint64_t)kmalloc_user(l_pcb, 0x1000);
-	l_pcb->u_rsp = (u_stack + 4096 - 8);
 	l_pcb->mm = (mm_struct_t *)kmalloc(0x1000);
 
 	return l_pcb;
@@ -84,6 +81,7 @@ pcb_t *create_kernel_process(void *func)
 			t_pcb = t_pcb->next;
 		t_pcb->next = l_pcb;
 	}
+
 	l_pcb->next = cur_pcb;
 
 	l_pcb->mm = (mm_struct_t *)kmalloc(0x1000);

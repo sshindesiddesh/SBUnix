@@ -46,5 +46,9 @@ int load_elf_code(pcb_t *pcb, void *start)
 		p_hdr++;
 	}
 
+	/* mmap user stack */
+	va_t *u_stack = (va_t *)mmap(STACK_TOP, 0x1000, PTE_P | PTE_W | PTE_U);
+	pcb->u_rsp = ((uint64_t)u_stack + 4096 - 8);
+
 	return 0;
 }
