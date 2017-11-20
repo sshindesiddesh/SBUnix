@@ -190,7 +190,7 @@ dir_t *tarfs_opendir(char *path)
 		return ret_dir;
 	}
 	/* handle relative path */
-	if (temp_path[0] != '/')
+	if (temp_path[0] != '/' && (strlen(temp_path) > 1))
 		node = cur_pcb->current_node;
 	name = strtok(temp_path, "/");
 	if (name == NULL)
