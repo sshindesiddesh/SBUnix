@@ -1,6 +1,7 @@
 #include <sys/kprintf.h>
 #include <sys/syscall.h>
 #include <sys/memory.h>
+#include <sys/kutils.h>
 
 void yield();
 
@@ -14,11 +15,13 @@ void yield();
 
 uint64_t __isr_syscall(syscall_in *in)
 {
+	uint64_t out = 0;
 	switch (in->syscall_no) {
 		case SYSCALL_READ:
 			break;
 		case SYSCALL_WRITE:
-			kprintf("%s", (char *)in->first_param);
+			kprintf("%s", (char *)in->second_param);
+			out = strlen((char *)in->second_param);
 			break;
 		case SYSCALL_OPEN:
 			break;
@@ -36,5 +39,5 @@ uint64_t __isr_syscall(syscall_in *in)
 			kprintf("Error: Unknown System Call\n");
 			break;
 	}
-	return 0;
+	return out;
 }
