@@ -20,7 +20,6 @@ static uint64_t total_pages = 0;
 extern pcb_t *cur_pcb;
 
 
-
 pa_t page2pa(page_disc_t *ptr)
 {
 	return ((pa_t)((((uint64_t)ptr - (uint64_t)phys_free - (uint64_t)KERNBASE)/sizeof(page_disc_t)*PG_SIZE)));
@@ -29,6 +28,11 @@ pa_t page2pa(page_disc_t *ptr)
 va_t pa2va(pa_t pa)
 {
 	return (pa + (pa_t)KERNBASE);
+}
+
+pa_t va2pa(va_t va)
+{
+	return (va - (va_t)KERNBASE);
 }
 
 pa_t get_free_pages(uint64_t n)
@@ -41,7 +45,8 @@ pa_t get_free_pages(uint64_t n)
 	int i = n;
 	page_disc_t *ptr = free_list_ptr;
 	while (i--) {
-		ptr->acc = 0;
+		/* TODO: Check if this should be incremented here or in the mapping. */
+		ptr->ref_cnt++;
 		ptr = free_list_ptr->next;
 	}
 
@@ -55,7 +60,6 @@ pa_t get_free_pages(uint64_t n)
 	memset((void *)pa2va(pa), 0, PG_SIZE);
 	return pa;
 }
-
 
 /* Assumed Aligned addresses. MMAP should be the only one callling this. */
 void allocate_vma(pcb_t *pcb, vma_t *vma)
@@ -169,11 +173,12 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 
 	uint64_t i = start/PG_SIZE;
 	for (; i < no_page; i++) {
+	/* TODO: use pages below physfree */
 		if (i*PG_SIZE < (uint64_t)phys_free) {
-			pd_cur[i].acc = 0;
+			pd_cur[i].ref_cnt = 0;
 			pd_cur[i].next = 0;
 		} else if (i < ((phys_free + end*sizeof(page_disc_t))/PG_SIZE)) {
-			pd_cur[i].acc = 0;
+			pd_cur[i].ref_cnt = 0;
 			pd_cur[i].next = 0;
 		} else {
 			if (free_list_ptr == 0) {
@@ -182,7 +187,7 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 				kprintf("FP %p \n", free_list_ptr);
 #endif
 			}
-			pd_cur[i].acc = 1;
+			pd_cur[i].ref_cnt++;
 			pd_cur[i].next = 0;
 			if (pd_prev)
 				pd_prev->next = (pd_cur + i);

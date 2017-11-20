@@ -47,7 +47,7 @@
 //extern char kernmem, physbase;
 typedef struct page_dir {
         struct page_dir *next;
-        int acc;
+        uint64_t ref_cnt;
 } page_disc_t;
 
 typedef uint64_t pml_t;
