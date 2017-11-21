@@ -10,6 +10,16 @@
 
 extern pcb_t *cur_pcb;
 
+/* return the current working dir */
+char *tarf_getcwd(char *buf, size_t size)
+{
+	if (size < strlen(cur_pcb->current_dir))
+		return NULL;
+	strcpy(buf, cur_pcb->current_dir);
+	
+	return buf;
+}
+
 /* check whether input executable is proper by checking 1-3 MAgic numbers in ELF header, returns 0 on success */
 int is_proper_executable(Elf64_Ehdr* header)
 {
@@ -63,7 +73,7 @@ void * get_posix_header(char* filename)
 /* read from a file into input buffer, returns number of bytes read */
 int tarfs_read(uint64_t fd_cnt, void *buf, uint64_t length)
 {
-	if ((cur_pcb->fd[fd_cnt] != NULL) && (cur_pcb->fd[fd_cnt]->perm != WR_ONLY)) {
+	if ((cur_pcb->fd[fd_cnt] != NULL) && (cur_pcb->fd[fd_cnt]->perm != O_WRONLY)) {
 		if (length > ((cur_pcb->fd[fd_cnt]->node->end) - (cur_pcb->fd[fd_cnt]->current)))
 			length = (cur_pcb->fd[fd_cnt]->node->end) - (cur_pcb->fd[fd_cnt]->current);
 		memcpy((void *)buf, (void *)(cur_pcb->fd[fd_cnt]->current), length);
@@ -90,7 +100,7 @@ int tarfs_open(char *path, uint64_t mode)
 	strcpy(temp_path, path);
 
 	/* handle relative path */
-	if (temp_path[0] != '/')
+	if (temp_path[0] != '/' && (strlen(temp_path) > 1))
 		node = cur_pcb->current_node;
 
 	name = strtok(temp_path, "/");
@@ -118,7 +128,7 @@ int tarfs_open(char *path, uint64_t mode)
 			return -1;
 		name = strtok(NULL, "/");
 	}
-	if ((node->type == DIRECTORY && mode == RD_ONLY) || (node->type == FILE_TYPE)) {
+	if ((node->type == DIRECTORY && mode == O_RDONLY) || (node->type == FILE_TYPE)) {
 		ret_fd->node = node;
 		ret_fd->perm = mode;
 		ret_fd->current = node->start;
@@ -235,7 +245,7 @@ int tarfs_chdir(char * path)
 	char temp_path[100] = "\0";
 	strcpy(temp_path, path);
 
-	if (temp_path[0] != '/') {
+	if (temp_path[0] != '/' && (strlen(temp_path) > 1)) {
 		/* handling relative chdir */
 		char t2[100] = "\0";
 		strcpy(t2, cur_pcb->current_dir);
@@ -251,6 +261,7 @@ int tarfs_chdir(char * path)
 	strcpy(cur_pcb->current_dir, temp_path);
 	/* handle change of current node as well */
         cur_pcb->current_node = dir->node;
+	kprintf("\n chdir complete......");
 	return 1;
 }
 

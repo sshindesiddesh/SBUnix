@@ -2,6 +2,10 @@
 #define _SYSCALL_H
 #include <sys/defs.h>
 
+#define STD_IN 0
+#define STD_OUT 1
+#define STD_ERR 2
+
 uint64_t __syscall_yield();
 uint64_t __syscall_info();
 uint64_t __syscall_write(char *buf);
@@ -16,3 +20,5 @@ typedef struct syscall_in {
 	uint64_t syscall_no;
 } syscall_in;
 #endif
+
+uint64_t sys_read(uint64_t fd_cnt, void *buf, uint64_t length);

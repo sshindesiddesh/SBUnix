@@ -10,7 +10,7 @@
 
 extern char _binary_tarfs_start;
 extern char _binary_tarfs_end;
-enum { RD_ONLY = 0, WR_ONLY = 1, O_RDWR = 2 };
+enum { O_RDONLY = 0, O_WRONLY = 1, O_RDWR = 2 };
 
 struct posix_header_ustar {
   char name[100];
@@ -80,5 +80,7 @@ int is_proper_executable(Elf64_Ehdr* header);
 void * get_posix_header(char* filename);
 int tarfs_chdir(char * path);
 int tarfs_close(int fd_c);
+dirent_t *tarfs_readdir(dir_t * dir);
+char *tarf_getcwd(char *buf, size_t size);
 
 #endif
