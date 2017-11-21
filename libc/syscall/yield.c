@@ -2,12 +2,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-pid_t fork()
+void yield()
 {
-	size_t out;
 	__asm__ (
 		/* System Call Number */
-		"movq $57, %%rax\n"
+		"movq $24, %%rax\n"
 #if 0
 		/* Param 1 */
 		"movq %1, %%rdi\n"
@@ -23,13 +22,10 @@ pid_t fork()
 		"movq %1, %%r9\n"
 #endif
 		"int $0x80\n"
-		/* Output of the system call */
-		"movq %%rax, %0\n"
-		: "=m"(out)/* output parameters, we aren't outputting anything, no none */
+		:
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax"
 	);
-	return out;
 }
