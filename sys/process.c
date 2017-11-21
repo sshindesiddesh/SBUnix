@@ -7,6 +7,7 @@
 #include <sys/gdt.h>
 #include <sys/syscall.h>
 #include <sys/config.h>
+#include <sys/kutils.h>
 
 /* TODO: Bug : Scheduler schedukes few tasks repetatively.  Cannot see for finite. During infinite, something goes wrong */
 
@@ -57,6 +58,45 @@ pcb_t *create_user_process(void *func)
 	l_pcb->mm = (mm_struct_t *)kmalloc(0x1000);
 
 	return l_pcb;
+}
+
+void copy_vma_mapping(pcb_t *parent, pcb_t *child);
+
+pcb_t *copy_user_process(pcb_t * p_pcb)
+{
+	pcb_t *c_pcb = get_new_pcb();
+	uint64_t pid = c_pcb->pid;
+
+	/* Copy parent pcb content to child pcb */
+	/* After copying change mm_struct, pcb_next, pid and pml */
+	memcpy((void *)c_pcb, (void *)p_pcb, sizeof(pcb_t));
+
+	/* Change PID */
+	c_pcb->pid = pid;
+
+	/* Update kstack to return 0 in child process */
+	c_pcb->rsp = (uint64_t)&(c_pcb->kstack[KSTACK_SIZE - (44*8)]);
+
+	/* Add it after parent */
+	c_pcb->next = cur_pcb->next->next;
+	cur_pcb->next = c_pcb;
+
+	/* Allocate mm struct */
+	c_pcb->mm = (mm_struct_t *)kmalloc(0x1000);
+
+	/* copy vma mappings */
+	copy_vma_mapping(cur_pcb, c_pcb);
+
+	/* return child pcb */
+	return c_pcb;
+}
+
+
+int sys_fork()
+{
+	pcb_t *c_pcb = copy_user_process(cur_pcb);
+	/* return child pid for parent process */
+	return c_pcb->pid;
 }
 
 /* Create a kernel thread.
@@ -145,6 +185,8 @@ void try_syscall()
 
 void thread1()
 {
+	kprintf("Thread1");
+	while (1);
 	while (1) {
 		__syscall_write("thread 1\n");
 		/* This is yield. Implemented as a system call. */
@@ -207,7 +249,7 @@ void process_init()
 {
 	pcb_t *pcb0 = get_new_pcb();
 	pcb_t *pcb1 = create_kernel_process(init_process);
-	create_kernel_process(thread2);
+	//create_kernel_process(thread2);
 /* If user paging is ebabled, user process cannot use code in kernel space.
  * Only option then is to load the elf executable.  */
 #if ENABLE_USER_PAGING

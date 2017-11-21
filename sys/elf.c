@@ -37,7 +37,7 @@ int load_elf_code(pcb_t *pcb, void *start)
 				return -1;
 			}
 			/* mmap the virtual addresses */
-			va_t *addr = (va_t *)mmap(p_hdr->p_vaddr, p_hdr->p_filesz, PTE_P | p_hdr->p_flags);
+			va_t *addr = (va_t *)mmap(p_hdr->p_vaddr, p_hdr->p_filesz, PTE_P | p_hdr->p_flags, HEAP);
 			memcpy((void *)addr, (void *)((Elf64_Addr)elf_hdr + p_hdr->p_offset), p_hdr->p_filesz);
 #ifdef TARFS_DEBUG
 			kprintf("start:%p size:%x\n", vma->start, p_hdr->p_filesz);
@@ -47,7 +47,7 @@ int load_elf_code(pcb_t *pcb, void *start)
 	}
 
 	/* mmap user stack */
-	va_t *u_stack = (va_t *)mmap(STACK_TOP, 0x1000, PTE_P | PTE_W | PTE_U);
+	va_t *u_stack = (va_t *)mmap(STACK_TOP - PG_SIZE, 0x1000, PTE_P | PTE_W | PTE_U, STACK);
 	pcb->u_rsp = ((uint64_t)u_stack + 4096 - 8);
 
 	return 0;

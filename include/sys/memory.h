@@ -15,6 +15,7 @@
 #define PTE_D           0x040   // Dirty
 #define PTE_PS          0x080   // Page Size
 #define PTE_MBZ         0x180   // Bits must be zero
+#define PTE_COW         0x400   // Copy on write
 
 #define PML4SHIFT               39
 #define PDPESHIFT               30
@@ -111,7 +112,7 @@ typedef enum ret_t {
 va_t kmalloc(const uint64_t size);
 void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm);
 vma_t *check_addr_in_vma_list(va_t addr, vma_t *head);
-va_t mmap(va_t va_start, uint64_t size, uint64_t flags);
+va_t mmap(va_t va_start, uint64_t size, uint64_t flags, uint64_t type);
 void __flush_tlb();
 va_t pa2va(pa_t pa);
 pa_t va2pa(va_t va);

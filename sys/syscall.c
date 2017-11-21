@@ -12,6 +12,9 @@ void yield();
 #define SYSCALL_MMAP	9
 #define SYSCALL_INFO	99
 #define SYSCALL_YIELD	24
+#define SYSCALL_FORK	57
+
+int sys_fork();
 
 uint64_t __isr_syscall(syscall_in *in)
 {
@@ -34,6 +37,10 @@ uint64_t __isr_syscall(syscall_in *in)
 			break;
 		case SYSCALL_INFO:
 			kprintf("SBUnix x86_64 OS\n");
+			break;
+		case SYSCALL_FORK:
+			kprintf("FORK\n");
+			out = sys_fork();
 			break;
 		default:
 			kprintf("Error: Unknown System Call\n");
