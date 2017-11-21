@@ -19,6 +19,10 @@ void yield();
 #define SYSCALL_DUP2	33
 #define SYSCALL_GETCWD	79
 #define SYSCALL_GETDENTS 78
+#define SYSCALL_OPENDIR	300
+#define SYSCALL_CLOSEDIR 301
+
+int sys_fork();
 
 int console_read(int fd, char *buf, uint64_t count);
 uint64_t __isr_syscall(syscall_in *in)
@@ -42,7 +46,9 @@ uint64_t __isr_syscall(syscall_in *in)
 			out = tarfs_chdir((char *)in->first_param);
 			break;
 		case SYSCALL_OPENDIR:
-			out = tarfs_opendir((char *)in->first_param);
+			break;
+		case SYSCALL_CLOSEDIR:
+			break;
 		case SYSCALL_MMAP:
 			break;
 		case SYSCALL_YIELD:
@@ -52,13 +58,15 @@ uint64_t __isr_syscall(syscall_in *in)
 			kprintf("SBUnix x86_64 OS\n");
 			break;
 		case SYSCALL_GETCWD:
-			out = (uint64_t)tarf_getcwd((char *)in->first_param, (size_t)in->second_param);
-			break;
-		case SYSCALL_FORK:
+			out = (uint64_t)tarfs_getcwd((char *)in->first_param, (size_t)in->second_param);
 			break;
 		case SYSCALL_EXECVE:
 			break;
 		case SYSCALL_DUP2:
+			break;
+		case SYSCALL_FORK:
+			kprintf("FORK\n");
+			out = sys_fork();
 			break;
 		default:
 			kprintf("Error: Unknown System Call\n");

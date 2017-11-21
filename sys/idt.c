@@ -54,7 +54,7 @@ void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 	if (vma->type == HEAP) {
 		allocate_vma(cur_pcb, vma);
 	} else if (vma->type == STACK) {
-
+		allocate_vma(cur_pcb, vma);
 	}
 }
 

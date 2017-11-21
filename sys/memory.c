@@ -25,6 +25,11 @@ pa_t page2pa(page_disc_t *ptr)
 	return ((pa_t)((((uint64_t)ptr - (uint64_t)phys_free - (uint64_t)KERNBASE)/sizeof(page_disc_t)*PG_SIZE)));
 }
 
+page_disc_t *pa2page(pa_t pa)
+{
+	return (page_disc_t *)((uint64_t)phys_free + ((pa_t)pa*sizeof(page_disc_t)/PG_SIZE) + KERNBASE);
+}
+
 va_t pa2va(pa_t pa)
 {
 	return (pa + (pa_t)KERNBASE);
@@ -46,7 +51,7 @@ pa_t get_free_pages(uint64_t n)
 	page_disc_t *ptr = free_list_ptr;
 	while (i--) {
 		/* TODO: Check if this should be incremented here or in the mapping. */
-		ptr->ref_cnt++;
+		/* ptr->ref_cnt++; */
 		ptr = free_list_ptr->next;
 	}
 
@@ -196,7 +201,7 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 	}
 }
 
-pte_t *get_pte_from_pgdir_unmap(pgdir_t *pgdir, va_t va, uint8_t perm)
+pte_t *get_pte_from_pgdir_unmap(pgdir_t *pgdir, va_t va, uint64_t perm)
 {
 	pte_t *pte_ptr = 0;
 	pte_t  *pte = 0;
@@ -216,7 +221,7 @@ pte_t *get_pte_from_pgdir_unmap(pgdir_t *pgdir, va_t va, uint8_t perm)
 	return 0;
 }
 
-pte_t *get_pte_from_pdpe_unmap(pdpe_t *pdpe, va_t va, uint8_t perm)
+pte_t *get_pte_from_pdpe_unmap(pdpe_t *pdpe, va_t va, uint64_t perm)
 {
 	pgdir_t *pgdir = 0;
 	pte_t  *pte = 0;
@@ -234,7 +239,7 @@ pte_t *get_pte_from_pdpe_unmap(pdpe_t *pdpe, va_t va, uint8_t perm)
 	return 0;
 }
 
-pte_t *get_pte_from_pml_unmap(pml_t *pml, va_t va, uint8_t perm)
+pte_t *get_pte_from_pml_unmap(pml_t *pml, va_t va, uint64_t perm)
 {
 	pdpe_t *pdpe = 0;
 	pte_t  *pte = 0;
@@ -265,13 +270,16 @@ void unmap_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm
 			kprintf(" v %p p %p ptr %p\n", va + i, pa + i, pte_ptr);
 #endif
 			*pte_ptr = 0;
+			/* Decrease reference count */
+			page_disc_t *pd = pa2page(pa + i);
+			pd->ref_cnt--;
 		}
 	}
 	/* Flush TLB entries */
 	__flush_tlb();
 }
 
-pte_t *get_pte_from_pgdir(pgdir_t *pgdir, va_t va, uint8_t perm)
+pte_t *get_pte_from_pgdir(pgdir_t *pgdir, va_t va, uint64_t perm)
 {
 	pte_t *pte_ptr;
 	pte_t  *pte;
@@ -295,7 +303,7 @@ pte_t *get_pte_from_pgdir(pgdir_t *pgdir, va_t va, uint8_t perm)
 	return ((pte_t *)pte);
 }
 
-pte_t *get_pte_from_pdpe(pdpe_t *pdpe, va_t va, uint8_t perm)
+pte_t *get_pte_from_pdpe(pdpe_t *pdpe, va_t va, uint64_t perm)
 {
 	pgdir_t *pgdir;
 	pte_t  *pte;
@@ -317,7 +325,7 @@ pte_t *get_pte_from_pdpe(pdpe_t *pdpe, va_t va, uint8_t perm)
 	return pte;
 }
 
-pte_t *get_pte_from_pml(pml_t *pml, va_t va, uint8_t perm)
+pte_t *get_pte_from_pml(pml_t *pml, va_t va, uint64_t perm)
 {
 	pdpe_t *pdpe;
 	pte_t  *pte;
@@ -351,6 +359,9 @@ void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm)
 #endif
 			*pte_ptr = pa + i;
 			*pte_ptr = ((*pte_ptr) | perm);
+			/* Increase reference count */
+			page_disc_t *pd = pa2page(pa + i);
+			pd->ref_cnt++;
 		}
 	}
 }
@@ -462,7 +473,7 @@ vma_t *get_empty_vma(va_t addr, uint64_t size, mm_struct_t *mm)
 	return vma;
 }
 
-va_t mmap(va_t va_start, uint64_t size, uint64_t flags)
+va_t mmap(va_t va_start, uint64_t size, uint64_t flags, uint64_t type)
 {
 	/* Kernel chooses */
 	if (va_start == 0) {
@@ -480,7 +491,7 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags)
 
 	vma->start = rstart;
 	vma->end = vma->start + rsize;
-	vma->type = HEAP;
+	vma->type = type;
 	vma->flags = flags;
 	return vma->start;
 }
@@ -586,7 +597,15 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	kprintf("physbase %p\n", (uint64_t)physbase);
 	kprintf("physfree %p\n", (uint64_t)physfree);
 	kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
+
 	page_table_init();
+#if 0
+	kprintf("pml%p\n", pml);
+	page_disc_t *pd = pa2page((pa_t)pml);
+	kprintf("pa2page%p\n", pd);
+	pa_t pa = page2pa(pd);
+	kprintf("page2pa%p\n", pa);
+#endif
 	__asm__ volatile("mov %0, %%cr3":: "b"(pml));
 	change_console_ptr();
 	kprintf("Hello World\n");
@@ -634,4 +653,62 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	ptr[1] = '\0';
 	kprintf("Alloc Done %s\n", ptr);
 #endif
+}
+
+/* Copy parent's page table's to child. */
+void copy_vma_mapping(pcb_t *parent, pcb_t *child)
+{
+	vma_t *p_vma = parent->mm->head, *c_vma;
+	va_t start, end;
+	pte_t *pte;
+	pa_t pa;
+
+	/* Copy kernel page mappings */
+	child->pml4 = (pml_t)get_free_pages(1);
+	va_t *v_p_pml = (va_t *)pa2va((va_t)parent->pml4);
+	va_t *v_c_pml = (va_t *)pa2va((va_t)child->pml4);
+	v_c_pml[511] = v_p_pml[511];
+
+	/* Copy user page mappings */
+	while (p_vma) {
+		/* mmap is called for the stack case */
+		if (p_vma->type != STACK) {
+			c_vma = get_empty_vma(p_vma->start, p_vma->end - p_vma->start, child->mm);
+			start = c_vma->start = p_vma->start;
+			end = c_vma->end = p_vma->end;
+			c_vma->type = p_vma->type;
+			c_vma->flags = p_vma->flags;
+		}
+		/* Copy existing heap mappings */
+		if (p_vma->type == HEAP) {
+			while (start < end) {
+				pte = get_pte_from_pml((pml_t *)pa2va((pa_t)parent->pml4), start, p_vma->flags);
+				if (pte) {
+					pa = (pa_t)(*pte & ~(0xFFF));
+					*pte = (pa | PTE_P | PTE_U | PTE_COW);
+					map_page_entry((pml_t *)pa2va((pa_t)child->pml4), start, 0x1000, (pa_t)pa, PTE_P | PTE_U | PTE_COW);
+				}
+				start += PG_SIZE;
+			}
+		/* Copy complete stack with same virtual address */
+		} else if (p_vma->type == STACK) {
+			/* allocate page in kernel space */
+			va_t *va = (va_t *)kmalloc(p_vma->end - p_vma->start);
+			/* memcpy parent stack in kernel space */
+			memcpy((void *)va, (void *)p_vma->start, p_vma->end - p_vma->start);
+			/* change current pcb to child pcb */
+			/* cur_pcb is assumed to be parent before making it child. */
+			cur_pcb = child;
+			__asm__ volatile("mov %0, %%cr3":: "b"(child->pml4));
+			/* mmap new page in child user space */
+			va_t *c_va = (va_t *)mmap(p_vma->start, p_vma->end - p_vma->start, p_vma->flags, p_vma->type);
+			/* memcpy stack from kernel space to childs user space */
+			memcpy((void *)c_va, (void *)va, p_vma->end - p_vma->start);
+			/* change cur_pcb to parent */
+			__asm__ volatile("mov %0, %%cr3":: "b"(parent->pml4));
+			cur_pcb = parent;
+			/* TODO: kfree(va) */
+		}
+		p_vma = p_vma->next;
+	}
 }
