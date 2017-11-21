@@ -81,6 +81,6 @@ void * get_posix_header(char* filename);
 int tarfs_chdir(char * path);
 int tarfs_close(int fd_c);
 dirent_t *tarfs_readdir(dir_t * dir);
-char *tarf_getcwd(char *buf, size_t size);
+char *tarfs_getcwd(char *buf, size_t size);
 
 #endif

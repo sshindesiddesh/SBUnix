@@ -21,8 +21,9 @@ int open(const char *pathname, int flags, uint64_t mode)
 		"movq %1, %%r8\n"
 		/* Param 6 */
 		"movq %1, %%r9\n"
-#endif
 		"syscall\n"
+#endif
+		"int $0x80\n"
 		/* Output of the system call */
 		"movq %%rax, %0\n"
 		: "=m"(out)/* output parameters, we aren't outputting anything, no none */
@@ -54,8 +55,9 @@ int close(int fd)
 		"movq %1, %%r8\n"
 		/* Param 6 */
 		"movq %1, %%r9\n"
-#endif
 		"syscall\n"
+#endif
+		"int $0x80\n"
 		/* Output of the system call */
 		"movq %%rax, %0\n"
 		: "=m"(out)/* output parameters, we aren't outputting anything, no none */

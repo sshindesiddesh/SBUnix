@@ -11,7 +11,7 @@
 extern pcb_t *cur_pcb;
 
 /* return the current working dir */
-char *tarf_getcwd(char *buf, size_t size)
+char *tarfs_getcwd(char *buf, size_t size)
 {
 	if (size < strlen(cur_pcb->current_dir))
 		return NULL;

@@ -21,8 +21,9 @@ char *getcwd(char *buf, size_t size)
 		"movq %1, %%r8\n"
 		/* Param 6 */
 		"movq %1, %%r9\n"
-#endif
 		"syscall;"
+#endif
+		"int $0x80\n"
 		/* Output of the system call */
 		"movq %%rax, %0;"
 		: /* output parameters, we aren't outputting anything, no none */
