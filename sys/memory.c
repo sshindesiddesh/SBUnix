@@ -27,7 +27,7 @@ pa_t page2pa(page_disc_t *ptr)
 
 page_disc_t *pa2page(pa_t pa)
 {
-	return ((page_disc_t *)((uint64_t)phys_free + (uint64_t)KERNBASE) + (pa_t)pa*sizeof(page_disc_t)/PG_SIZE);
+	return (page_disc_t *)((uint64_t)phys_free + ((pa_t)pa*sizeof(page_disc_t)/PG_SIZE) + KERNBASE);
 }
 
 va_t pa2va(pa_t pa)
@@ -599,7 +599,13 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
 
 	page_table_init();
-
+#if 0
+	kprintf("pml%p\n", pml);
+	page_disc_t *pd = pa2page((pa_t)pml);
+	kprintf("pa2page%p\n", pd);
+	pa_t pa = page2pa(pd);
+	kprintf("page2pa%p\n", pa);
+#endif
 	__asm__ volatile("mov %0, %%cr3":: "b"(pml));
 	change_console_ptr();
 	kprintf("Hello World\n");
