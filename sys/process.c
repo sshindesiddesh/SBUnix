@@ -9,6 +9,7 @@
 #include <sys/config.h>
 #include <sys/kutils.h>
 #include <sys/idt.h>
+#include <unistd.h>
 
 /* TODO: Bug : Scheduler schedukes few tasks repetatively.  Cannot see for finite. During infinite, something goes wrong */
 
@@ -147,7 +148,7 @@ pcb_t *copy_user_process(pcb_t * p_pcb)
 }
 
 
-int sys_fork()
+int kfork()
 {
 	pcb_t *c_pcb = copy_user_process(cur_pcb);
 	/* return child pid for parent process */
@@ -190,7 +191,7 @@ pcb_t *create_kernel_process(void *func)
 }
 
 /* Yield from process */
-void yield(void)
+void kyield(void)
 {
 	pcb_t *prv_pcb = cur_pcb;
 
@@ -241,10 +242,10 @@ void try_syscall()
 void thread1()
 {
 	while (1) {
-		__syscall_write(0, "thread 1\n", 5);
+		write(0, "thread 1\n", 5);
 		/* This is yield. Implemented as a system call. */
 #if	!PREEMPTIVE_SCHED
-		__syscall_yield();
+		yield();
 #endif
 
 	}
@@ -260,10 +261,10 @@ void func1()
 void thread2()
 {
 	while (1) {
-		__syscall_write(0, "thread 2\n", 5);
+		write(0, "thread 2\n", 5);
 		/* This is yield. Implemented as a system call. */
 #if	!PREEMPTIVE_SCHED
-		__syscall_yield();
+		yield();
 #endif
 
 	}
@@ -280,9 +281,9 @@ void func2()
 void init_process()
 {
 	while (1) {
-		__syscall_write(0, "init\n", 5);
+		write(0, "init\n", 5);
 #if	!PREEMPTIVE_SCHED
-		__syscall_yield();
+		yield();
 #endif
 	}
 }
@@ -313,37 +314,6 @@ void process_init()
 #endif
 	/* This happens only once and kernel should not return to this stack. */
 	__context_switch(pcb0, pcb1);
-
-#if 0
-	struct posix_header_ustar *header = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
-	kprintf("header : %p", header);
-	Elf64_Ehdr *elf_header = (Elf64_Ehdr *)header;
-	if (is_proper_executable(elf_header) == 0)
-		kprintf(" binary verified");
-#endif
-
-	dir_t *dir2;
-        char *path2 = "/rootfs/";
-        dir2 = tarfs_opendir(path2);
-        if (dir2) {
-                kprintf("opendir success, readdir: ");
-                dirent_t *dentry;
-                while((dentry = tarfs_readdir(dir2)) != NULL)
-                        kprintf("\t%s", dentry->d_name);
-        }
-        else
-                kprintf(" open failed");
-        int new_fd = tarfs_open("dpp/abc.txt", O_RDONLY);
-        if (new_fd)
-                kprintf(" open done, fd : %d ", new_fd);
-	char buf[4];
-        
-	int a = 4;
-        while (a != 0 || (buf[a-1] != 0)) {
-		a = tarfs_read(new_fd, (void *)buf, 4);
-                kprintf("\n read content: %s, %d ", buf, a);
-		kprintf(" l:%d ",buf[a-1]);
-	}
 
 	kprintf("We will never return here\n");
 	while (1);

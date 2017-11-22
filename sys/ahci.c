@@ -37,8 +37,8 @@
 
 uint64_t abar;
 
-int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf);
-int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf);
+int ahci_write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf);
+int ahci_read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf);
 
 uint32_t sys_in_long(uint16_t port)
 {
@@ -364,13 +364,13 @@ int read_write_lba(int port_no, uint8_t *write_buf, uint8_t *read_buf)
 	for (i = 0; i < NO_OF_BLOCKS; i++) {
 		/* Write to the LBA */
 		memset(write_buf, i, 4096);
-		write(&((hba_mem_t *)abar)->ports[port_no], i * 8, 0, 8, write_buf);
+		ahci_write(&((hba_mem_t *)abar)->ports[port_no], i * 8, 0, 8, write_buf);
 	}
 	/* Read */
 	kprintf("Verifying LBAs... ");
 	for (i = 0; i < NO_OF_BLOCKS; i++) {
 		/* Read from LBA */
-		read(&((hba_mem_t *)abar)->ports[port_no], i * 8, 0, 8, read_buf);
+		ahci_read(&((hba_mem_t *)abar)->ports[port_no], i * 8, 0, 8, read_buf);
 		/* Check the data */
 		for (j = 0; j < 4096; j++) {
 			if (read_buf[j] != i) {
@@ -419,7 +419,7 @@ void probe_port(hba_mem_t *abar)
 	}
 }
 
-int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf)
+int ahci_read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf)
 {
 	/* Clear Interrupt Bits */
 	port->is_rwc = 0xFFFFFFFF;
@@ -517,7 +517,7 @@ int read(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uin
 	return 1;
 }
 
-int write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf)  
+int ahci_write(hba_port_t *port, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf)  
 {
 	/* Clear Interrupt Bits */
 	port->is_rwc = 0xFFFFFFFF;
