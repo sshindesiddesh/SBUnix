@@ -355,14 +355,37 @@ ssize_t write1(int fd, const void *buf, size_t nbytes)
 
 int main(int argc, char* argv[], char *envp[])
 {
-	char *buf = "hello_world\n";
-
+	char buf[2] = {48, '\0'};
 	while (1) {
-		__asm__ volatile("movq $99, %rax");
-		__asm__ volatile("int $0x80");
-		write1(0, buf, 5);
-		__asm__ volatile("movq $24, %rax");
-		__asm__ volatile("int $0x80");
+		pid_t pid = fork();
+		if (pid == 0) {
+			buf[0] = 48 + pid;
+			while (1) {
+				write(0, buf, 5);
+				write(0, "child\n", 5);
+				yield();
+			}
+		} else {
+			pid_t pid2 = fork();
+			buf[0] = 48 + pid2;
+			if (pid2 == 0) {
+				while (1) {
+					write(0, buf, 5);
+					write(0, "***child***\n", 5);
+					yield();
+				}
+			} else {
+				buf[0] = 48 + pid2;
+				while (1) {
+					write(0, buf, 5);
+					write(0, "parent\n", 5);
+					yield();
+				}
+			}
+		}
+		while (1) {
+			yield();
+		}
 	}
 
 	/* Set env pointer */

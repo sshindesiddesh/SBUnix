@@ -8,7 +8,7 @@
 
 uint64_t __syscall_yield();
 uint64_t __syscall_info();
-uint64_t __syscall_write(char *buf);
+uint64_t __syscall_write(uint64_t fd, char *buf, uint64_t len);
 
 typedef struct syscall_in {
 	uint64_t sixth_param;
@@ -17,7 +17,7 @@ typedef struct syscall_in {
 	uint64_t third_param;
 	uint64_t second_param;
 	uint64_t first_param;
-	uint64_t syscall_no;
+	uint64_t in_out;
 } syscall_in;
 #endif
 

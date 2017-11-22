@@ -80,7 +80,7 @@ void allocate_vma(pcb_t *pcb, vma_t *vma)
 #endif
 	pa_t pa;
 	int i = 0;
-	for (; i <= va_size; i += PG_SIZE) {
+	for (; i < va_size; i += PG_SIZE) {
 		pa = get_free_pages(1);
 		map_page_entry((pml_t *)pa2va((pa_t)pcb->pml4), (va_t)va_start, 0x1000, (pa_t)pa, PTE_P | vma->flags);
 		/* Kernel allocates vmas for the user process. So it does not have the va in page tables.
@@ -192,7 +192,8 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 				kprintf("FP %p \n", free_list_ptr);
 #endif
 			}
-			pd_cur[i].ref_cnt++;
+			/* This is -1 as kernel maps it once and increments count */
+			pd_cur[i].ref_cnt = -1;
 			pd_cur[i].next = 0;
 			if (pd_prev)
 				pd_prev->next = (pd_cur + i);

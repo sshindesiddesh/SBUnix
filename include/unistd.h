@@ -9,6 +9,7 @@ ssize_t read(int fd, void *buf, size_t count);
 int open(const char *pathname, int flags, uint64_t);
 int close(int fd);
 pid_t fork();
+void yield();
 int execvpe(const char *file, char *const argv[], char *const envp[]);
 // OPTIONAL: implement for ``signals and pipes (+10 pts)''
 int pipe(int pipefd[2]);
