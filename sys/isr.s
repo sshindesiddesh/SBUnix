@@ -104,7 +104,6 @@ isr80:
 	pushq %r9
 	movq %rsp, %rdi
 	callq __isr_syscall
-/* rax not popped as rax contains the output value */
 	addq $48, %rsp
 	popq %rax
 
