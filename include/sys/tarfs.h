@@ -2,7 +2,11 @@
 #define _TARFS_H
 #include <sys/defs.h>
 #include <sys/elf64.h>
+#include <dirent.h>
 
+#define O_RDONLY	0000		/* open for read only */
+#define	O_WRONLY	0001		/* open for writing only */
+#define	O_RDWR		0002		/* open for reading and writing */
 #define FILE_TYPE 0
 #define DIRECTORY 5
 #define PAGE_TABLE_ALIGNLENT 0x1000
@@ -10,7 +14,7 @@
 
 extern char _binary_tarfs_start;
 extern char _binary_tarfs_end;
-enum { O_RDONLY = 0, O_WRONLY = 1, O_RDWR = 2 };
+//enum { O_RDONLY = 0, O_WRONLY = 1, O_RDWR = 2 };
 
 struct posix_header_ustar {
   char name[100];
@@ -35,7 +39,7 @@ struct posix_header_ustar {
 /* TARFS file system entry */
 typedef struct tarfs_entry_t tarfs_entry_t;
 typedef struct fd_t fd_t;
-typedef struct dirent_t dirent_t;
+typedef struct dirent dirent_t;
 typedef struct dir_t dir_t;
 
 struct tarfs_entry_t {
@@ -53,11 +57,6 @@ struct fd_t {
 	uint64_t inode_no;
 	uint64_t current;
 	tarfs_entry_t *node;
-};
-
-struct dirent_t {
-	uint64_t inode_no;
-	char name[64];
 };
 
 struct dir_t {
@@ -78,9 +77,11 @@ int tarfs_closedir(dir_t * dir);
 tarfs_entry_t * create_tarfs_entry(char *name, uint64_t type, uint64_t start, uint64_t end, uint64_t inode_no, tarfs_entry_t *parent);
 int is_proper_executable(Elf64_Ehdr* header);
 void * get_posix_header(char* filename);
-int tarfs_chdir(char * path);
+int tarfs_chdir(char *path);
 int tarfs_close(int fd_c);
-dirent_t *tarfs_readdir(dir_t * dir);
+dirent_t *tarfs_readdir(dir_t *dir);
 char *tarfs_getcwd(char *buf, size_t size);
+uint64_t tarfs_listdir(char * buf, dir_t * dir);
+uint64_t tarfs_getdents(uint64_t fd, uint64_t buf, uint64_t count);
 
 #endif

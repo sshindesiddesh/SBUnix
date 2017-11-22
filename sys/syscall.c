@@ -21,6 +21,7 @@ void yield();
 #define SYSCALL_GETDENTS 78
 #define SYSCALL_OPENDIR	300
 #define SYSCALL_CLOSEDIR 301
+#define SYSCALL_READDIR	302
 
 int sys_fork();
 
@@ -45,9 +46,17 @@ uint64_t __isr_syscall(syscall_in *in)
 		case SYSCALL_CHDIR:
 			out = tarfs_chdir((char *)in->first_param);
 			break;
+		case SYSCALL_GETDENTS:
+			out = tarfs_getdents(in->first_param, (uint64_t)in->second_param, in->third_param);
+			break;
 		case SYSCALL_OPENDIR:
+			out = (uint64_t)tarfs_opendir((char *)in->first_param);
 			break;
 		case SYSCALL_CLOSEDIR:
+			out = (uint64_t)tarfs_closedir((dir_t *)in->first_param);
+			break;
+		case SYSCALL_READDIR:
+			out = (uint64_t)tarfs_readdir((dir_t *)in->first_param);
 			break;
 		case SYSCALL_MMAP:
 			break;
@@ -84,7 +93,7 @@ uint64_t sys_read(uint64_t fd_cnt, void *buf, uint64_t length)
 	}
 	else {
 		count = tarfs_read(fd_cnt , buf, length);
-		kprintf("buf : %s", buf);
+		//kprintf("buf : %s", buf);
 		return count;
 	}
 	return -1;

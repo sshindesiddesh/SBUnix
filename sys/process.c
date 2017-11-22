@@ -57,6 +57,15 @@ pcb_t *create_user_process(void *func)
 
 	l_pcb->mm = (mm_struct_t *)kmalloc(0x1000);
 
+	/* set current directory and root node for user process */
+	strcpy(l_pcb->current_dir, "/rootfs/bin/");
+	char path[100] = "\0";
+	strcpy(path, l_pcb->current_dir);
+	dir_t *dir1 = tarfs_opendir(path);
+	l_pcb->current_node = dir1->node;
+	if(dir1->node)
+		kprintf(" curr node assigned");
+	
 	return l_pcb;
 }
 
@@ -238,7 +247,7 @@ int load_elf_code(pcb_t *pcb, void *start);
 
 void elf_process()
 {
-	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
+	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/cat");
 	load_elf_code(usr_pcb_1, (void *)start);
 	set_tss_rsp((void *)&usr_pcb_1->kstack[KSTACK_SIZE - 8]);
 	__switch_ring3(usr_pcb_1);
@@ -249,7 +258,7 @@ void process_init()
 {
 	pcb_t *pcb0 = get_new_pcb();
 	pcb_t *pcb1 = create_kernel_process(init_process);
-	//create_kernel_process(thread2);
+	create_kernel_process(thread2);
 /* If user paging is ebabled, user process cannot use code in kernel space.
  * Only option then is to load the elf executable.  */
 #if ENABLE_USER_PAGING
@@ -259,6 +268,37 @@ void process_init()
 #endif
 	/* This happens only once and kernel should not return to this stack. */
 	__context_switch(pcb0, pcb1);
+
+#if 0
+	struct posix_header_ustar *header = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
+	kprintf("header : %p", header);
+	Elf64_Ehdr *elf_header = (Elf64_Ehdr *)header;
+	if (is_proper_executable(elf_header) == 0)
+		kprintf(" binary verified");
+#endif
+
+	dir_t *dir2;
+        char *path2 = "/rootfs/";
+        dir2 = tarfs_opendir(path2);
+        if (dir2) {
+                kprintf("opendir success, readdir: ");
+                dirent_t *dentry;
+                while((dentry = tarfs_readdir(dir2)) != NULL)
+                        kprintf("\t%s", dentry->d_name);
+        }
+        else
+                kprintf(" open failed");
+        int new_fd = tarfs_open("dpp/abc.txt", O_RDONLY);
+        if (new_fd)
+                kprintf(" open done, fd : %d ", new_fd);
+	char buf[4];
+        
+	int a = 4;
+        while (a != 0 || (buf[a-1] != 0)) {
+		a = tarfs_read(new_fd, (void *)buf, 4);
+                kprintf("\n read content: %s, %d ", buf, a);
+		kprintf(" l:%d ",buf[a-1]);
+	}
 
 	kprintf("We will never return here\n");
 	while (1);

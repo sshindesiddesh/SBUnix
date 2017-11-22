@@ -16,9 +16,13 @@ int chdir(const char *path);
 char *getcwd(char *buf, size_t size);
 void exit(int status);
 int dup2(int oldfd, int newfd);
-int getdents(unsigned int fd, char *dir, unsigned int count);
+uint64_t getdents(unsigned int fd, char *dir, unsigned int count);
 char *getenv(const char *name);
 int setenv(const char *name, const char *value, int overwrite);
+uint64_t opendir(const char *pathname);
+uint64_t listdir(void *buf, uint64_t dir);
+uint64_t closedir(uint64_t dir);
+struct dirent *readdir(uint64_t dir);
 
 #if 0
 int unlink(const char *pathname);
