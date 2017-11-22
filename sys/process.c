@@ -188,7 +188,7 @@ void thread1()
 	kprintf("Thread1");
 	while (1);
 	while (1) {
-		__syscall_write("thread 1\n");
+		__syscall_write(0, "thread 1\n", 5);
 		/* This is yield. Implemented as a system call. */
 #if	!PREEMPTIVE_SCHED
 		__syscall_yield();
@@ -207,7 +207,7 @@ void func1()
 void thread2()
 {
 	while (1) {
-		__syscall_write("thread 2\n");
+		__syscall_write(0, "thread 2\n", 5);
 		/* This is yield. Implemented as a system call. */
 #if	!PREEMPTIVE_SCHED
 		__syscall_yield();
@@ -227,7 +227,7 @@ void func2()
 void init_process()
 {
 	while (1) {
-		__syscall_write("init\n");
+		__syscall_write(0, "init\n", 5);
 #if	!PREEMPTIVE_SCHED
 		__syscall_yield();
 #endif

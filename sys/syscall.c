@@ -28,7 +28,7 @@ int console_read(int fd, char *buf, uint64_t count);
 uint64_t __isr_syscall(syscall_in *in)
 {
 	uint64_t out = 0;
-	switch (in->syscall_no) {
+	switch (in->in_out) {
 		case SYSCALL_READ:
 			out = sys_read(in->first_param, (char *)in->second_param, in->third_param);		
 			break;
@@ -72,6 +72,8 @@ uint64_t __isr_syscall(syscall_in *in)
 			kprintf("Error: Unknown System Call\n");
 			break;
 	}
+	/* Set the output value in rax */
+	in->in_out = out;
 	return out;
 }
 

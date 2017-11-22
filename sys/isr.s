@@ -79,6 +79,7 @@ isr21:
 .global isr80
 isr80:
 	cli
+	/* 14 registers */
 	pushq %rbx
 	pushq %rcx
 	pushq %rdx
@@ -93,7 +94,7 @@ isr80:
 	pushq %r13
 	pushq %r14
 	pushq %r15
-
+	/* 7 input params */
 	pushq %rax
 	pushq %rdi
 	pushq %rsi
@@ -103,14 +104,9 @@ isr80:
 	pushq %r9
 	movq %rsp, %rdi
 	callq __isr_syscall
-	popq %r9
-	popq %r8
-	popq %r10
-	popq %rdx
-	popq %rsi
-	popq %rdi
 /* rax not popped as rax contains the output value */
-	addq $8, %rsp
+	addq $48, %rsp
+	popq %rax
 
 	popq %r15
 	popq %r14
