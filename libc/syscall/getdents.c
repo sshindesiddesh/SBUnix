@@ -4,7 +4,7 @@
 
 
 //int getdents(unsigned int fd, struct dirent *dir, unsigned int count)
-int getdents(unsigned int fd, char* dir, unsigned int count)
+uint64_t getdents(unsigned int fd, char* dir, unsigned int count)
 {
 	int64_t out;
 	__asm__ (
@@ -23,8 +23,9 @@ int getdents(unsigned int fd, char* dir, unsigned int count)
 		"movq %1, %%r8\n"
 		/* Param 6 */
 		"movq %1, %%r9\n"
-#endif
 		"syscall;"
+#endif
+		"int $0x80\n"
 		/* Output of the system call */
 		"movq %%rax, %0;"
 		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
