@@ -8,6 +8,7 @@
 #include <sys/syscall.h>
 #include <sys/config.h>
 #include <sys/kutils.h>
+#include <sys/idt.h>
 
 /* TODO: Bug : Scheduler schedukes few tasks repetatively.  Cannot see for finite. During infinite, something goes wrong */
 
@@ -38,8 +39,8 @@ pcb_t *create_user_process(void *func)
 {
 	pcb_t *l_pcb = get_new_pcb(), *t_pcb = cur_pcb;
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)func;
-	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]) = (uint64_t)l_pcb;
-	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]);
+	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 16]) = (uint64_t)l_pcb;
+	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 16]);
 
 	if (cur_pcb == NULL) {
 		cur_pcb = l_pcb;
@@ -75,7 +76,10 @@ pcb_t *copy_user_process(pcb_t * p_pcb)
 	c_pcb->pid = pid;
 
 	/* Update kstack to return 0 in child process */
-	c_pcb->rsp = (uint64_t)&(c_pcb->kstack[KSTACK_SIZE - (44*8)]);
+	*((uint64_t *)&c_pcb->kstack[KSTACK_SIZE - (28*8)]) = ((uint64_t)isr80 + 0x29);
+	c_pcb->rsp = (uint64_t)&(c_pcb->kstack[KSTACK_SIZE - (29*8)]);
+	*((uint64_t *)&c_pcb->kstack[KSTACK_SIZE - (21*8)]) = ((uint64_t)0);
+	kprintf("crsp %p\n", c_pcb->rsp);
 
 	/* Add it after parent */
 	c_pcb->next = cur_pcb->next->next;
@@ -109,8 +113,8 @@ pcb_t *create_kernel_process(void *func)
 {
 	pcb_t *l_pcb = get_new_pcb(), *t_pcb = cur_pcb;
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)func;
-	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]) = (uint64_t)l_pcb;
-	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 8 - CON_STACK_SIZE]);
+	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 16]) = (uint64_t)l_pcb;
+	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 16]);
 
 	l_pcb->is_usr = 0;
 
@@ -249,7 +253,7 @@ void process_init()
 {
 	pcb_t *pcb0 = get_new_pcb();
 	pcb_t *pcb1 = create_kernel_process(init_process);
-	//create_kernel_process(thread2);
+	create_kernel_process(thread2);
 /* If user paging is ebabled, user process cannot use code in kernel space.
  * Only option then is to load the elf executable.  */
 #if ENABLE_USER_PAGING
