@@ -16,6 +16,7 @@ extern pml_t *pml;
 
 /* Head of the running linked list for yield */
 pcb_t *cur_pcb = NULL;
+pcb_t *tail = NULL;
 
 /* Global PID assigner */
 static uint64_t PID = -1;
@@ -29,6 +30,37 @@ pcb_t *get_new_pcb()
 	return l_pcb;
 }
 
+void add_pcb_to_runqueue(pcb_t *pcb)
+{
+	if (cur_pcb == NULL) {
+		cur_pcb = tail = pcb;
+		cur_pcb->next = NULL;
+		tail->next = NULL;
+	} else {
+		tail->next = pcb;
+		tail = tail->next;
+		tail->next = NULL;
+	}
+}
+
+void add_child_to_runqueue(pcb_t *pcb)
+{
+	pcb->next = cur_pcb->next;
+	cur_pcb->next = pcb;
+}
+
+pcb_t *get_next_pcb()
+{
+	if (cur_pcb->next) {
+		tail->next = cur_pcb;
+		cur_pcb = cur_pcb->next;
+		tail = tail->next;
+		tail->next = NULL;
+	}
+
+	return cur_pcb;
+}
+
 /* Create a kernel thread.
  * Allocate a PCN block.
  * Populate a dummy stack for it.
@@ -37,11 +69,12 @@ pcb_t *get_new_pcb()
  */
 pcb_t *create_user_process(void *func)
 {
-	pcb_t *l_pcb = get_new_pcb(), *t_pcb = cur_pcb;
+	pcb_t *l_pcb = get_new_pcb();
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)func;
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 16]) = (uint64_t)l_pcb;
 	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 16]);
 
+#if 0
 	if (cur_pcb == NULL) {
 		cur_pcb = l_pcb;
 	} else {
@@ -51,7 +84,9 @@ pcb_t *create_user_process(void *func)
 	}
 
 	l_pcb->next = cur_pcb;
+#endif
 
+	add_pcb_to_runqueue(l_pcb);
 	l_pcb->is_usr = 1;
 
 	set_proc_page_table(l_pcb);
@@ -75,15 +110,20 @@ pcb_t *copy_user_process(pcb_t * p_pcb)
 	/* Change PID */
 	c_pcb->pid = pid;
 
-	/* Update kstack to return 0 in child process */
+	/* Update return point from context switch to first instruction after fork syscall handler */
 	*((uint64_t *)&c_pcb->kstack[KSTACK_SIZE - (28*8)]) = ((uint64_t)isr80 + 0x29);
+
+	/* Set pcb on the top of kernle stack as it will be popped first from the context switch */
+	*((uint64_t *)&c_pcb->kstack[KSTACK_SIZE - (29*8)]) = ((uint64_t)c_pcb);
+
+	/* Set the kernel stack pointer */
 	c_pcb->rsp = (uint64_t)&(c_pcb->kstack[KSTACK_SIZE - (29*8)]);
+
+	/* Update kstack to return 0 in child process */
 	*((uint64_t *)&c_pcb->kstack[KSTACK_SIZE - (21*8)]) = ((uint64_t)0);
-	kprintf("crsp %p\n", c_pcb->rsp);
 
 	/* Add it after parent */
-	c_pcb->next = cur_pcb->next->next;
-	cur_pcb->next = c_pcb;
+	add_child_to_runqueue(c_pcb);
 
 	/* Allocate mm struct */
 	c_pcb->mm = (mm_struct_t *)kmalloc(0x1000);
@@ -111,13 +151,14 @@ int sys_fork()
  */
 pcb_t *create_kernel_process(void *func)
 {
-	pcb_t *l_pcb = get_new_pcb(), *t_pcb = cur_pcb;
+	pcb_t *l_pcb = get_new_pcb();
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)func;
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 16]) = (uint64_t)l_pcb;
 	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 16]);
 
 	l_pcb->is_usr = 0;
 
+#if 0
 	if (cur_pcb == NULL) {
 		cur_pcb = l_pcb;
 	} else {
@@ -127,6 +168,8 @@ pcb_t *create_kernel_process(void *func)
 	}
 
 	l_pcb->next = cur_pcb;
+#endif
+	add_pcb_to_runqueue(l_pcb);
 
 	l_pcb->mm = (mm_struct_t *)kmalloc(0x1000);
 
@@ -140,10 +183,7 @@ void yield(void)
 {
 	pcb_t *prv_pcb = cur_pcb;
 
-	if (cur_pcb == cur_pcb->next)
-		return;
-
-	cur_pcb = cur_pcb->next;
+	cur_pcb = get_next_pcb();
 
 	/* This is hardcoded for now as rsp is not updated after returning from the syscall. TODO: Check this. */
 	set_tss_rsp((void *)&cur_pcb->kstack[KSTACK_SIZE - 8]);
@@ -189,8 +229,6 @@ void try_syscall()
 
 void thread1()
 {
-	kprintf("Thread1");
-	while (1);
 	while (1) {
 		__syscall_write(0, "thread 1\n", 5);
 		/* This is yield. Implemented as a system call. */
@@ -253,7 +291,9 @@ void process_init()
 {
 	pcb_t *pcb0 = get_new_pcb();
 	pcb_t *pcb1 = create_kernel_process(init_process);
-	create_kernel_process(thread2);
+	//create_kernel_process(thread2);
+	//create_kernel_process(thread1);
+
 /* If user paging is ebabled, user process cannot use code in kernel space.
  * Only option then is to load the elf executable.  */
 #if ENABLE_USER_PAGING
