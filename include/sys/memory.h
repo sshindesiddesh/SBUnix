@@ -116,4 +116,7 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags, uint64_t type);
 void __flush_tlb();
 va_t pa2va(pa_t pa);
 pa_t va2pa(va_t va);
+pa_t page2pa(page_disc_t *ptr);
+page_disc_t *pa2page(pa_t pa);
+pa_t get_free_pages(uint64_t n);
 #endif
