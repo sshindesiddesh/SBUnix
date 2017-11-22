@@ -357,28 +357,32 @@ int main(int argc, char* argv[], char *envp[])
 {
 	char buf[2] = {48, '\0'};
 	while (1) {
-		write(0, "hello1\n", 5);
 		pid_t pid = fork();
 		if (pid == 0) {
 			buf[0] = 48 + pid;
-			write(0, buf, 5);
-			pid = fork();
-			if (pid == 0) {
-				buf[0] = 48 + pid;
+			while (1) {
 				write(0, buf, 5);
-				yield();
-			} else {
-				buf[0] = 48 + pid;
-				write(0, buf, 5);
+				write(0, "child\n", 5);
 				yield();
 			}
 		} else {
-			buf[0] = 48 + pid;
-			write(0, buf, 5);
-			yield();
+			pid_t pid2 = fork();
+			buf[0] = 48 + pid2;
+			if (pid2 == 0) {
+				while (1) {
+					write(0, buf, 5);
+					write(0, "***child***\n", 5);
+					yield();
+				}
+			} else {
+				buf[0] = 48 + pid2;
+				while (1) {
+					write(0, buf, 5);
+					write(0, "parent\n", 5);
+					yield();
+				}
+			}
 		}
-		yield();
-		write(0, "return\n", 5);
 		while (1) {
 			yield();
 		}
