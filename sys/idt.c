@@ -60,9 +60,6 @@ void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 	if (err_code & PTE_P) {
 		faultAddr = faultAddr/PG_SIZE*PG_SIZE;
 		pte_t * pte = get_pte_from_pml_unmap((pml_t *)pa2va((pa_t)cur_pcb->pml4), faultAddr, -1);
-		kprintf("pte %p *pte %p\n", pte, *pte);
-		kprintf("COW:%d\n", *pte & PTE_COW);
-		kprintf("ref_cnt %d\n", pa2page(*pte & ~(0xFFF))->ref_cnt);
 		/* If the COW bit is set */
 		if (*pte & PTE_COW) {
 			/* If refered by two virtual addressess */
@@ -71,20 +68,20 @@ void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 				va_t va = (va_t)kmalloc(0x1000);
 				/* Copy data into new physical page */
 				memcpy((void *)va, (void *)faultAddr, PG_SIZE);
-				map_page_entry((pml_t *)pa2va((pa_t)cur_pcb->pml4), (va_t)faultAddr,
-					0x1000, (pa_t)va2pa(va), PTE_P | vma->flags);
 				/* Decrease the reference count of the physical page */
 				pa2page(*pte & ~(0xFFF))->ref_cnt--;
+				map_page_entry((pml_t *)pa2va((pa_t)cur_pcb->pml4), (va_t)faultAddr,
+					0x1000, (pa_t)va2pa(va), PTE_P | PTE_U | vma->flags);
 			/* Else if refered by one virtual addressess */
 			} else if (pa2page(*pte & ~(0xFFF))->ref_cnt == 1) {
-				kprintf("One free now\n");
 				*pte = (*pte) & ~(0xFFF);
-				*pte |= (PTE_P | vma->flags);
-				while (1);
+				*pte |= (PTE_P | PTE_U | vma->flags);
 			}
 		}
 	} else {
 		if (vma->type == HEAP) {
+			/* Appended for user and present. TODO : Really needed or user should pass??? */
+			vma->flags = PTE_P | PTE_U | vma->flags;
 			allocate_vma(cur_pcb, vma);
 		} else if (vma->type == STACK) {
 			allocate_vma(cur_pcb, vma);

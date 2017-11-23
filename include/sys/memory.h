@@ -15,7 +15,7 @@
 #define PTE_D           0x040   // Dirty
 #define PTE_PS          0x080   // Page Size
 #define PTE_MBZ         0x180   // Bits must be zero
-#define PTE_COW         0x400   // Copy on write
+#define PTE_COW         0x200   // Copy on write
 
 #define PML4SHIFT               39
 #define PDPESHIFT               30

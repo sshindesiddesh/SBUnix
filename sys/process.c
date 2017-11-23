@@ -205,6 +205,7 @@ void kyield(void)
 #endif
 #if	ENABLE_USER_PAGING
 	__asm__ volatile("mov %0, %%cr3":: "b"(cur_pcb->pml4));
+	__flush_tlb();
 #endif
 	__context_switch(prv_pcb, cur_pcb);
 }

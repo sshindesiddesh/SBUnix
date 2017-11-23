@@ -12,6 +12,7 @@
 #define SYSCALL_OPEN	2
 #define SYSCALL_CLOSE	3
 #define SYSCALL_MMAP	9
+#define SYSCALL_MUNMAP	11
 #define SYSCALL_CHDIR	80
 #define SYSCALL_INFO	99
 #define SYSCALL_YIELD	24
@@ -23,6 +24,17 @@
 #define SYSCALL_OPENDIR	300
 #define SYSCALL_CLOSEDIR 301
 #define SYSCALL_READDIR	302
+
+void print_params(syscall_in *in)
+{
+	kprintf("s no %x\n", in->in_out);
+	kprintf("1p %x\n", in->first_param);
+	kprintf("2p %x\n", in->second_param);
+	kprintf("3p %x\n", in->third_param);
+	kprintf("4p %x\n", in->fourth_param);
+	kprintf("5p %x\n", in->fifth_param);
+	kprintf("6p %x\n", in->sixth_param);
+}
 
 int puts(const char *str);
 int console_read(int fd, char *buf, uint64_t count);
@@ -59,6 +71,9 @@ uint64_t __isr_syscall(syscall_in *in)
 			break;
 		case SYSCALL_MMAP:
 			out = kmmap(in->first_param, in->second_param, in->third_param, in->fourth_param);
+			break;
+		case SYSCALL_MUNMAP:
+			out = kmunmap(in->first_param, in->second_param);
 			break;
 		case SYSCALL_YIELD:
 			kyield();
