@@ -267,12 +267,12 @@ pte_t *get_pte_from_pml_unmap(pml_t *pml, va_t va, uint64_t perm)
 
 void unmap_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm)
 {
-	kprintf("unmap : va %p, size %x\n", va, size);
 	pte_t *pte_ptr;
 	int i;
 	for (i = 0; i < size; i += PG_SIZE) {
 		pte_ptr = get_pte_from_pml_unmap(pml, va + i, perm);
 		if (pte_ptr) {
+			kprintf(" v %p p %p ptr %p\n", va + i, pa + i, pte_ptr);
 #ifdef PG_DEBUG
 			kprintf(" v %p p %p ptr %p\n", va + i, pa + i, pte_ptr);
 #endif
@@ -546,7 +546,7 @@ va_t munmap(va_t va_start, uint64_t size)
 			vma = h;
 			/* TODO: kfree */
 			/* free range -> (vma->start:vma->end) */
-			unmap_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)vma->start, vma->end - vma->start, 0, 0);
+			unmap_page_entry((pml_t *)pa2va((pa_t)cur_pcb->pml4), (va_t)vma->start, vma->end - vma->start, 0, 0);
 			if (!h_p) {
 				mm->head = h->next;
 				h_p = 0;
@@ -561,7 +561,7 @@ va_t munmap(va_t va_start, uint64_t size)
 			vma = h;
 			/* TODO: kfree(vma) */
 			/* free range -> (vma->start:end) */
-			unmap_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)vma->start, end - vma->start, 0, 0);
+			unmap_page_entry((pml_t *)pa2va((pa_t)cur_pcb->pml4), (va_t)vma->start, end - vma->start, 0, 0);
 			h->start = end;
 		/* smaller right range : unmap for higher portion of vma. update the end address of vma.
 		 * h->end = addr . new vma (h->start, addr) */
@@ -569,7 +569,7 @@ va_t munmap(va_t va_start, uint64_t size)
 			vma = h;
 			/* TODO: kfree(vma) */
 			/* free range -> (addr:vma->end) */
-			unmap_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)addr, vma->end - addr, 0, 0);
+			unmap_page_entry((pml_t *)pa2va((pa_t)cur_pcb->pml4), (va_t)addr, vma->end - addr, 0, 0);
 			h->end = addr;
 		}
 		h_p = h;
@@ -577,6 +577,11 @@ va_t munmap(va_t va_start, uint64_t size)
 	}
 
 	return 0;
+}
+
+va_t kmunmap(va_t va_start, uint64_t size)
+{
+	return munmap(va_start, size);
 }
 
 pcb_t *create_kernel_process(void *func);

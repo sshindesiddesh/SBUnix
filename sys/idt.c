@@ -42,6 +42,7 @@ pte_t *get_pte_from_pml_unmap(pml_t *pml, va_t va, uint64_t perm);
 
 void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 {
+	kprintf("!!!Pagefault : Address: %p Error %x !!!\n", faultAddr, err_code);
 #ifdef	VMA_DEBUG
 	kprintf("!!!Pagefault : Address: %p Error %x !!!\n", faultAddr, err_code);
 #endif
@@ -72,7 +73,7 @@ void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 				/* Copy data into new physical page */
 				memcpy((void *)va, (void *)faultAddr, PG_SIZE);
 				map_page_entry((pml_t *)pa2va((pa_t)cur_pcb->pml4), (va_t)faultAddr,
-					0x1000, (pa_t)va2pa(va), PTE_P | vma->flags);
+					0x1000, (pa_t)va2pa(va), PTE_P | PTE_U | vma->flags);
 				/* Decrease the reference count of the physical page */
 				pa2page(*pte & ~(0xFFF))->ref_cnt--;
 			/* Else if refered by one virtual addressess */
@@ -85,6 +86,8 @@ void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 		}
 	} else {
 		if (vma->type == HEAP) {
+			/* Appended for user and present. TODO : Really needed or user should pass??? */
+			vma->flags = PTE_P | PTE_U | vma->flags;
 			allocate_vma(cur_pcb, vma);
 		} else if (vma->type == STACK) {
 			allocate_vma(cur_pcb, vma);
