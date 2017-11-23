@@ -59,6 +59,7 @@ uint64_t __isr_syscall(syscall_in *in)
 			out = (uint64_t)tarfs_readdir((dir_t *)in->first_param);
 			break;
 		case SYSCALL_MMAP:
+			out = kmmap(in->first_param, in->second_param, in->third_param, in->fourth_param);
 			break;
 		case SYSCALL_YIELD:
 			kyield();
@@ -74,7 +75,6 @@ uint64_t __isr_syscall(syscall_in *in)
 		case SYSCALL_DUP2:
 			break;
 		case SYSCALL_FORK:
-			kprintf("FORK\n");
 			out = kfork();
 			break;
 		default:

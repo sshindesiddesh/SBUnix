@@ -81,6 +81,7 @@ void allocate_vma(pcb_t *pcb, vma_t *vma)
 	pa_t pa;
 	int i = 0;
 	for (; i < va_size; i += PG_SIZE) {
+		/* TODO: kmalloc ??? */
 		pa = get_free_pages(1);
 		map_page_entry((pml_t *)pa2va((pa_t)pcb->pml4), (va_t)va_start, 0x1000, (pa_t)pa, PTE_P | vma->flags);
 		/* Kernel allocates vmas for the user process. So it does not have the va in page tables.
@@ -110,6 +111,11 @@ va_t kmalloc(const uint64_t size)
 		t_size -= (pgr * PG_SIZE);
 		if (t_size > 0)
 			pgr++;
+	}
+	/* TODO : Remove this at the end. */
+	if (pgr != 1) {
+		kprintf("!!!Error : More than 1 page requested. !!!\n");
+		while (1);
 	}
 #ifdef MALLOC_DEBUG
 	kprintf("Page req %d\n", pgr);
@@ -497,6 +503,10 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags, uint64_t type)
 	return vma->start;
 }
 
+va_t kmmap(va_t va_start, uint64_t size, uint64_t flags, uint64_t type) {
+	return mmap(va_start, size, flags, type);
+}
+
 va_t munmap(va_t va_start, uint64_t size)
 {
 	/* Kernel chooses */
@@ -632,27 +642,6 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	/* No need to map something to user space. Paging betweeen processes is working. */
 	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, PTE_P | PTE_W | PTE_U);
 	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, PTE_P | PTE_W | PTE_U);
-#endif
-
-#if 0
-	/* Kmalloc_user signature has changed, write more concrete kmalloc_user test cases */
-	va_t *ptr;
-	ptr = (va_t *)kmalloc_user(0x1000);
-	ptr[0] = 'h';
-	ptr[1] = '\0';
-	kprintf("Alloc Done %s\n", ptr);
-	ptr = (va_t *)kmalloc_user(0x1000);
-	ptr[0] = 'w';
-	ptr[1] = '\0';
-	kprintf("Alloc Done %s\n", ptr);
-	ptr = (va_t *)kmalloc(0x1000);
-	ptr[0] = 'H';
-	ptr[1] = '\0';
-	kprintf("Alloc Done %s\n", ptr);
-	ptr = (va_t *)kmalloc(0x1000);
-	ptr[0] = 'W';
-	ptr[1] = '\0';
-	kprintf("Alloc Done %s\n", ptr);
 #endif
 }
 

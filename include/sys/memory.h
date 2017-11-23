@@ -41,7 +41,7 @@
     (round_down((uint64_t) (num) + __base - 1, __base)); \
 })
 
-#define KSTACK_SIZE	4096
+#define KSTACK_SIZE	(1024 * 2)
 /* 14 is the number of push/pop in context switch */
 #define CON_STACK_SIZE	(14*8)
 

@@ -176,16 +176,12 @@ dirent_t *tarfs_readdir(dir_t * dir)
 /* getdents from given directory using fd */
 uint64_t tarfs_getdents(uint64_t fd, uint64_t buf, uint64_t count)
 {
-	//kprintf(" in getdents ");
 	if (cur_pcb->fd[fd] != NULL) {
 		dirent_t *dir;
-		//dir = (dirent_t *)kmalloc(sizeof(dirent_t));
 		dir = (dirent_t *)buf;
-		//kprintf("fd current : %d", cur_pcb->fd[fd]->current);
 		strcpy(dir->d_name, cur_pcb->fd[fd]->node->child[(cur_pcb->fd[fd]->current)+2]->name);
 		dir->d_reclen = sizeof(dirent_t);
 		cur_pcb->fd[fd]->current += 1;
-		//kprintf(" n:%s ", dir->d_name);
 		return (uint64_t)dir;
 	}
 	else

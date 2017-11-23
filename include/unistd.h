@@ -4,6 +4,11 @@
 #include <sys/defs.h>
 #include <dirent.h>
 
+#define PROT_READ	0x01
+#define PROT_WRITE	0x02
+#define PROT_EXEC	0x03
+#define PROT_NONE	0x04
+
 ssize_t write(int fd, const void *buf, size_t count);
 ssize_t read(int fd, void *buf, size_t count);
 int open(const char *pathname, int flags, uint64_t);
@@ -24,6 +29,7 @@ uint64_t opendir(const char *pathname);
 uint64_t listdir(void *buf, uint64_t dir);
 uint64_t closedir(uint64_t dir);
 struct dirent *readdir(uint64_t dir);
+uint64_t mmap(uint64_t va_start, uint64_t size, uint64_t flags, uint64_t type);
 
 #if 0
 int unlink(const char *pathname);
