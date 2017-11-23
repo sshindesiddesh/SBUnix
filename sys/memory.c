@@ -371,6 +371,7 @@ void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm)
 			pd->ref_cnt++;
 		}
 	}
+	__flush_tlb();
 }
 
 void page_table_init()
