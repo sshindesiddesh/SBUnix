@@ -686,18 +686,8 @@ void copy_vma_mapping(pcb_t *parent, pcb_t *child)
 			va_t *va = (va_t *)kmalloc(p_vma->end - p_vma->start);
 			/* memcpy parent stack in kernel space */
 			memcpy((void *)va, (void *)p_vma->start, p_vma->end - p_vma->start);
-			/* change current pcb to child pcb */
-			/* cur_pcb is assumed to be parent before making it child. */
-			cur_pcb = child;
-			__asm__ volatile("mov %0, %%cr3":: "b"(child->pml4));
-			/* mmap new page in child user space */
-			va_t *c_va = (va_t *)mmap(p_vma->start, p_vma->end - p_vma->start, p_vma->flags, p_vma->type);
-			/* memcpy stack from kernel space to childs user space */
-			memcpy((void *)c_va, (void *)va, p_vma->end - p_vma->start);
-			/* change cur_pcb to parent */
-			__asm__ volatile("mov %0, %%cr3":: "b"(parent->pml4));
-			cur_pcb = parent;
-			/* TODO: kfree(va) */
+			/* Map entry in childs page table */
+			map_page_entry((pml_t *)pa2va((pa_t)child->pml4), (va_t)p_vma->start, 0x1000, (pa_t)va2pa((va_t)va), PTE_P | p_vma->flags);
 		}
 		p_vma = p_vma->next;
 	}
