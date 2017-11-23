@@ -12,11 +12,16 @@ volatile uint64_t reading_flag = 0;
 static volatile int scanlen = 0;
 
 #define ENTER '\n'
+#define BKSPACE '\b'
 
 void update_read_buf(char key)
 {
 	if (key == ENTER) {
 		reading_flag = 0;
+		return;
+	}
+	if (key == BKSPACE) {
+		console_read_buf[--cursor] = '\0';
 		return;
 	}
 	console_read_buf[cursor] = key;

@@ -36,7 +36,7 @@ void print_params(syscall_in *in)
 	kprintf("6p %x\n", in->sixth_param);
 }
 
-int puts(const char *str);
+int putchar(int c);
 int console_read(int fd, char *buf, uint64_t count);
 uint64_t __isr_syscall(syscall_in *in)
 {
@@ -116,8 +116,17 @@ uint64_t kread(uint64_t fd, void *buf, uint64_t length)
 uint64_t kwrite(uint64_t fd, uint64_t buf, int length)
 {
 	if (fd == STD_OUT || fd == STD_ERR) {
-		length = puts((const char *)buf);
-		return length;
+		const char *buf1 = (const char *)buf;
+		uint64_t count, i = 0;
+		if (length > strlen((char *)buf1))
+			length = strlen((char *)buf1);
+		count = length;
+		while (length >= 0) {
+			putchar(buf1[i++]);
+			length--;
+		}
+
+		return count;
 	}
 	return 0;
 }
