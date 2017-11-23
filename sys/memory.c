@@ -678,11 +678,19 @@ void copy_vma_mapping(pcb_t *parent, pcb_t *child)
 		/* Copy existing heap mappings */
 		if (p_vma->type == HEAP) {
 			while (start < end) {
+				/* Only last level entries are marked as COW */
+				/* Mark parent page table entriess as COW and read only */
 				pte = get_pte_from_pml((pml_t *)pa2va((pa_t)parent->pml4), start, p_vma->flags);
 				if (pte) {
 					pa = (pa_t)(*pte & ~(0xFFF));
 					*pte = (pa | PTE_P | PTE_U | PTE_COW);
-					map_page_entry((pml_t *)pa2va((pa_t)child->pml4), start, 0x1000, (pa_t)pa, PTE_P | PTE_U | PTE_COW);
+					/* Mark last level child page table entries as COW and read only */
+					map_page_entry((pml_t *)pa2va((pa_t)child->pml4), start, 0x1000, (pa_t)pa, PTE_P | PTE_U | PTE_W);
+					pte = get_pte_from_pml((pml_t *)pa2va((pa_t)child->pml4), start, PTE_P | PTE_U | PTE_W);
+					if (pte) {
+						pa = (pa_t)(*pte & ~(0xFFF));
+						*pte = (pa | PTE_P | PTE_U | PTE_COW);
+					}
 				}
 				start += PG_SIZE;
 			}
