@@ -63,7 +63,7 @@ void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 		/* If the COW bit is set */
 		if (*pte & PTE_COW) {
 			/* If refered by two virtual addressess */
-			if (pa2page(*pte & ~(0xFFF))->ref_cnt == 2) {
+			if (pa2page(*pte & ~(0xFFF))->ref_cnt >= 2) {
 				/* Get a new free page */
 				va_t va = (va_t)kmalloc(0x1000);
 				/* Copy data into new physical page */
