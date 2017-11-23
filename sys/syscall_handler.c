@@ -25,7 +25,6 @@
 #define SYSCALL_CLOSEDIR 301
 #define SYSCALL_READDIR	302
 
-
 void print_params(syscall_in *in)
 {
 	kprintf("s no %x\n", in->in_out);
@@ -37,6 +36,7 @@ void print_params(syscall_in *in)
 	kprintf("6p %x\n", in->sixth_param);
 }
 
+int puts(const char *str);
 int console_read(int fd, char *buf, uint64_t count);
 uint64_t __isr_syscall(syscall_in *in)
 {
@@ -46,8 +46,7 @@ uint64_t __isr_syscall(syscall_in *in)
 			out = kread(in->first_param, (char *)in->second_param, in->third_param);
 			break;
 		case SYSCALL_WRITE:
-			kprintf("%s", (char *)in->second_param);
-			out = strlen((char *)in->second_param);
+			out = kwrite(in->first_param, (uint64_t)in->second_param, in->third_param);
 			break;
 		case SYSCALL_OPEN:
 			out = tarfs_open((char *)in->first_param, in->second_param);
@@ -112,4 +111,13 @@ uint64_t kread(uint64_t fd, void *buf, uint64_t length)
 		return count;
 	}
 	return -1;
+}
+
+uint64_t kwrite(uint64_t fd, uint64_t buf, int length)
+{
+	if (fd == STD_OUT || fd == STD_ERR) {
+		length = puts((const char *)buf);
+		return length;
+	}
+	return 0;
 }
