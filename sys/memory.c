@@ -46,17 +46,20 @@ void add_free_page(pa_t pa)
 #if 0
 	kprintf("ADD PAGE : %p\n", pa);
 #endif
+	page_disc_t *pd = pa2page(pa);
 	/* Page reffered by any process  */
-	if (pa2page(pa)->ref_cnt >= 1) {
+	if (pd->ref_cnt >= 1) {
 		kprintf("!!Page reference count more than 1!!\n");
 		while (1);
 	}
 
 	/* Page free bit is set */
-	if (pa2page(pa)->free) {
+	if (pd->free) {
 		kprintf("!!Page is already free!!");
 		while (1);
 	}
+
+	pd->free = 1;
 
 	/* Page not aligned, means still in use */
 	if (pa & 0xFFF) {
@@ -64,7 +67,6 @@ void add_free_page(pa_t pa)
 		while (1);
 	}
 
-	page_disc_t *pd = pa2page(pa);
 	free_list_ptr->next = pd;
 	free_list_ptr = free_list_ptr->next;
 }
@@ -83,7 +85,11 @@ pa_t get_free_pages(uint64_t n)
 	}
 	page_disc_t *ptr = free_list_ptr;
 	while (i--) {
-		ptr->free = 0;
+		if (ptr->free) {
+			ptr->free = 0;
+		} else {
+			kprintf("!!! Memory Inconsistency !!!\n");
+		}
 		ptr = free_list_ptr->next;
 	}
 
@@ -808,8 +814,13 @@ void free_page_entry(pml_t *pml)
 								if (pa & PTE_P) {
 									/* As page table entry is removed */
 									pa2page(pa)->ref_cnt--;
-									/* Page is still used by another process */
-									if (!(pa & PTE_COW)) {
+									/* Page is still used by another process If */
+									/* COW is set and reference count is greater than 1 */
+									if (pa & PTE_COW) {
+										if (pa2page(pa)->ref_cnt == 0) {
+											add_free_page(pa & ~(0xFFF));
+										}
+									} else {
 										add_free_page(pa & ~(0xFFF));
 									}
 								}
