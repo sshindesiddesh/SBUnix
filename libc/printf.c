@@ -18,7 +18,7 @@ char *generic_conv(unsigned long n, int b)
 
 void putchar(int c)
 {
-	write(0, &c, 1);
+	write(1, &c, 1);
 }
 
 int puts(const char *str)
