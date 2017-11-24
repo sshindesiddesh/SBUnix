@@ -20,6 +20,9 @@ pcb_t *cur_pcb = NULL;
 /* tail of the running queue */
 pcb_t *tail = NULL;
 
+/* Head of zombies */
+pcb_t *zombie_head = NULL;
+
 /* Global PID assigner */
 static uint64_t PID = -1;
 
@@ -27,6 +30,39 @@ void set_proc_page_table(pcb_t *pcb);
 void free_page_entry(pml_t *pml);
 void deallocate_pcb(pcb_t *pcb);
 
+void add_to_zombie(pcb_t *pcb)
+{
+#if 0
+	kprintf("\nAdded Zombie %p\n", pcb);
+#endif
+	if (!zombie_head) {
+		zombie_head = pcb;
+		zombie_head->next = NULL;
+	} else {
+		pcb->next = zombie_head;
+		zombie_head = pcb;
+	}
+}
+
+void free_zombies()
+{
+	pcb_t *zhead = zombie_head;
+
+	while (zhead) {
+#if 0
+		kprintf("ZOMBIE FREE %p\n", zhead);
+#endif
+		/* Free page table pages */
+		/* Free all the physical pages allocated to the child and not shared */
+		free_page_entry((pml_t *)zhead->pml4);
+		/* Free PCB struct */
+		deallocate_pcb(zhead);
+		zhead = zhead->next;
+	}
+
+	/* After this clean up, zombie head should always be clen */
+	zombie_head = zhead;
+}
 
 pcb_t *get_new_pcb()
 {
@@ -46,6 +82,12 @@ void add_pcb_to_runqueue(pcb_t *pcb)
 		tail = tail->next;
 		tail->next = NULL;
 	}
+}
+
+void add_pcb_to_runqueue_head(pcb_t *pcb)
+{
+	pcb->next = cur_pcb->next;
+	cur_pcb = pcb;
 }
 
 /* Remove PCB from tail */
@@ -127,6 +169,22 @@ pcb_t *create_user_process(void *func)
 		kprintf(" curr node assigned");
 #endif
 	
+	return l_pcb;
+}
+
+pcb_t *create_clone_for_exec()
+{
+	pcb_t *l_pcb = get_new_pcb();
+	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)0;
+	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 16]) = (uint64_t)l_pcb;
+	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 16]);
+
+	l_pcb->is_usr = 1;
+
+	set_proc_page_table(l_pcb);
+
+	l_pcb->mm = (mm_struct_t *)kmalloc(PG_SIZE);
+
 	return l_pcb;
 }
 
@@ -218,7 +276,6 @@ void __exit_switch(pcb_t *cur_pcb);
 void kyield(void)
 {
 	pcb_t *prv_pcb = cur_pcb;
-
 	cur_pcb = get_next_pcb();
 
 	/* This is hardcoded for now as rsp is not updated after returning from the syscall. TODO: Check this. */
@@ -232,14 +289,14 @@ void kyield(void)
 	__flush_tlb();
 #endif
 	if (prv_pcb->exit_status) {
+		/* Add previous to the zombie list  */
+		add_to_zombie(prv_pcb);
 		/* Remove PCB from scheduler list */
 		remove_pcb_from_runqueue(prv_pcb);
 
-		/* Free page table pages */
-		/* Free all the physical pages allocated to the child and not shared */
-		free_page_entry((pml_t *)prv_pcb->pml4);
-		/* Free PCB struct */
-		deallocate_pcb(prv_pcb);
+		/* Free zombies */
+		free_zombies();
+
 		/* Go to the next process */
 		/* Function not called as we do not have any stack to push return address of exit_switch function */
 		/* TODO: This is prblematic: If scheduled not working after execute,
@@ -358,11 +415,18 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 	uint64_t argc = 0, len, *u_rsp, i = 0;
 	/*Array of 10 pointers to be passed to the user */
 	uint64_t *uargv[10];
-	pcb_t *usr_pcb = create_user_process(NULL);
-	pcb_t *t_pcb;
-	t_pcb = cur_pcb;
-	cur_pcb = usr_pcb;
-	kprintf("file %s\n", file);
+	cur_pcb->exit_status = 1;
+	pcb_t *prv_pcb = cur_pcb;
+
+
+	pcb_t *usr_pcb = create_clone_for_exec();
+
+	/* This makes new as current and current as next process of the new */
+	/* cur_pcb is usr_pcb after this */
+	add_pcb_to_runqueue_head(usr_pcb);
+
+	/* Add previous to the zombie list  */
+	add_to_zombie(prv_pcb);
 
 	/* Copy all arguments in kernel memory */
 	strcpy(kargs[argc++], file);
@@ -406,8 +470,7 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 
 	set_tss_rsp((void *)&cur_pcb->kstack[KSTACK_SIZE - 8]);
 
-	cur_pcb = t_pcb;
-	__switch_ring3(usr_pcb);
+	__switch_ring3(cur_pcb);
 
 	return 0;
 }
