@@ -40,6 +40,7 @@ extern uint64_t phys_end;
 
 pte_t *get_pte_from_pml_unmap(pml_t *pml, va_t va, uint64_t perm);
 
+
 void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 {
 #ifdef	VMA_DEBUG
@@ -82,9 +83,18 @@ void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 		if (vma->type == HEAP) {
 			/* Appended for user and present. TODO : Really needed or user should pass??? */
 			vma->flags = PTE_P | PTE_U | vma->flags;
-			allocate_vma(cur_pcb, vma);
+			/* Allocate only one page at the time of pagefault */
+			/* allocate_vma(cur_pcb, vma); */
+			allocate_page_in_vma(cur_pcb, vma, faultAddr);
 		} else if (vma->type == STACK) {
-			allocate_vma(cur_pcb, vma);
+			if (faultAddr < STACK_LIMIT) {
+				kprintf("Stack Space unavailable\n");
+				kprintf("!!!Segmentation Fault!!!");
+				while (1);
+			}
+			/* Allocate only one page at the time of pagefault */
+			/* allocate_vma(cur_pcb, vma); */
+			allocate_page_in_vma(cur_pcb, vma, faultAddr);
 		}
 	}
 }

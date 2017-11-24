@@ -46,9 +46,9 @@ int load_elf_code(pcb_t *pcb, void *start)
 		p_hdr++;
 	}
 
-	/* mmap user stack */
-	va_t *u_stack = (va_t *)mmap(STACK_TOP - PG_SIZE, 0x1000, PTE_P | PTE_W | PTE_U, STACK);
-	pcb->u_rsp = ((uint64_t)u_stack + 4096 - 8);
+	/* mmap user stack for all the space. Allocate lazily, one by one page */
+	mmap(STACK_LIMIT, STACK_TOP - STACK_LIMIT, PTE_P | PTE_W | PTE_U, STACK);
+	pcb->u_rsp = ((uint64_t)STACK_TOP - 8);
 
 	return 0;
 }

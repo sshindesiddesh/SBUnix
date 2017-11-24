@@ -241,7 +241,20 @@ void kyield(void)
 		/* Free PCB struct */
 		deallocate_pcb(prv_pcb);
 		/* Go to the next process */
-		__exit_switch(cur_pcb);
+		/* Function not called as we do not have any stack to push return address of exit_switch function */
+		/* TODO: This is prblematic: If scheduled not working after execute,
+		 * Remove asm code and call __exit_switch() */
+		__asm__ __volatile__ (
+			"cli;"
+			"movq %0, %%rsp;"
+			"popq %%rdi;"
+			"sti;"
+			"retq;"
+			:"=m"(cur_pcb->rsp)
+			:
+			: "rsp", "rdi"
+		);
+		/* __exit_switch(cur_pcb); */
 	} else {
 		__context_switch(prv_pcb, cur_pcb);
 	}

@@ -135,6 +135,27 @@ void allocate_vma(pcb_t *pcb, vma_t *vma)
 	}
 }
 
+void allocate_page_in_vma(pcb_t *pcb, vma_t *vma, va_t faultAddr)
+/* Assumed Aligned addresses. MMAP should be the only one callling this. */
+{
+#ifdef malloc_debug
+		kprintf("va %p, size %x\n", va, size);
+#endif
+
+#ifdef MALLOC_DEBUG
+	kprintf("va start %x, va size %x\n", va_start, va_size);
+#endif
+	pa_t pa;
+	if (faultAddr >= vma->start && faultAddr < vma->end) {
+		pa = get_free_pages(1);
+		map_page_entry((pml_t *)pa2va((pa_t)pcb->pml4), (va_t)faultAddr, PG_SIZE, (pa_t)pa, PTE_P | vma->flags);
+	} else {
+		kprintf("!!!Memory Corruption. Allocation request for untracked memory!!!");
+		while (1);
+	}
+
+}
+
 va_t kmalloc(const uint64_t size)
 {
 	if (size <= 0)
@@ -687,41 +708,28 @@ void copy_vma_mapping(pcb_t *parent, pcb_t *child)
 
 	/* Copy user page mappings */
 	while (p_vma) {
-		/* mmap is called for the stack case */
-		if (p_vma->type != STACK) {
-			c_vma = get_empty_vma(p_vma->start, p_vma->end - p_vma->start, child->mm);
-			start = c_vma->start = p_vma->start;
-			end = c_vma->end = p_vma->end;
-			c_vma->type = p_vma->type;
-			c_vma->flags = p_vma->flags;
-		}
-		/* Copy existing heap mappings */
-		if (p_vma->type == HEAP) {
-			while (start < end) {
-				/* Only last level entries are marked as COW */
-				/* Mark parent page table entriess as COW and read only */
-				pte = get_pte_from_pml((pml_t *)pa2va((pa_t)parent->pml4), start, p_vma->flags);
+		c_vma = get_empty_vma(p_vma->start, p_vma->end - p_vma->start, child->mm);
+		start = c_vma->start = p_vma->start;
+		end = c_vma->end = p_vma->end;
+		c_vma->type = p_vma->type;
+		c_vma->flags = p_vma->flags;
+		/* Map page by page */
+		while (start < end) {
+			/* Only last level entries are marked as COW */
+			/* Mark parent page table entriess as COW and read only */
+			pte = get_pte_from_pml((pml_t *)pa2va((pa_t)parent->pml4), start, p_vma->flags);
+			if (pte) {
+				pa = (pa_t)(*pte & ~(0xFFF));
+				*pte = (pa | PTE_P | PTE_U | PTE_COW);
+				/* Mark last level child page table entries as COW and read only */
+				map_page_entry((pml_t *)pa2va((pa_t)child->pml4), start, PG_SIZE, (pa_t)pa, PTE_P | p_vma->flags);
+				pte = get_pte_from_pml((pml_t *)pa2va((pa_t)child->pml4), start, PTE_P | p_vma->flags);
 				if (pte) {
 					pa = (pa_t)(*pte & ~(0xFFF));
 					*pte = (pa | PTE_P | PTE_U | PTE_COW);
-					/* Mark last level child page table entries as COW and read only */
-					map_page_entry((pml_t *)pa2va((pa_t)child->pml4), start, 0x1000, (pa_t)pa, PTE_P | PTE_U | PTE_W);
-					pte = get_pte_from_pml((pml_t *)pa2va((pa_t)child->pml4), start, PTE_P | PTE_U | PTE_W);
-					if (pte) {
-						pa = (pa_t)(*pte & ~(0xFFF));
-						*pte = (pa | PTE_P | PTE_U | PTE_COW);
-					}
 				}
-				start += PG_SIZE;
 			}
-		/* Copy complete stack with same virtual address */
-		} else if (p_vma->type == STACK) {
-			/* allocate page in kernel space */
-			va_t *va = (va_t *)kmalloc(p_vma->end - p_vma->start);
-			/* memcpy parent stack in kernel space */
-			memcpy((void *)va, (void *)p_vma->start, p_vma->end - p_vma->start);
-			/* Map entry in childs page table */
-			map_page_entry((pml_t *)pa2va((pa_t)child->pml4), (va_t)p_vma->start, 0x1000, (pa_t)va2pa((va_t)va), PTE_P | p_vma->flags);
+			start += PG_SIZE;
 		}
 		p_vma = p_vma->next;
 	}
