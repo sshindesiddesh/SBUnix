@@ -15,8 +15,9 @@
 
 extern pml_t *pml;
 
-/* Head of the running linked list for yield */
+/* current of the running queue */
 pcb_t *cur_pcb = NULL;
+/* tail of the running queue */
 pcb_t *tail = NULL;
 
 /* Global PID assigner */
@@ -44,12 +45,33 @@ void add_pcb_to_runqueue(pcb_t *pcb)
 	}
 }
 
+void remove_pcb_from_runqueue(pcb_t *pcb)
+{
+	/* Cannot remove PCB as there will be no once to run */
+	if (cur_pcb == NULL || cur_pcb->next == NULL) {
+		return;
+	} else if (cur_pcb == pcb) {
+		cur_pcb = cur_pcb->next;
+		return;
+	}
+
+	pcb_t *l_pcb = cur_pcb;
+	while (l_pcb->next != pcb && l_pcb->next) {
+		l_pcb = l_pcb->next;
+	}
+
+	l_pcb->next = l_pcb->next->next;
+
+}
+
+/* Child is added just after parent in the runqueue */
 void add_child_to_runqueue(pcb_t *pcb)
 {
 	pcb->next = cur_pcb->next;
 	cur_pcb->next = pcb;
 }
 
+/* Add previous process to the end of runqueue */
 pcb_t *get_next_pcb()
 {
 	if (cur_pcb->next) {
@@ -190,6 +212,7 @@ pcb_t *create_kernel_process(void *func)
 	return l_pcb;
 }
 
+
 /* Yield from process */
 void kyield(void)
 {
@@ -243,7 +266,7 @@ void try_syscall()
 void thread1()
 {
 	while (1) {
-		write(0, "thread 1\n", 5);
+		kprintf("thread 1");
 		/* This is yield. Implemented as a system call. */
 #if	!PREEMPTIVE_SCHED
 		yield();
@@ -262,7 +285,7 @@ void func1()
 void thread2()
 {
 	while (1) {
-		write(0, "thread 2\n", 5);
+		kprintf("thread 2");
 		/* This is yield. Implemented as a system call. */
 #if	!PREEMPTIVE_SCHED
 		yield();
@@ -282,7 +305,7 @@ void func2()
 void init_process()
 {
 	while (1) {
-		write(0, "init\n", 5);
+		kprintf("Inint\n");
 #if	!PREEMPTIVE_SCHED
 		yield();
 #endif
@@ -331,7 +354,7 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 
 	load_elf_code(cur_pcb, (void *)start);
 
-	/*  TODO : Hardcode required ??? */
+	/*  TODOG : Hardcode required ??? */
 	u_rsp = (uint64_t *)(STACK_TOP - 8);
 
 	/* Copy argument values on user stack */
@@ -362,12 +385,38 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 	return 0;
 }
 
+void thread3()
+{
+	while (1) {
+		kprintf("Thread 3");
+		/* This is yield. Implemented as a system call. */
+#if	!PREEMPTIVE_SCHED
+		yield();
+#endif
+
+	}
+}
+
+void thread4()
+{
+	while (1) {
+		kprintf("Thread 4");
+		/* This is yield. Implemented as a system call. */
+#if	!PREEMPTIVE_SCHED
+		yield();
+#endif
+	}
+}
+
 /* Initialise kernel thread creation. */
 void process_init()
 {
 	pcb_t *pcb0 = get_new_pcb();
 	pcb_t *pcb1 = create_kernel_process(init_process);
+	create_kernel_process(thread1);
 	create_kernel_process(thread2);
+	create_kernel_process(thread3);
+	create_kernel_process(thread4);
 
 /* If user paging is ebabled, user process cannot use code in kernel space.
  * Only option then is to load the elf executable.  */
