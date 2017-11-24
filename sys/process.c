@@ -299,6 +299,69 @@ void elf_process()
 	__switch_ring3(usr_pcb_1);
 }
 
+/* Try making it on stack */
+static char kargs[10][100];
+
+/* Execve */
+uint64_t kexecve(char *file, char *argv[], char *env[])
+{
+	uint64_t argc = 0, len, *u_rsp, i = 0;
+	/*Array of 10 pointers to be passed to the user */
+	uint64_t *uargv[10];
+	pcb_t *usr_pcb = create_user_process(NULL);
+	pcb_t *t_pcb;
+	t_pcb = cur_pcb;
+	cur_pcb = usr_pcb;
+	kprintf("file %s\n", file);
+
+	/* Copy all arguments in kernel memory */
+	strcpy(kargs[argc++], file);
+	if (argv) {
+		while (argv[argc - 1]) {
+			strcpy(kargs[argc], argv[argc - 1]);
+			argc++;
+		}
+	}
+
+	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header(file);
+
+
+	/* Switch CR3 so that, whatever page table entries are added through mmap->pagefaults are in the user process */
+	__asm__ volatile("mov %0, %%cr3":: "b"(cur_pcb->pml4));
+
+	load_elf_code(cur_pcb, (void *)start);
+
+	/*  TODO : Hardcode required ??? */
+	u_rsp = (uint64_t *)(STACK_TOP - 8);
+
+	/* Copy argument values on user stack */
+	for (i = argc - 1; i > 0; i--) {
+		len = strlen(kargs[i]) + 1;
+		u_rsp -= len;
+		memcpy((char *)u_rsp, kargs[i], len);
+		uargv[i] = u_rsp;
+	}
+
+	/* Copy argument pointers on user stack */
+	for (i = argc - 1; i > 0; i--) {
+		u_rsp--;
+		*(uint64_t *)u_rsp = (uint64_t)uargv[i];
+	}
+
+	/* Copy argc */
+	/* TODO: Check argc - 1 ???? */
+	u_rsp--;
+	*((uint64_t *)u_rsp) = (uint64_t)(argc - 1);
+	cur_pcb->u_rsp = (uint64_t)u_rsp;
+
+	set_tss_rsp((void *)&cur_pcb->kstack[KSTACK_SIZE - 8]);
+
+	cur_pcb = t_pcb;
+	__switch_ring3(usr_pcb);
+
+	return 0;
+}
+
 /* Initialise kernel thread creation. */
 void process_init()
 {

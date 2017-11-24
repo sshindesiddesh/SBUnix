@@ -85,6 +85,7 @@ uint64_t __isr_syscall(syscall_in *in)
 			out = (uint64_t)tarfs_getcwd((char *)in->first_param, (size_t)in->second_param);
 			break;
 		case SYSCALL_EXECVE:
+			kexecve((char *)in->first_param, (char **)in->second_param, (char **)in->third_param);
 			break;
 		case SYSCALL_DUP2:
 			break;

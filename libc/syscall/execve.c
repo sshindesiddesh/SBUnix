@@ -25,7 +25,7 @@ int execve(const char *file, char *const argv[], char *const envp[])
 		/* Param 6 */
 		"movq %1, %%r9\n"
 #endif
-		"syscall\n"
+		"int $0x80\n"
 		/* Output of the system call */
 		"movq %%rax, %0\n"
 		: "=m"(out)/* output parameters, we aren't outputting anything, no none */

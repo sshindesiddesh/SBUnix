@@ -16,6 +16,7 @@ int close(int fd);
 pid_t fork();
 void yield();
 int execvpe(const char *file, char *const argv[], char *const envp[]);
+int execve(const char *file, char *const argv[], char *const envp[]);
 // OPTIONAL: implement for ``signals and pipes (+10 pts)''
 int pipe(int pipefd[2]);
 int chdir(const char *path);
