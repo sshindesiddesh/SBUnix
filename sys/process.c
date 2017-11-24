@@ -316,7 +316,7 @@ int load_elf_code(pcb_t *pcb, void *start);
 
 void elf_process()
 {
-	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
+	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/cat");
 	load_elf_code(usr_pcb_1, (void *)start);
 	set_tss_rsp((void *)&usr_pcb_1->kstack[KSTACK_SIZE - 8]);
 	__switch_ring3(usr_pcb_1);
@@ -383,6 +383,14 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 	__switch_ring3(usr_pcb);
 
 	return 0;
+}
+
+void kexit(int status)
+{
+	/* Free Allocated VMA's */
+	/* Free page table pages */
+	/* Free PCB struct */
+	/* Go to the next process */
 }
 
 void thread3()

@@ -18,6 +18,7 @@
 #define SYSCALL_YIELD	24
 #define SYSCALL_FORK	57
 #define SYSCALL_EXECVE	59
+#define SYSCALL_EXIT	60
 #define SYSCALL_DUP2	33
 #define SYSCALL_GETCWD	79
 #define SYSCALL_GETDENTS 78
@@ -91,6 +92,9 @@ uint64_t __isr_syscall(syscall_in *in)
 			break;
 		case SYSCALL_FORK:
 			out = kfork();
+			break;
+		case SYSCALL_EXIT:
+			kexit(in->first_param);
 			break;
 		default:
 			kprintf("Error: Unknown System Call\n");

@@ -66,6 +66,8 @@ pa_t get_free_pages(uint64_t n)
 	return pa;
 }
 
+/* Deallocate all page tables */
+
 /* Assumed Aligned addresses. MMAP should be the only one callling this. */
 void allocate_vma(pcb_t *pcb, vma_t *vma)
 {
@@ -705,4 +707,107 @@ void copy_vma_mapping(pcb_t *parent, pcb_t *child)
 		}
 		p_vma = p_vma->next;
 	}
+}
+
+/* Adds physicall page to the free list */
+void add_free_page(pa_t pa)
+{
+	page_disc_t *pd = pa2page(pa);
+	free_list_ptr->next = pd;
+	free_list_ptr = free_list_ptr->next;
+}
+
+/* Deallocate physical pages allocated to a VMA */
+void deallocate_vma(pcb_t *pcb, vma_t *vma)
+{
+	va_t va_start = vma->start;
+	uint64_t va_size = vma->end - va_start;
+
+	int i = 0;
+	for (; i < va_size; i += PG_SIZE) {
+		pte_t *pte = get_pte_from_pml_unmap((pml_t *)pcb->pml4, va_start + i, 0);
+		if (*pte) {
+			add_free_page((pa_t)*pte);
+		}
+		va_start += PG_SIZE;
+	}
+}
+
+/* Deallocate all VMAs */
+/* TODO: If this process has child or parent, VMAs are shared, so do not deallocate them */
+void deallocate_all_vmas(pcb_t *pcb)
+{
+	mm_struct_t *mm = pcb->mm;
+	if (!mm)
+		return;
+
+	vma_t *vma = mm->head;
+
+	while (vma) {
+		deallocate_vma(pcb, vma);
+		vma = vma->next;
+		/* Free VMA itself*/
+		add_free_page(pa2va((va_t)vma));
+	}
+}
+
+/* Deallocate PCB struct */
+void deallocate_pcb(pcb_t *pcb)
+{
+	/* Deallocate mm */
+	add_free_page(pa2va((va_t)pcb->mm));
+	/* Deallocate current node */
+	add_free_page(pa2va((va_t)pcb->current_node));
+	/* Deallocate pcb */ 
+	add_free_page(pa2va((va_t)pcb));
+	
+}
+
+#define PAGE_TABLE_SIZE	512
+
+/* All pages allocated for page tables and actual usage are freed except pages which have COW bit set */
+/* Input pcb->pml4 : physical address */
+void free_page_entry(pml_t *pml)
+{
+	pdpe_t *pdpe;
+	pgdir_t *pgdir;
+	pte_t *pte_ptr;
+	pa_t pa;
+
+	pml = (pml_t *)pa2va((pa_t)pml);
+
+	int i, j, k, l;
+
+	/* 1st level : PML */
+	for (i = 0; i < (PAGE_TABLE_SIZE - 1); i++) {
+		if (pml[i] & PTE_P) {
+			pdpe = (pdpe_t *)(pml[i] & ~(0xFFF));
+			pdpe = (pdpe_t *)(pa2va((pa_t)pdpe));
+			/* 2nd level : PDPE */
+			for (j = 0; j < PAGE_TABLE_SIZE; j++) {
+				if (pdpe[j] & PTE_P) {
+					pgdir = (pgdir_t *)(pdpe[j] & ~(0xFFF));
+					pgdir = (pgdir_t *)pa2va((pa_t)(pgdir));
+					/* 3rd level : PGDIR */
+					for (k = 0; k < PAGE_TABLE_SIZE; k++) {
+						if (pgdir[k] & PTE_P) {
+							pte_ptr = (pte_t *)(pgdir[k] & ~(0xFFF));
+							pte_ptr = (pte_t *)(pa2va(pgdir[k]));
+							/* 4th level actual page table */
+							for (l = 0; l < PAGE_TABLE_SIZE; l++) {
+								pa = pte_ptr[l];
+								if ((pa & PTE_P) && !(pa & PTE_COW)) {
+									add_free_page(pa);
+								}
+							}
+							add_free_page(va2pa((pa_t)pgdir[k]));
+						}
+					}
+					add_free_page(va2pa((pa_t)pdpe[j]));
+				}
+			}
+			add_free_page(va2pa((pa_t)pdpe[i]));
+		}
+	}
+	__flush_tlb();
 }
