@@ -24,6 +24,9 @@ pcb_t *tail = NULL;
 static uint64_t PID = -1;
 
 void set_proc_page_table(pcb_t *pcb);
+void free_page_entry(pml_t *pml);
+void deallocate_pcb(pcb_t *pcb);
+
 
 pcb_t *get_new_pcb()
 {
@@ -45,23 +48,20 @@ void add_pcb_to_runqueue(pcb_t *pcb)
 	}
 }
 
+/* Remove PCB from tail */
 void remove_pcb_from_runqueue(pcb_t *pcb)
 {
 	/* Cannot remove PCB as there will be no once to run */
-	if (cur_pcb == NULL || cur_pcb->next == NULL) {
+	if (tail == NULL)
 		return;
-	} else if (cur_pcb == pcb) {
-		cur_pcb = cur_pcb->next;
-		return;
-	}
 
 	pcb_t *l_pcb = cur_pcb;
-	while (l_pcb->next != pcb && l_pcb->next) {
+	while (l_pcb->next != tail) {
 		l_pcb = l_pcb->next;
 	}
 
-	l_pcb->next = l_pcb->next->next;
-
+	tail = l_pcb;
+	tail->next = NULL;
 }
 
 /* Child is added just after parent in the runqueue */
@@ -212,6 +212,7 @@ pcb_t *create_kernel_process(void *func)
 	return l_pcb;
 }
 
+void __exit_switch(pcb_t *cur_pcb);
 
 /* Yield from process */
 void kyield(void)
@@ -230,12 +231,24 @@ void kyield(void)
 	__asm__ volatile("mov %0, %%cr3":: "b"(cur_pcb->pml4));
 	__flush_tlb();
 #endif
-	__context_switch(prv_pcb, cur_pcb);
+	if (prv_pcb->exit_status) {
+		/* Remove PCB from scheduler list */
+		remove_pcb_from_runqueue(prv_pcb);
+
+		/* Free page table pages */
+		/* Free all the physical pages allocated to the child and not shared */
+		free_page_entry((pml_t *)prv_pcb->pml4);
+		/* Free PCB struct */
+		deallocate_pcb(prv_pcb);
+		/* Go to the next process */
+		__exit_switch(cur_pcb);
+	} else {
+		__context_switch(prv_pcb, cur_pcb);
+	}
 }
 
 void __switch_ring3(pcb_t *pcb);
 
-void func2();
 
 pcb_t *usr_pcb_1;
 pcb_t *usr_pcb_2;
@@ -294,6 +307,7 @@ void thread2()
 	}
 }
 
+void func2();
 void func2()
 {
 	set_tss_rsp((void *)&usr_pcb_2->kstack[KSTACK_SIZE - 8]);
@@ -316,7 +330,7 @@ int load_elf_code(pcb_t *pcb, void *start);
 
 void elf_process()
 {
-	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/cat");
+	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
 	load_elf_code(usr_pcb_1, (void *)start);
 	set_tss_rsp((void *)&usr_pcb_1->kstack[KSTACK_SIZE - 8]);
 	__switch_ring3(usr_pcb_1);
@@ -387,10 +401,10 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 
 void kexit(int status)
 {
-	/* Free Allocated VMA's */
-	/* Free page table pages */
-	/* Free PCB struct */
-	/* Go to the next process */
+	/* Make all children's parent as init process */
+	/* Remove it's entry from parent */
+	cur_pcb->exit_status = 1;
+	yield();
 }
 
 void thread3()

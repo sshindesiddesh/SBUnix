@@ -11,3 +11,11 @@ __context_switch:
 
 	sti
 	retq
+
+.global __exit_switch
+__exit_switch:
+	cli
+	movq 8(%rdi), %rsp
+	popq %rdi
+	sti
+	retq

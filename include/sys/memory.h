@@ -48,7 +48,8 @@
 //extern char kernmem, physbase;
 typedef struct page_dir {
         struct page_dir *next;
-        uint64_t ref_cnt;
+        int ref_cnt;
+	int free;
 } page_disc_t;
 
 typedef uint64_t pml_t;
@@ -80,12 +81,19 @@ typedef struct PCB {
 	uint64_t u_rsp;
 	/* Kernel Space stack */
 	uint8_t kstack[KSTACK_SIZE];
+	/* State */
+	enum {
+		RUNNING,
+		SLEEPING,
+		ZOMBIE,
+	} state;
 	uint8_t is_usr;
 	struct mm_struct_t *mm;
 	struct PCB *next;
 	fd_t *fd[MAX_FD_CNT];
 	char current_dir[100];
 	tarfs_entry_t *current_node;
+	int exit_status;
 } pcb_t;
 
 typedef struct mm_struct_t {

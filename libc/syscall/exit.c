@@ -21,7 +21,7 @@ void exit(int status)
 		/* Param 6 */
 		"movq %1, %%r9\n"
 #endif
-		"syscall\n"
+		"int $0x80\n"
 		: /* output parameters, we aren't outputting anything, no none */
 		: /* input parameters mapped to %0 and %1, repsectively */
 		"m" (status)

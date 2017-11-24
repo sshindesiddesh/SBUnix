@@ -40,6 +40,35 @@ pa_t va2pa(va_t va)
 	return (va - (va_t)KERNBASE);
 }
 
+/* Adds physicall page to the free list */
+void add_free_page(pa_t pa)
+{
+#if 0
+	kprintf("ADD PAGE : %p\n", pa);
+#endif
+	/* Page reffered by any process  */
+	if (pa2page(pa)->ref_cnt >= 1) {
+		kprintf("!!Page reference count more than 1!!\n");
+		while (1);
+	}
+
+	/* Page free bit is set */
+	if (pa2page(pa)->free) {
+		kprintf("!!Page is already free!!");
+		while (1);
+	}
+
+	/* Page not aligned, means still in use */
+	if (pa & 0xFFF) {
+		kprintf("!!Page bits are set, might create problem in free list !!");
+		while (1);
+	}
+
+	page_disc_t *pd = pa2page(pa);
+	free_list_ptr->next = pd;
+	free_list_ptr = free_list_ptr->next;
+}
+
 pa_t get_free_pages(uint64_t n)
 {
 	if (!free_list_ptr)
@@ -48,10 +77,13 @@ pa_t get_free_pages(uint64_t n)
 	kprintf("GFP start : fp %p\n", free_list_ptr);
 #endif
 	int i = n;
+	if (free_list_ptr->free == 0) {
+		kprintf("!!!Allocated page in the free list!!!\n");
+		while (1);
+	}
 	page_disc_t *ptr = free_list_ptr;
 	while (i--) {
-		/* TODO: Check if this should be incremented here or in the mapping. */
-		/* ptr->ref_cnt++; */
+		ptr->free = 0;
 		ptr = free_list_ptr->next;
 	}
 
@@ -203,6 +235,8 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 			/* This is -1 as kernel maps it once and increments count */
 			pd_cur[i].ref_cnt = -1;
 			pd_cur[i].next = 0;
+			/* This page is free */
+			pd_cur[i].free = 1;
 			if (pd_prev)
 				pd_prev->next = (pd_cur + i);
 			pd_prev = (pd_cur + i);
@@ -618,32 +652,10 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
 
 	page_table_init();
-#if 0
-	kprintf("pml%p\n", pml);
-	page_disc_t *pd = pa2page((pa_t)pml);
-	kprintf("pa2page%p\n", pd);
-	pa_t pa = page2pa(pd);
-	kprintf("page2pa%p\n", pa);
-#endif
+
 	__asm__ volatile("mov %0, %%cr3":: "b"(pml));
 	change_console_ptr();
 	kprintf("Hello World\n");
-
-#if 0
-	pcb_t *pcb0 = create_kernel_process(NULL);
-	cur_pcb = pcb0;
-	char *buf = (char *)mmap(0x1000, 0x1000*2, 0);
-	strcpy(buf, "Hello World\n");
-	kprintf("%s\n", buf);
-	munmap((uint64_t)buf, 0x1000);
-	kprintf("%s\n", buf);
-	mmap(0x5000, 0x1000*2, 0);
-	mmap(0x3000, 0x1000*2, 0);
-	mmap(0x7000, 0x1000*2, 0);
-	print_vmas(pcb0->mm->head);
-	munmap(0x1000, 0x1000*7);
-	print_vmas(pcb0->mm->head);
-#endif
 
 #if	ENABLE_USER_PAGING
 #else
@@ -709,14 +721,6 @@ void copy_vma_mapping(pcb_t *parent, pcb_t *child)
 	}
 }
 
-/* Adds physicall page to the free list */
-void add_free_page(pa_t pa)
-{
-	page_disc_t *pd = pa2page(pa);
-	free_list_ptr->next = pd;
-	free_list_ptr = free_list_ptr->next;
-}
-
 /* Deallocate physical pages allocated to a VMA */
 void deallocate_vma(pcb_t *pcb, vma_t *vma)
 {
@@ -741,32 +745,37 @@ void deallocate_all_vmas(pcb_t *pcb)
 	if (!mm)
 		return;
 
-	vma_t *vma = mm->head;
+	vma_t *vma = mm->head, *l_vma;
 
 	while (vma) {
-		deallocate_vma(pcb, vma);
+		l_vma = vma;
+		/* This is not required as all pages are freed from the page tables itself */
+		/* deallocate_vma(pcb, vma); */
 		vma = vma->next;
 		/* Free VMA itself*/
-		add_free_page(pa2va((va_t)vma));
+		add_free_page(va2pa((va_t)l_vma));
 	}
 }
 
 /* Deallocate PCB struct */
 void deallocate_pcb(pcb_t *pcb)
 {
+	/* Deallocate all VMAs */
+	deallocate_all_vmas(pcb);
 	/* Deallocate mm */
-	add_free_page(pa2va((va_t)pcb->mm));
-	/* Deallocate current node */
-	add_free_page(pa2va((va_t)pcb->current_node));
+	add_free_page(va2pa((va_t)pcb->mm));
+	/* TODO : Deallocate current node ??? */
+	/* add_free_page(pa2va((va_t)pcb->current_node)); */
 	/* Deallocate pcb */ 
-	add_free_page(pa2va((va_t)pcb));
-	
+	add_free_page(va2pa((va_t)pcb));
 }
 
 #define PAGE_TABLE_SIZE	512
 
 /* All pages allocated for page tables and actual usage are freed except pages which have COW bit set */
 /* Input pcb->pml4 : physical address */
+/* If a child exits and COW bit of few pages is on, decrease the reference count of those. */
+/* Also decrease reference count of others as the mapping is undone */
 void free_page_entry(pml_t *pml)
 {
 	pdpe_t *pdpe;
@@ -792,21 +801,26 @@ void free_page_entry(pml_t *pml)
 					for (k = 0; k < PAGE_TABLE_SIZE; k++) {
 						if (pgdir[k] & PTE_P) {
 							pte_ptr = (pte_t *)(pgdir[k] & ~(0xFFF));
-							pte_ptr = (pte_t *)(pa2va(pgdir[k]));
+							pte_ptr = (pte_t *)(pa2va((pa_t)pte_ptr));
 							/* 4th level actual page table */
 							for (l = 0; l < PAGE_TABLE_SIZE; l++) {
 								pa = pte_ptr[l];
-								if ((pa & PTE_P) && !(pa & PTE_COW)) {
-									add_free_page(pa);
+								if (pa & PTE_P) {
+									/* As page table entry is removed */
+									pa2page(pa)->ref_cnt--;
+									/* Page is still used by another process */
+									if (!(pa & PTE_COW)) {
+										add_free_page(pa & ~(0xFFF));
+									}
 								}
 							}
-							add_free_page(va2pa((pa_t)pgdir[k]));
+							add_free_page(va2pa((va_t)pte_ptr));
 						}
 					}
-					add_free_page(va2pa((pa_t)pdpe[j]));
+					add_free_page(va2pa((va_t)pgdir));
 				}
 			}
-			add_free_page(va2pa((pa_t)pdpe[i]));
+			add_free_page(va2pa((va_t)pdpe));
 		}
 	}
 	__flush_tlb();
