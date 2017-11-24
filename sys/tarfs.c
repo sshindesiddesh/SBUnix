@@ -180,7 +180,6 @@ uint64_t tarfs_getdents(uint64_t fd, uint64_t buf, uint64_t count)
 		dirent_t *dir;
 		dir = (dirent_t *)buf;
 		strcpy(dir->d_name, cur_pcb->fd[fd]->node->child[(cur_pcb->fd[fd]->current)+2]->name);
-		dir->d_reclen = sizeof(dirent_t);
 		cur_pcb->fd[fd]->current += 1;
 		return (uint64_t)dir;
 	}
@@ -284,7 +283,7 @@ dir_t *tarfs_opendir(char *path)
 }
 
 /* change the current working directory return 1 on success, -1 on failure */
-int tarfs_chdir(char * path)
+uint64_t tarfs_chdir(char * path)
 {
 	char temp_path[100] = "\0";
 	strcpy(temp_path, path);

@@ -19,7 +19,7 @@ int execvpe(const char *file, char *const argv[], char *const envp[]);
 int execve(const char *file, char *const argv[], char *const envp[]);
 // OPTIONAL: implement for ``signals and pipes (+10 pts)''
 int pipe(int pipefd[2]);
-int chdir(const char *path);
+uint64_t chdir(const char *path);
 char *getcwd(char *buf, size_t size);
 void exit(int status);
 int dup2(int oldfd, int newfd);
