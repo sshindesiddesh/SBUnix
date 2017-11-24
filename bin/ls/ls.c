@@ -19,6 +19,7 @@ void print(char *s)
 
 char buf[1024];
 
+#if 0
 void printdir(char *path)
 {
 	int dir = open(path, O_RDONLY, 444);
@@ -44,6 +45,7 @@ void printdir(char *path)
 
 	close(dir);
 }
+#endif
 
 void printdir1(char *path)
 {
@@ -51,7 +53,7 @@ void printdir1(char *path)
 	//uint64_t dir = opendir(path);
 	if (dir < 0) {
 		strcpy(buf, "Invalid Path");
-		write(0, buf, 5);
+		write(1, buf, strlen(buf));
 		return;
 	}
 	else {
@@ -60,8 +62,8 @@ void printdir1(char *path)
 		struct dirent *d;
 		d = (struct dirent *)getdents(dir, b, sizeof(buf));
 		while ((d != NULL) && (strlen(d->d_name) > 0)) {
-			write(0, &(d->d_name), 1);
-			write(0, "    ", 1);
+			write(1, &(d->d_name), strlen(d->d_name));
+			write(1, "    ", 5);
 			d = (struct dirent *)getdents(dir, b, sizeof(buf));
 		}
 	}
@@ -79,7 +81,7 @@ int main(int argc, char *argv[])
 		__asm__ volatile("movq $24, %rax");
 		__asm__ volatile("int $0x80");
 	}	
-	printdir(argv[1] ? argv[1] : ".");
+	printdir1(argv[1] ? argv[1] : ".");
 	put_c('\n', stdout);
 	return 0;
 }

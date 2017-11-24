@@ -77,7 +77,7 @@ int tarfs_closedir(dir_t * dir);
 tarfs_entry_t * create_tarfs_entry(char *name, uint64_t type, uint64_t start, uint64_t end, uint64_t inode_no, tarfs_entry_t *parent);
 int is_proper_executable(Elf64_Ehdr* header);
 void * get_posix_header(char* filename);
-int tarfs_chdir(char *path);
+uint64_t tarfs_chdir(char *path);
 int tarfs_close(int fd_c);
 dirent_t *tarfs_readdir(dir_t *dir);
 char *tarfs_getcwd(char *buf, size_t size);
