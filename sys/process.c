@@ -10,6 +10,7 @@
 #include <sys/kutils.h>
 #include <sys/idt.h>
 #include <unistd.h>
+#include <sys/ksyscall.h>
 
 
 #define MAX_NO_PROCESS	1000
@@ -173,6 +174,12 @@ pcb_t *create_clone_for_exec()
 
 	l_pcb->mm = (mm_struct_t *)kmalloc(PG_SIZE);
 
+	/* Make parent of current process as the parent of new process */
+	l_pcb->parent = cur_pcb->parent;
+
+	/* Make siblings of current process as siblings of new process */
+	l_pcb->sibling = cur_pcb->sibling;
+
 	cur_pcb = l_pcb;
 
 	return l_pcb;
@@ -214,7 +221,7 @@ pcb_t *copy_user_process(pcb_t * p_pcb)
 	copy_vma_mapping(cur_pcb, c_pcb);
 
 	/* Assign parent as the current pcb */
-	c_pcb->parent = c_pcb;
+	c_pcb->parent = cur_pcb;
 
 	/* return child pcb */
 	return c_pcb;
@@ -288,6 +295,9 @@ int kfork()
 	/* Add child to parent's siblings */
 	add_child_to_siblings(cur_pcb, c_pcb);
 	/* return child pid for parent process */
+#if 0
+	kprintf("FORK:CPID %d PPID %d\n", c_pcb->pid, c_pcb->parent->pid);
+#endif
 	return c_pcb->pid;
 }
 
@@ -405,6 +415,11 @@ void kill_zombie()
 			kprintf("Here PID %d\n", l_pcb->pid);
 			l_pcb->state = AVAIL;
 			rem_child_from_sibling(cur_pcb, l_pcb);
+			/* Free page table pages */
+			/* Free all the physical pages allocated to the child and not shared */
+			free_page_entry((pml_t *)l_pcb->pml4);
+			/* Free PCB struct */
+			deallocate_pcb(l_pcb);
 		}
 		l_pcb = l_pcb->sibling;
 	}
@@ -417,6 +432,7 @@ void init_process()
 		kill_zombie();
 		kprintf("Init\n");
 		kyield();
+		//kwait(0);
 	}
 }
 
@@ -447,8 +463,9 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 	uint64_t argc = 0, len, *u_rsp, i = 0;
 	/*Array of 10 pointers to be passed to the user */
 	uint64_t *uargv[10];
+
 	cur_pcb->exit_status = 1;
-	cur_pcb->state = SLEEP;
+	cur_pcb->state = ZOMBIE;
 
 	create_clone_for_exec();
 
@@ -507,6 +524,11 @@ void kexit(int status)
 	/* Mark its exit status and change it's state to ZOMBIE */
 	cur_pcb->exit_status = 1;
 	cur_pcb->state = ZOMBIE;
+
+	/* If parent is in wait state, make it ready */
+	if (cur_pcb->parent->state == WAIT) {
+		cur_pcb->parent->state = READY;
+	}
 	/* Make all children's parent as init process */
 	/* If it has any children, add them to the init process siblings list as zombie */
 	add_all_children_to_sibling(&proc_array[1], cur_pcb);
@@ -516,6 +538,28 @@ void kexit(int status)
 	/* Remove it from its parent process siblings list */
 	rem_child_from_sibling(cur_pcb->parent, cur_pcb);
 	kyield();
+}
+
+
+void kwait(pid_t pid)
+{
+	/* Mark state as WAIT */
+	cur_pcb->state = WAIT;
+	/*  Check if there is a running child */
+	pcb_t *sib = cur_pcb->sibling;
+	while (sib) {
+		if (sib->state == READY) {
+			goto WAIT;
+		}
+	}
+	/* Remark state as READY */
+	cur_pcb->state = READY;
+	return;
+WAIT:
+	/* Yield to a different process */
+	kyield();
+	/* Clean up all zombie children */
+	kill_zombie();
 }
 
 void thread3()

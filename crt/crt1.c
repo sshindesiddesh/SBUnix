@@ -24,5 +24,5 @@ void _start() {
 	__asm("call main");
 	/* Exit system call */
 	__asm("movq $60, %rax");
-	__asm("syscall");
+	__asm("int $0x80");
 }

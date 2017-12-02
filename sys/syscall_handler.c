@@ -19,6 +19,7 @@
 #define SYSCALL_FORK	57
 #define SYSCALL_EXECVE	59
 #define SYSCALL_EXIT	60
+#define SYSCALL_WAIT	61
 #define SYSCALL_DUP2	33
 #define SYSCALL_GETCWD	79
 #define SYSCALL_GETDENTS 78
@@ -87,6 +88,9 @@ uint64_t __isr_syscall(syscall_in *in)
 			break;
 		case SYSCALL_EXECVE:
 			kexecve((char *)in->first_param, (char **)in->second_param, (char **)in->third_param);
+			break;
+		case SYSCALL_WAIT:
+			kwait((pid_t)in->first_param);
 			break;
 		case SYSCALL_DUP2:
 			break;
