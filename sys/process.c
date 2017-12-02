@@ -38,6 +38,17 @@ void deallocate_pcb(pcb_t *pcb);
 
 pcb_t proc_array[MAX_NO_PROCESS];
 
+/* For debugging purpose */
+void print_siblings(pcb_t *pcb)
+{
+	pcb_t *sib = pcb->sibling;
+	kprintf("SIBS\n");
+	while (sib) {
+		kprintf("sib PID %x\n", sib->pid);
+		sib = sib->sibling;
+	}
+}
+
 #if 0
 void add_to_zombie(pcb_t *pcb)
 {
@@ -74,6 +85,7 @@ void free_zombies()
 }
 #endif
 
+/* Always gives a zero filled page for PCB */
 pcb_t *get_new_pcb()
 {
 	pcb_t *l_pcb = NULL;
@@ -133,6 +145,9 @@ pcb_t *create_user_process(void *func)
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)func;
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 16]) = (uint64_t)l_pcb;
 	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 16]);
+
+	l_pcb->parent = NULL;
+	l_pcb->sibling = NULL;
 
 	l_pcb->is_usr = 1;
 
@@ -198,14 +213,80 @@ pcb_t *copy_user_process(pcb_t * p_pcb)
 	/* copy vma mappings */
 	copy_vma_mapping(cur_pcb, c_pcb);
 
+	/* Assign parent as the current pcb */
+	c_pcb->parent = c_pcb;
+
 	/* return child pcb */
 	return c_pcb;
 }
 
 
+void add_child_to_siblings(pcb_t *p_pcb, pcb_t *c_pcb)
+{
+	if (!p_pcb || !c_pcb) {
+		kprintf("Parent Child corrupted\n");
+		while (1);
+	}
+
+	pcb_t *sib = p_pcb->sibling;
+
+	if (!sib) {
+		p_pcb->sibling = c_pcb;
+	} else {
+		while (sib->sibling) {
+			sib = sib->sibling;
+		}
+		sib->sibling = c_pcb;
+		c_pcb->sibling = NULL;
+	}
+}
+
+void rem_child_from_sibling(pcb_t *p_pcb, pcb_t *c_pcb)
+{
+	if (!p_pcb || !c_pcb) {
+		kprintf("Parent Child corrupted\n");
+		while (1);
+	}
+
+	pcb_t *sib = p_pcb->sibling;
+
+	/* No siblings present for the parent */
+	if (!sib) {
+		sib = NULL;
+		return;
+	}
+
+	/* Child first in the sibling list */
+	if (sib == c_pcb) {
+		sib = sib->sibling;
+		return;
+	}
+
+	/* Go untill the previous node where child is present */
+	while (sib->sibling != c_pcb) {
+		sib = sib->sibling;
+	}
+
+	/* Posint the previous node to next node */
+	sib->sibling = sib->sibling->sibling;
+}
+
+/* Add all children of parent process as siblings to the init_process and mark them zombie */
+void add_all_children_to_sibling(pcb_t *init_pcb, pcb_t *p_pcb)
+{
+	pcb_t *sib = p_pcb->sibling;
+	while (sib) {
+		sib->state = ZOMBIE;
+		add_child_to_siblings(init_pcb, sib);
+		sib = sib->sibling;
+	}
+}
+
 int kfork()
 {
 	pcb_t *c_pcb = copy_user_process(cur_pcb);
+	/* Add child to parent's siblings */
+	add_child_to_siblings(cur_pcb, c_pcb);
 	/* return child pid for parent process */
 	return c_pcb->pid;
 }
@@ -222,6 +303,9 @@ pcb_t *create_kernel_process(void *func)
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 16]) = (uint64_t)l_pcb;
 	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 16]);
 
+	l_pcb->parent = NULL;
+	l_pcb->sibling = NULL;
+
 	l_pcb->is_usr = 0;
 
 	l_pcb->state = READY;
@@ -232,8 +316,6 @@ pcb_t *create_kernel_process(void *func)
 
 	return l_pcb;
 }
-
-void __exit_switch(pcb_t *cur_pcb);
 
 /* Yield from process */
 void kyield(void)
@@ -308,7 +390,6 @@ void thread2()
 	}
 }
 
-void func2();
 void func2()
 {
 	set_tss_rsp((void *)&usr_pcb_2->kstack[KSTACK_SIZE - 8]);
@@ -316,10 +397,24 @@ void func2()
 	__switch_ring3(usr_pcb_1);
 }
 
+void kill_zombie()
+{
+	pcb_t *l_pcb = cur_pcb->sibling;
+	while (l_pcb) {
+		if (l_pcb->state == ZOMBIE) {
+			kprintf("Here PID %d\n", l_pcb->pid);
+			l_pcb->state = AVAIL;
+			rem_child_from_sibling(cur_pcb, l_pcb);
+		}
+		l_pcb = l_pcb->sibling;
+	}
+}
+
 /* This is a kernel process */
 void init_process()
 {
 	while (1) {
+		kill_zombie();
 		kprintf("Init\n");
 		kyield();
 	}
@@ -329,6 +424,14 @@ int load_elf_code(pcb_t *pcb, void *start);
 
 void elf_process()
 {
+	/* TODO: Hardcode ??? */
+	/* SBUSH will have init as its parent */
+	/* Init process will have it as first child */
+	pcb_t *init_proc = &proc_array[1];
+	usr_pcb_1->parent = init_proc;
+	init_proc->sibling = usr_pcb_1;
+	usr_pcb_1->sibling = NULL;
+
 	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
 	load_elf_code(usr_pcb_1, (void *)start);
 	set_tss_rsp((void *)&usr_pcb_1->kstack[KSTACK_SIZE - 8]);
@@ -398,9 +501,20 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 
 void kexit(int status)
 {
-	/* Make all children's parent as init process */
-	/* Remove it's entry from parent */
+#if 0
+	kprintf("PID %x called EXIT\n", cur_pcb->pid);
+#endif
+	/* Mark its exit status and change it's state to ZOMBIE */
 	cur_pcb->exit_status = 1;
+	cur_pcb->state = ZOMBIE;
+	/* Make all children's parent as init process */
+	/* If it has any children, add them to the init process siblings list as zombie */
+	add_all_children_to_sibling(&proc_array[1], cur_pcb);
+	/* Add it to init process siblings list */
+	add_child_to_siblings(&proc_array[1], cur_pcb);
+	/* Remove it's entry from parent */
+	/* Remove it from its parent process siblings list */
+	rem_child_from_sibling(cur_pcb->parent, cur_pcb);
 	kyield();
 }
 
