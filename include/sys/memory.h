@@ -91,7 +91,8 @@ typedef struct PCB {
 	} state;
 	uint8_t is_usr;
 	struct mm_struct_t *mm;
-	struct PCB *next;
+	struct PCB *parent;
+	struct PCB *sibling;
 	fd_t *fd[MAX_FD_CNT];
 	char current_dir[100];
 	tarfs_entry_t *current_node;

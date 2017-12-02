@@ -38,7 +38,7 @@ void deallocate_pcb(pcb_t *pcb);
 
 pcb_t proc_array[MAX_NO_PROCESS];
 
-
+#if 0
 void add_to_zombie(pcb_t *pcb)
 {
 #if 0
@@ -72,6 +72,7 @@ void free_zombies()
 	/* After this clean up, zombie head should always be clen */
 	zombie_head = zhead;
 }
+#endif
 
 pcb_t *get_new_pcb()
 {
@@ -80,6 +81,7 @@ pcb_t *get_new_pcb()
 	for (i = 1; i < MAX_NO_PROCESS; i++) {
 		if (proc_array[i].state == AVAIL) {
 			l_pcb = &proc_array[i];
+			memset(l_pcb, 0, sizeof(l_pcb));
 			/* TODO: Check this */
 			proc_array[i].state = READY;
 			break;
@@ -125,61 +127,6 @@ pcb_t *get_next_ready_pcb()
 	return l_pcb;
 }
 
-void add_pcb_to_runqueue(pcb_t *pcb)
-{
-	if (cur_pcb == NULL) {
-		cur_pcb = tail = pcb;
-		cur_pcb->next = NULL;
-		tail->next = NULL;
-	} else {
-		tail->next = pcb;
-		tail = tail->next;
-		tail->next = NULL;
-	}
-}
-
-void add_pcb_to_runqueue_head(pcb_t *pcb)
-{
-	pcb->next = cur_pcb->next;
-	cur_pcb = pcb;
-}
-
-/* Remove PCB from tail */
-void remove_pcb_from_runqueue(pcb_t *pcb)
-{
-	/* Cannot remove PCB as there will be no once to run */
-	if (tail == NULL)
-		return;
-
-	pcb_t *l_pcb = cur_pcb;
-	while (l_pcb->next != tail) {
-		l_pcb = l_pcb->next;
-	}
-
-	tail = l_pcb;
-	tail->next = NULL;
-}
-
-/* Child is added just after parent in the runqueue */
-void add_child_to_runqueue(pcb_t *pcb)
-{
-	pcb->next = cur_pcb->next;
-	cur_pcb->next = pcb;
-}
-
-/* Add previous process to the end of runqueue */
-pcb_t *get_next_pcb()
-{
-	if (cur_pcb->next) {
-		tail->next = cur_pcb;
-		cur_pcb = cur_pcb->next;
-		tail = tail->next;
-		tail->next = NULL;
-	}
-
-	return cur_pcb;
-}
-
 pcb_t *create_user_process(void *func)
 {
 	pcb_t *l_pcb = get_new_pcb();
@@ -211,6 +158,8 @@ pcb_t *create_clone_for_exec()
 
 	l_pcb->mm = (mm_struct_t *)kmalloc(PG_SIZE);
 
+	cur_pcb = l_pcb;
+
 	return l_pcb;
 }
 
@@ -241,7 +190,7 @@ pcb_t *copy_user_process(pcb_t * p_pcb)
 	*((uint64_t *)&c_pcb->kstack[KSTACK_SIZE - (21*8)]) = ((uint64_t)0);
 
 	/* Add it after parent */
-	add_child_to_runqueue(c_pcb);
+	c_pcb->state = READY;
 
 	/* Allocate mm struct */
 	c_pcb->mm = (mm_struct_t *)kmalloc(0x1000);
@@ -302,33 +251,7 @@ void kyield(void)
 	__asm__ volatile("mov %0, %%cr3":: "b"(cur_pcb->pml4));
 	__flush_tlb();
 #endif
-	if (prv_pcb->exit_status) {
-		/* Add previous to the zombie list  */
-		add_to_zombie(prv_pcb);
-		/* Remove PCB from scheduler list */
-		remove_pcb_from_runqueue(prv_pcb);
-
-		/* Free zombies */
-		free_zombies();
-
-		/* Go to the next process */
-		/* Function not called as we do not have any stack to push return address of exit_switch function */
-		/* TODO: This is prblematic: If scheduled not working after execute,
-		 * Remove asm code and call __exit_switch() */
-		__asm__ __volatile__ (
-			"cli;"
-			"movq %0, %%rsp;"
-			"popq %%rdi;"
-			"sti;"
-			"retq;"
-			:"=m"(cur_pcb->rsp)
-			:
-			: "rsp", "rdi"
-		);
-		/* __exit_switch(cur_pcb); */
-	} else {
-		__context_switch(prv_pcb, cur_pcb);
-	}
+	__context_switch(prv_pcb, cur_pcb);
 }
 
 void __switch_ring3(pcb_t *pcb);
@@ -422,17 +345,9 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 	/*Array of 10 pointers to be passed to the user */
 	uint64_t *uargv[10];
 	cur_pcb->exit_status = 1;
-	pcb_t *prv_pcb = cur_pcb;
+	cur_pcb->state = SLEEP;
 
-
-	pcb_t *usr_pcb = create_clone_for_exec();
-
-	/* This makes new as current and current as next process of the new */
-	/* cur_pcb is usr_pcb after this */
-	add_pcb_to_runqueue_head(usr_pcb);
-
-	/* Add previous to the zombie list  */
-	add_to_zombie(prv_pcb);
+	create_clone_for_exec();
 
 	/* Copy all arguments in kernel memory */
 	strcpy(kargs[argc++], file);
