@@ -137,6 +137,7 @@ pcb_t *get_next_ready_pcb()
 		}
 	}
 
+	//kprintf("Next Ready PID %x\n", l_pcb->pid);
 	return l_pcb;
 }
 
@@ -179,6 +180,9 @@ pcb_t *create_clone_for_exec()
 
 	/* Make siblings of current process as siblings of new process */
 	l_pcb->sibling = cur_pcb->sibling;
+
+	/* PID of new process should be the PID of the existing process */
+	l_pcb->pid = cur_pcb->pid;
 
 	cur_pcb = l_pcb;
 
@@ -283,7 +287,8 @@ void add_all_children_to_sibling(pcb_t *init_pcb, pcb_t *p_pcb)
 {
 	pcb_t *sib = p_pcb->sibling;
 	while (sib) {
-		sib->state = ZOMBIE;
+		/* TODO: Should child execute even after parent executes ?  */
+		/* sib->state = ZOMBIE; */
 		add_child_to_siblings(init_pcb, sib);
 		sib = sib->sibling;
 	}
@@ -412,7 +417,7 @@ void kill_zombie()
 	pcb_t *l_pcb = cur_pcb->sibling;
 	while (l_pcb) {
 		if (l_pcb->state == ZOMBIE) {
-			kprintf("Here PID %d\n", l_pcb->pid);
+			kprintf("***Killed Zombie PID %d***\n", l_pcb->pid);
 			l_pcb->state = AVAIL;
 			rem_child_from_sibling(cur_pcb, l_pcb);
 			/* Free page table pages */
@@ -429,10 +434,9 @@ void kill_zombie()
 void init_process()
 {
 	while (1) {
-		kill_zombie();
 		kprintf("Init\n");
+		kwait(0);
 		kyield();
-		//kwait(0);
 	}
 }
 
@@ -529,14 +533,20 @@ void kexit(int status)
 	if (cur_pcb->parent->state == WAIT) {
 		cur_pcb->parent->state = READY;
 	}
+
 	/* Make all children's parent as init process */
 	/* If it has any children, add them to the init process siblings list as zombie */
 	add_all_children_to_sibling(&proc_array[1], cur_pcb);
+
 	/* Add it to init process siblings list */
-	add_child_to_siblings(&proc_array[1], cur_pcb);
+	/* add_child_to_siblings(&proc_array[1], cur_pcb); */
+
 	/* Remove it's entry from parent */
 	/* Remove it from its parent process siblings list */
-	rem_child_from_sibling(cur_pcb->parent, cur_pcb);
+	/* rem_child_from_sibling(cur_pcb->parent, cur_pcb); */
+
+	/* Make Inint Ready for freeing zombies */
+	/* proc_array[0].state = READY; */
 	kyield();
 }
 
@@ -551,6 +561,7 @@ void kwait(pid_t pid)
 		if (sib->state == READY) {
 			goto WAIT;
 		}
+		sib = sib->sibling;
 	}
 	/* Remark state as READY */
 	cur_pcb->state = READY;
@@ -585,10 +596,10 @@ void process_init()
 	init_proc_array();
 	pcb_t *pcb0 = &proc_array[0];
 	pcb_t *pcb1 = create_kernel_process(init_process);
-	create_kernel_process(thread1);
-	create_kernel_process(thread2);
-	create_kernel_process(thread3);
-	create_kernel_process(thread4);
+	//create_kernel_process(thread1);
+	//create_kernel_process(thread2);
+	//create_kernel_process(thread3);
+	//create_kernel_process(thread4);
 
 	usr_pcb_1 = create_user_process(elf_process);
 
