@@ -83,8 +83,10 @@ typedef struct PCB {
 	uint8_t kstack[KSTACK_SIZE];
 	/* State */
 	enum {
-		RUNNING,
-		SLEEPING,
+		AVAIL = 0,
+		READY,
+		WAIT,
+		SLEEP,
 		ZOMBIE,
 	} state;
 	uint8_t is_usr;

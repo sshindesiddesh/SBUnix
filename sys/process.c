@@ -11,12 +11,18 @@
 #include <sys/idt.h>
 #include <unistd.h>
 
+
+#define MAX_NO_PROCESS	1000
 /* TODO: Bug : Scheduler schedukes few tasks repetatively.  Cannot see for finite. During infinite, something goes wrong */
 
 extern pml_t *pml;
 
 /* current of the running queue */
 pcb_t *cur_pcb = NULL;
+
+/* Current running index */
+int cur_index = 0;
+
 /* tail of the running queue */
 pcb_t *tail = NULL;
 
@@ -29,6 +35,9 @@ static uint64_t PID = -1;
 void set_proc_page_table(pcb_t *pcb);
 void free_page_entry(pml_t *pml);
 void deallocate_pcb(pcb_t *pcb);
+
+pcb_t proc_array[MAX_NO_PROCESS];
+
 
 void add_to_zombie(pcb_t *pcb)
 {
@@ -66,8 +75,53 @@ void free_zombies()
 
 pcb_t *get_new_pcb()
 {
-	pcb_t *l_pcb = (pcb_t *)kmalloc(sizeof(pcb_t));
+	pcb_t *l_pcb = NULL;
+	int i;
+	for (i = 1; i < MAX_NO_PROCESS; i++) {
+		if (proc_array[i].state == AVAIL) {
+			l_pcb = &proc_array[i];
+			/* TODO: Check this */
+			proc_array[i].state = READY;
+			break;
+		}
+	}
+
+	if (l_pcb == NULL) {
+		kprintf("!!!PANIC : System out of processes memory!!!");
+		while (1);
+	}
 	l_pcb->pid = ++PID;
+	return l_pcb;
+}
+
+void init_proc_array()
+{
+	pcb_t *l_pcb = NULL;
+	int i;
+	for (i = 0; i < MAX_NO_PROCESS; i++) {
+		l_pcb = &proc_array[i];
+		l_pcb->state = AVAIL;
+	}
+
+}
+
+pcb_t *get_next_ready_pcb()
+{
+	pcb_t *l_pcb = NULL;
+	cur_index++;
+	/* TODO: Check for infinite loop */
+	for (; cur_index <= MAX_NO_PROCESS; cur_index++) {
+		//kprintf("ready cur_index %x\n", cur_index);
+		if (cur_index == MAX_NO_PROCESS) {
+			cur_index = 1;
+		}
+
+		if (proc_array[cur_index].state == READY) {
+			l_pcb = &proc_array[cur_index];
+			break;
+		}
+	}
+
 	return l_pcb;
 }
 
@@ -126,12 +180,6 @@ pcb_t *get_next_pcb()
 	return cur_pcb;
 }
 
-/* Create a kernel thread.
- * Allocate a PCN block.
- * Populate a dummy stack for it.
- * Fill appropriate rsp.
- * Add it to the scheduler list at the end.
- */
 pcb_t *create_user_process(void *func)
 {
 	pcb_t *l_pcb = get_new_pcb();
@@ -139,35 +187,13 @@ pcb_t *create_user_process(void *func)
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 16]) = (uint64_t)l_pcb;
 	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 16]);
 
-#if 0
-	if (cur_pcb == NULL) {
-		cur_pcb = l_pcb;
-	} else {
-		while (t_pcb->next != cur_pcb)
-			t_pcb = t_pcb->next;
-		t_pcb->next = l_pcb;
-	}
-
-	l_pcb->next = cur_pcb;
-#endif
-
-	add_pcb_to_runqueue(l_pcb);
 	l_pcb->is_usr = 1;
 
 	set_proc_page_table(l_pcb);
 
-	l_pcb->mm = (mm_struct_t *)kmalloc(0x1000);
+	l_pcb->mm = (mm_struct_t *)kmalloc(PG_SIZE);
 
-#if 0
-	/* set current directory and root node for user process */
-	strcpy(l_pcb->current_dir, "/rootfs/bin/");
-	char path[100] = "\0";
-	strcpy(path, l_pcb->current_dir);
-	dir_t *dir1 = tarfs_opendir(path);
-	l_pcb->current_node = dir1->node;
-	if(dir1->node)
-		kprintf(" curr node assigned");
-#endif
+	l_pcb->state = READY;
 	
 	return l_pcb;
 }
@@ -236,34 +262,22 @@ int kfork()
 }
 
 /* Create a kernel thread.
- * Allocate a PCN block.
  * Populate a dummy stack for it.
  * Fill appropriate rsp.
- * Add it to the scheduler list at the end.
  */
 pcb_t *create_kernel_process(void *func)
 {
 	pcb_t *l_pcb = get_new_pcb();
+
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 8]) = (uint64_t)func;
 	*((uint64_t *)&l_pcb->kstack[KSTACK_SIZE - 16]) = (uint64_t)l_pcb;
 	l_pcb->rsp = (uint64_t)&(l_pcb->kstack[KSTACK_SIZE - 16]);
 
 	l_pcb->is_usr = 0;
 
-#if 0
-	if (cur_pcb == NULL) {
-		cur_pcb = l_pcb;
-	} else {
-		while (t_pcb->next != cur_pcb)
-			t_pcb = t_pcb->next;
-		t_pcb->next = l_pcb;
-	}
+	l_pcb->state = READY;
 
-	l_pcb->next = cur_pcb;
-#endif
-	add_pcb_to_runqueue(l_pcb);
-
-	l_pcb->mm = (mm_struct_t *)kmalloc(0x1000);
+	l_pcb->mm = (mm_struct_t *)kmalloc(PG_SIZE);
 
 	set_proc_page_table(l_pcb);
 
@@ -276,7 +290,7 @@ void __exit_switch(pcb_t *cur_pcb);
 void kyield(void)
 {
 	pcb_t *prv_pcb = cur_pcb;
-	cur_pcb = get_next_pcb();
+	cur_pcb = get_next_ready_pcb();
 
 	/* This is hardcoded for now as rsp is not updated after returning from the syscall. TODO: Check this. */
 	set_tss_rsp((void *)&cur_pcb->kstack[KSTACK_SIZE - 8]);
@@ -350,10 +364,7 @@ void thread1()
 {
 	while (1) {
 		kprintf("thread 1");
-		/* This is yield. Implemented as a system call. */
-#if	!PREEMPTIVE_SCHED
-		yield();
-#endif
+		kyield();
 
 	}
 }
@@ -369,10 +380,7 @@ void thread2()
 {
 	while (1) {
 		kprintf("thread 2");
-		/* This is yield. Implemented as a system call. */
-#if	!PREEMPTIVE_SCHED
 		yield();
-#endif
 
 	}
 }
@@ -389,10 +397,8 @@ void func2()
 void init_process()
 {
 	while (1) {
-		kprintf("Inint\n");
-#if	!PREEMPTIVE_SCHED
-		yield();
-#endif
+		kprintf("Init\n");
+		kyield();
 	}
 }
 
@@ -480,17 +486,14 @@ void kexit(int status)
 	/* Make all children's parent as init process */
 	/* Remove it's entry from parent */
 	cur_pcb->exit_status = 1;
-	yield();
+	kyield();
 }
 
 void thread3()
 {
 	while (1) {
 		kprintf("Thread 3");
-		/* This is yield. Implemented as a system call. */
-#if	!PREEMPTIVE_SCHED
-		yield();
-#endif
+		kyield();
 
 	}
 }
@@ -499,30 +502,25 @@ void thread4()
 {
 	while (1) {
 		kprintf("Thread 4");
-		/* This is yield. Implemented as a system call. */
-#if	!PREEMPTIVE_SCHED
-		yield();
-#endif
+		kyield();
 	}
 }
 
 /* Initialise kernel thread creation. */
 void process_init()
 {
-	pcb_t *pcb0 = get_new_pcb();
+	init_proc_array();
+	pcb_t *pcb0 = &proc_array[0];
 	pcb_t *pcb1 = create_kernel_process(init_process);
 	create_kernel_process(thread1);
 	create_kernel_process(thread2);
 	create_kernel_process(thread3);
 	create_kernel_process(thread4);
 
-/* If user paging is ebabled, user process cannot use code in kernel space.
- * Only option then is to load the elf executable.  */
-#if ENABLE_USER_PAGING
 	usr_pcb_1 = create_user_process(elf_process);
-#else
-	usr_pcb_1 = create_user_process(func1);
-#endif
+
+	/* Set to pcb of init process. Required as cur_pcb for first yield */
+	cur_pcb = pcb1;
 	/* This happens only once and kernel should not return to this stack. */
 	__context_switch(pcb0, pcb1);
 
