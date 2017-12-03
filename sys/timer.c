@@ -33,9 +33,9 @@ void __isr_timer_cb(uint64_t count)
 	pic_ack(0x20);
 }
 
+void kyield();
+
 void pre_empt_yield(void)
 {
-#if	PREEMPTIVE_SCHED
-	yield();
-#endif
+		kyield();
 }

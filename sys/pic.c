@@ -87,8 +87,9 @@ void pic_init()
 	set_mask(0x25);
 	set_mask(0x26);
 	set_mask(0x27);
+	/* Interrupts are now enabled when switching to user mode */
 	/* Set Interrupts */
-	__asm__ __volatile__("sti");
+	/* __asm__ __volatile__("sti"); */
 }
 
 void outb(uint16_t port, uint8_t val)

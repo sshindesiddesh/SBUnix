@@ -83,17 +83,21 @@ typedef struct PCB {
 	uint8_t kstack[KSTACK_SIZE];
 	/* State */
 	enum {
-		RUNNING,
-		SLEEPING,
+		AVAIL = 0,
+		READY,
+		WAIT,
+		SLEEP,
 		ZOMBIE,
 	} state;
 	uint8_t is_usr;
 	struct mm_struct_t *mm;
-	struct PCB *next;
+	struct PCB *parent;
+	struct PCB *sibling;
 	fd_t *fd[MAX_FD_CNT];
 	char current_dir[100];
 	tarfs_entry_t *current_node;
 	int exit_status;
+	int wait_pid;
 } pcb_t;
 
 typedef struct mm_struct_t {

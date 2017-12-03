@@ -780,8 +780,6 @@ void deallocate_pcb(pcb_t *pcb)
 	add_free_page(va2pa((va_t)pcb->mm));
 	/* TODO : Deallocate current node ??? */
 	/* add_free_page(pa2va((va_t)pcb->current_node)); */
-	/* Deallocate pcb */ 
-	add_free_page(va2pa((va_t)pcb));
 }
 
 #define PAGE_TABLE_SIZE	512
