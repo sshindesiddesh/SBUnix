@@ -13,6 +13,7 @@
 #define SYSCALL_CLOSE	3
 #define SYSCALL_MMAP	9
 #define SYSCALL_MUNMAP	11
+#define SYSCALL_BRK	12
 #define SYSCALL_CHDIR	80
 #define SYSCALL_INFO	99
 #define SYSCALL_YIELD	24
@@ -37,6 +38,7 @@ void print_params(syscall_in *in)
 	kprintf("6p %x\n", in->sixth_param);
 }
 
+extern pcb_t *cur_pcb;
 int putchar(int c);
 int console_read(int fd, char *buf, uint64_t count);
 uint64_t __isr_syscall(syscall_in *in)
@@ -93,6 +95,9 @@ uint64_t __isr_syscall(syscall_in *in)
 		case SYSCALL_FORK:
 			out = kfork();
 			break;
+		case SYSCALL_BRK:
+			out = kbrk((uint64_t)in->first_param);
+			break;
 		case SYSCALL_EXIT:
 			kexit(in->first_param);
 			break;
@@ -134,4 +139,23 @@ uint64_t kwrite(uint64_t fd, uint64_t buf, int length)
 		return count;
 	}
 	return 0;
+}
+
+uint64_t kbrk(uint64_t npages)
+{
+	uint64_t address, size;
+	size = npages*PG_SIZE;
+	address = cur_pcb->mm->brk;
+
+	if (cur_pcb->mm)
+		kprintf("mm alocated, %d", npages);
+	mm_struct_t *mm = cur_pcb->mm;
+	if(mm) {
+	mm->brk += size;
+	mm->data_end += size;
+	mm->t_vm += size;
+	kprintf("returning from kbrk, address %p, mm->brk %p", address, mm->brk);
+	return address;}
+	else
+	return -1;
 }

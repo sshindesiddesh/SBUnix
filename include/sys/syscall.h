@@ -21,4 +21,5 @@ typedef struct syscall_in {
 } syscall_in;
 #endif
 
-uint64_t sys_read(uint64_t fd_cnt, void *buf, uint64_t length);
+uint64_t kread(uint64_t fd_cnt, void *buf, uint64_t length);
+uint64_t kbrk(uint64_t npages);

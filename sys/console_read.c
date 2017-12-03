@@ -2,6 +2,7 @@
 #include <sys/memory.h>
 #include <sys/kutils.h>
 #include <sys/kprintf.h>
+#include <sys/console.h>
 
 /*TODO: Decide this size */
 #define CONSOLE_BUF_SIZE	1000
@@ -21,11 +22,13 @@ void update_read_buf(char key)
 		return;
 	}
 	if (key == BKSPACE) {
+		putchar(key);
 		console_read_buf[--cursor] = '\0';
 		return;
 	}
 	console_read_buf[cursor] = key;
 	if (reading_flag) {
+		putchar(key);
 		cursor++;
 	}
 }

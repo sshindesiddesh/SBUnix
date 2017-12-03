@@ -99,6 +99,7 @@ typedef struct PCB {
 typedef struct mm_struct_t {
         struct vma *head, *tail;
         uint32_t vma_cnt;
+	uint64_t brk, data_end, t_vm;
 } mm_t;
 
 typedef struct vma {

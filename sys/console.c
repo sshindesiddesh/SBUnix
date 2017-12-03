@@ -83,8 +83,9 @@ int putchar(int c)
 {
 	/* handle positions of x and y coordinates of the screen as per the character getting put */
 	if (c == '\b') {	/* back space */
-		if (x_pos != 0)
-			x_pos--;
+		if (x_pos != 0) {
+			write_console(' ', x_pos--, y_pos);
+		}
 	}
 	else if(c == '\r') {	/* Carriage return */
 		x_pos = 0;

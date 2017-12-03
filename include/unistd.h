@@ -32,6 +32,7 @@ uint64_t closedir(uint64_t dir);
 struct dirent *readdir(uint64_t dir);
 uint64_t mmap(uint64_t va_start, uint64_t size, uint64_t flags, uint64_t type);
 uint64_t munmap(uint64_t va_start, uint64_t size);
+uint64_t brk(uint64_t npages);
 
 #if 0
 int unlink(const char *pathname);
