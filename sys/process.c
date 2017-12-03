@@ -262,7 +262,7 @@ void add_all_children_to_init_proc(pcb_t *init_pcb, pcb_t *p_pcb)
 		/* TODO: Should child execute even after parent executes ?  */
 		/* sib->state = ZOMBIE; */
 		add_child_to_siblings(init_pcb, sib);
-		p_pcb->parent = init_pcb;
+		sib->parent = init_pcb;
 		sib = sib->sibling;
 	}
 }
@@ -483,9 +483,9 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 void kexit(int status)
 {
 
-	kprintf("PID %x called EXIT\n", cur_pcb->pid);
 #if 0
 	kprintf("PID %x called EXIT\n", cur_pcb->pid);
+	kprintf("Parent %p pid %d\n", cur_pcb->parent, cur_pcb->parent->pid);
 #endif
 	/* Mark its exit status and change it's state to ZOMBIE */
 	cur_pcb->exit_status = 1;
