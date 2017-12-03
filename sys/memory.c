@@ -818,15 +818,21 @@ void free_page_entry(pml_t *pml)
 							for (l = 0; l < PAGE_TABLE_SIZE; l++) {
 								pa = pte_ptr[l];
 								if (pa & PTE_P) {
+									pa = pa & ~(0xFFF);
 									/* As page table entry is removed */
 									pa2page(pa)->ref_cnt--;
 									/* Page is still used by another process If */
 									/* COW is set and reference count is greater than 1 */
+#if 0
 									if (pa & PTE_COW) {
 										if (pa2page(pa)->ref_cnt == 0) {
 											add_free_page(pa & ~(0xFFF));
 										}
 									} else {
+										add_free_page(pa & ~(0xFFF));
+									}
+#endif
+									if (pa2page(pa)->ref_cnt == 0) {
 										add_free_page(pa & ~(0xFFF));
 									}
 								}
