@@ -119,12 +119,15 @@ uint64_t kread(uint64_t fd, void *buf, uint64_t length)
 	uint64_t count;
 	if (fd == STD_IN) {
 		count = console_read(fd , buf, length);
+#if 0
+		kprintf("READ: %p %s\n", buf, buf);
+#endif
 		return count;
 	} else {
 		count = tarfs_read(fd , buf, length);
 		return count;
 	}
-	return -1;
+	return count;
 }
 
 uint64_t kwrite(uint64_t fd, uint64_t buf, int length)

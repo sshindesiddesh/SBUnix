@@ -20,6 +20,7 @@ void update_read_buf(char key)
 	if (key == ENTER) {
 		reading_flag = 0;
 		cursor = 0;
+		console_read_buf[--cursor] = '\0';
 		return;
 	} else if (key == BKSPACE) {
 		if (cursor > 0) {
@@ -29,6 +30,7 @@ void update_read_buf(char key)
 		return;
 	} else {
 		console_read_buf[++cursor] = key;
+		console_read_buf[cursor + 1] = '\0';
 		if (reading_flag) {
 			putchar(key);
 		}
@@ -47,6 +49,8 @@ uint64_t console_read(int fd, char *buf, uint64_t count)
 	__asm__ volatile ("cli");
 	/* TODO: memcpy does not seem to work here.  */
 	strcpy(buf, console_read_buf);
-
+#if 0
+	kprintf("BUF: %s\n", buf);
+#endif
 	return cursor;
 }
