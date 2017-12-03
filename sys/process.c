@@ -58,23 +58,6 @@ void add_child_to_siblings(pcb_t *p_pcb, pcb_t *c_pcb)
 	}
 
 	pcb_t *child = p_pcb->child_head;
-#if 0
-	if (!sib) {
-		p_pcb->sibling = c_pcb;
-	} else {
-		while (sib->sibling) {
-			sib = sib->sibling;
-		}
-		sib->sibling = c_pcb;
-		c_pcb->sibling = NULL;
-	}
-	if (!sib) {
-		p_pcb->sibling = c_pcb;
-	} else {
-		c_pcb->sibling = p_pcb->sibling;
-		p_pcb->sibling = c_pcb;
-	}
-#endif
 	if (!child) {
 		p_pcb->child_head = c_pcb;
 	} else {
@@ -89,7 +72,6 @@ void rem_child_from_sibling(pcb_t *p_pcb, pcb_t *c_pcb)
 		kprintf("Parent Child corrupted\n");
 		while (1);
 	}
-
 	pcb_t *child = p_pcb->child_head;
 
 	/* No children present for the parent */
@@ -97,57 +79,17 @@ void rem_child_from_sibling(pcb_t *p_pcb, pcb_t *c_pcb)
 		return;
 	}
 
-	/* Child first in the sibling list */
-	if (child == c_pcb) {
-		p_pcb->child_head = NULL;
-		return;
+	pcb_t *child_p = NULL;
+	while (child != c_pcb) {
+		child_p = child;
+		child = child->sibling;
 	}
-
-	pcb_t *sib = p_pcb->child_head;
-	/* Go untill the previous node where child is present */
-	while (sib->sibling != c_pcb) {
-		sib = sib->sibling;
-	}
-
-	/* Point the previous node to next node */
-	sib->sibling = sib->sibling->sibling;
-}
-
-#if 0
-void add_to_zombie(pcb_t *pcb)
-{
-#if 0
-	kprintf("\nAdded Zombie %p\n", pcb);
-#endif
-	if (!zombie_head) {
-		zombie_head = pcb;
-		zombie_head->next = NULL;
+	if (child_p) {
+		child_p->sibling = child->sibling;
 	} else {
-		pcb->next = zombie_head;
-		zombie_head = pcb;
+		p_pcb->child_head = child->sibling;
 	}
 }
-
-void free_zombies()
-{
-	pcb_t *zhead = zombie_head;
-
-	while (zhead) {
-#if 0
-		kprintf("ZOMBIE FREE %p\n", zhead);
-#endif
-		/* Free page table pages */
-		/* Free all the physical pages allocated to the child and not shared */
-		free_page_entry((pml_t *)zhead->pml4);
-		/* Free PCB struct */
-		deallocate_pcb(zhead);
-		zhead = zhead->next;
-	}
-
-	/* After this clean up, zombie head should always be clen */
-	zombie_head = zhead;
-}
-#endif
 
 /* Always gives a zero filled page for PCB */
 pcb_t *get_new_pcb()
@@ -259,7 +201,7 @@ pcb_t *create_clone_for_exec()
 		if (sib_p) {
 			sib_p->sibling = l_pcb;
 		} else {
-			sib = l_pcb;
+			cur_pcb->parent->child_head = l_pcb;
 		}
 	}
 
@@ -313,13 +255,14 @@ pcb_t *copy_user_process(pcb_t * p_pcb)
 
 
 /* Add all children of parent process as siblings to the init_process and mark them zombie */
-void add_all_children_to_sibling(pcb_t *init_pcb, pcb_t *p_pcb)
+void add_all_children_to_init_proc(pcb_t *init_pcb, pcb_t *p_pcb)
 {
 	pcb_t *sib = p_pcb->child_head;
 	while (sib) {
 		/* TODO: Should child execute even after parent executes ?  */
 		/* sib->state = ZOMBIE; */
 		add_child_to_siblings(init_pcb, sib);
+		p_pcb->parent = init_pcb;
 		sib = sib->sibling;
 	}
 }
@@ -361,6 +304,7 @@ pcb_t *create_kernel_process(void *func)
 
 	return l_pcb;
 }
+
 
 /* Yield from process */
 void kyield(void)
@@ -419,6 +363,7 @@ void func2()
 
 void kill_zombie()
 {
+	return;
 	pcb_t *l_pcb = cur_pcb->sibling;
 	while (l_pcb) {
 		if (l_pcb->state == ZOMBIE) {
@@ -442,7 +387,7 @@ void init_process()
 {
 	while (1) {
 		kprintf("Init\n");
-		kwait(0);
+		kwait(-1);
 		kyield();
 	}
 }
@@ -456,8 +401,8 @@ void elf_process()
 	/* Init process will have it as first child */
 	pcb_t *init_proc = &proc_array[1];
 	usr_pcb_1->parent = init_proc;
-	init_proc->sibling = usr_pcb_1;
-	usr_pcb_1->sibling = NULL;
+	init_proc->child_head = usr_pcb_1;
+	usr_pcb_1->child_head = NULL;
 
 	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
 	load_elf_code(usr_pcb_1, (void *)start);
@@ -538,7 +483,7 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 void kexit(int status)
 {
 
-	kprintf("Exit: PID %d\n", cur_pcb->pid);
+	kprintf("PID %x called EXIT\n", cur_pcb->pid);
 #if 0
 	kprintf("PID %x called EXIT\n", cur_pcb->pid);
 #endif
@@ -556,15 +501,15 @@ void kexit(int status)
 		}
 	}
 
-	/* Make all children's parent as init process */
-	/* If it has any children, add them to the init process siblings list as zombie */
-	add_all_children_to_sibling(&proc_array[1], cur_pcb);
-
 	/* Remove it's entry from parent */
 	/* Remove it from its parent process siblings list */
 	/* rem_child_from_sibling(cur_pcb->parent, cur_pcb); */
-
+	/* Change the sibling link in parent PCB which points to cur_pcb */
 	rem_child_from_sibling(cur_pcb->parent, cur_pcb);
+
+	/* Make all children's parent as init process */
+	/* If it has any children, add them to the init process siblings list as zombie */
+	add_all_children_to_init_proc(&proc_array[1], cur_pcb);
 
 	/* Free page table pages */
 	/* Free all the physical pages allocated to the child and not shared */
@@ -579,7 +524,7 @@ void kexit(int status)
 void kwait(pid_t pid)
 {
 	/* If the parent has no child, return */
-	if (!cur_pcb->sibling) {
+	if (!cur_pcb->child_head) {
 		return;
 	}
 
@@ -587,7 +532,7 @@ void kwait(pid_t pid)
 	cur_pcb->state = WAIT;
 
 	/*  Check if there is atleast one ready child */
-	pcb_t *sib = cur_pcb->sibling;
+	pcb_t *sib = cur_pcb->child_head;
 	while (sib) {
 		if (sib->state == READY) {
 			goto WAIT;
@@ -605,7 +550,7 @@ WAIT:
 	 * by either of its children */
 	/* Clean up all zombie children */
 	/* This is ideally unusefull here as all processess are cleaned up on exit only */
-	kill_zombie();
+	/* kill_zombie(); */
 }
 
 void thread3()
