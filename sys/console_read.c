@@ -19,43 +19,34 @@ void update_read_buf(char key)
 {
 	if (key == ENTER) {
 		reading_flag = 0;
+		cursor = 0;
 		return;
-	}
-	if (key == BKSPACE) {
-		putchar(key);
-		console_read_buf[--cursor] = '\0';
+	} else if (key == BKSPACE) {
+		if (cursor > 0) {
+			putchar(key);
+			console_read_buf[--cursor] = '\0';
+		}
 		return;
-	}
-	console_read_buf[cursor] = key;
-	if (reading_flag) {
-		putchar(key);
-		cursor++;
+	} else {
+		console_read_buf[++cursor] = key;
+		if (reading_flag) {
+			putchar(key);
+		}
 	}
 }
 
 /* TODO: Count and fd are not used for now. */
 uint64_t console_read(int fd, char *buf, uint64_t count)
 {
-	cursor = 0;
 	scanlen = 0;
 	reading_flag = 1;
 	__asm__ volatile ("sti");
 	while (reading_flag == 1);
 	buf[cursor] = '\0';
 
+	__asm__ volatile ("cli");
 	/* TODO: memcpy does not seem to work here.  */
 	strcpy(buf, console_read_buf);
-	cursor = CONSOLE_BUF_SIZE - 1;
 
-	/* clear console_read_buf */
-	while(console_read_buf[scanlen])
-		scanlen++;
-
-	while(scanlen >= 0) {
-		console_read_buf[scanlen] = '\0';
-		scanlen--;
-	}
-
-	__asm__ volatile ("cli");
 	return cursor;
 }
