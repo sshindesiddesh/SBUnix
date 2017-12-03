@@ -50,6 +50,64 @@ void print_siblings(pcb_t *pcb)
 	}
 }
 
+void add_child_to_siblings(pcb_t *p_pcb, pcb_t *c_pcb)
+{
+	if (!p_pcb || !c_pcb) {
+		kprintf("Parent Child corrupted\n");
+		while (1);
+	}
+
+	pcb_t *sib = p_pcb->sibling;
+#if 0
+	if (!sib) {
+		p_pcb->sibling = c_pcb;
+	} else {
+		while (sib->sibling) {
+			sib = sib->sibling;
+		}
+		sib->sibling = c_pcb;
+		c_pcb->sibling = NULL;
+	}
+#endif
+	if (!sib) {
+		p_pcb->sibling = c_pcb;
+	} else {
+		c_pcb->sibling = p_pcb->sibling;
+		p_pcb->sibling = c_pcb;
+	}
+}
+
+void rem_child_from_sibling(pcb_t *p_pcb, pcb_t *c_pcb)
+{
+	if (!p_pcb || !c_pcb) {
+		kprintf("Parent Child corrupted\n");
+		while (1);
+	}
+
+	pcb_t *sib = p_pcb->sibling;
+
+	/* No siblings present for the parent */
+	if (!sib) {
+		sib = NULL;
+		return;
+	}
+
+
+	/* Child first in the sibling list */
+	if (sib == c_pcb) {
+		sib = sib->sibling;
+		return;
+	}
+
+	/* Go untill the previous node where child is present */
+	while (sib->sibling != c_pcb) {
+		sib = sib->sibling;
+	}
+
+	/* Point the previous node to next node */
+	sib->sibling = sib->sibling->sibling;
+}
+
 #if 0
 void add_to_zombie(pcb_t *pcb)
 {
@@ -175,6 +233,10 @@ pcb_t *create_clone_for_exec()
 
 	l_pcb->mm = (mm_struct_t *)kmalloc(PG_SIZE);
 
+	/* Change the sibling of currents parent as new process and remove the old one */
+	add_child_to_siblings(cur_pcb->parent, l_pcb);
+	rem_child_from_sibling(cur_pcb->parent, cur_pcb);
+
 	/* Make parent of current process as the parent of new process */
 	l_pcb->parent = cur_pcb->parent;
 
@@ -183,8 +245,6 @@ pcb_t *create_clone_for_exec()
 
 	/* PID of new process should be the PID of the existing process */
 	l_pcb->pid = cur_pcb->pid;
-
-	cur_pcb = l_pcb;
 
 	return l_pcb;
 }
@@ -231,56 +291,6 @@ pcb_t *copy_user_process(pcb_t * p_pcb)
 	return c_pcb;
 }
 
-
-void add_child_to_siblings(pcb_t *p_pcb, pcb_t *c_pcb)
-{
-	if (!p_pcb || !c_pcb) {
-		kprintf("Parent Child corrupted\n");
-		while (1);
-	}
-
-	pcb_t *sib = p_pcb->sibling;
-
-	if (!sib) {
-		p_pcb->sibling = c_pcb;
-	} else {
-		while (sib->sibling) {
-			sib = sib->sibling;
-		}
-		sib->sibling = c_pcb;
-		c_pcb->sibling = NULL;
-	}
-}
-
-void rem_child_from_sibling(pcb_t *p_pcb, pcb_t *c_pcb)
-{
-	if (!p_pcb || !c_pcb) {
-		kprintf("Parent Child corrupted\n");
-		while (1);
-	}
-
-	pcb_t *sib = p_pcb->sibling;
-
-	/* No siblings present for the parent */
-	if (!sib) {
-		sib = NULL;
-		return;
-	}
-
-	/* Child first in the sibling list */
-	if (sib == c_pcb) {
-		sib = sib->sibling;
-		return;
-	}
-
-	/* Go untill the previous node where child is present */
-	while (sib->sibling != c_pcb) {
-		sib = sib->sibling;
-	}
-
-	/* Posint the previous node to next node */
-	sib->sibling = sib->sibling->sibling;
-}
 
 /* Add all children of parent process as siblings to the init_process and mark them zombie */
 void add_all_children_to_sibling(pcb_t *init_pcb, pcb_t *p_pcb)
@@ -468,10 +478,10 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 	/*Array of 10 pointers to be passed to the user */
 	uint64_t *uargv[10];
 
-	cur_pcb->exit_status = 1;
+	pcb_t * prv_pcb = cur_pcb;
 	cur_pcb->state = ZOMBIE;
 
-	create_clone_for_exec();
+	cur_pcb = create_clone_for_exec();
 
 	/* Copy all arguments in kernel memory */
 	strcpy(kargs[argc++], file);
@@ -515,6 +525,14 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 
 	set_tss_rsp((void *)&cur_pcb->kstack[KSTACK_SIZE - 8]);
 
+	/* Free page table pages */
+	/* Free all the physical pages allocated to the child and not shared */
+	free_page_entry((pml_t *)prv_pcb->pml4);
+	/* Free PCB struct */
+	deallocate_pcb(prv_pcb);
+	prv_pcb->state = AVAIL;
+
+
 	__switch_ring3(cur_pcb);
 
 	return 0;
@@ -522,6 +540,8 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 
 void kexit(int status)
 {
+
+	kprintf("In Exit\n");
 #if 0
 	kprintf("PID %x called EXIT\n", cur_pcb->pid);
 #endif
@@ -531,31 +551,47 @@ void kexit(int status)
 
 	/* If parent is in wait state, make it ready */
 	if (cur_pcb->parent->state == WAIT) {
-		cur_pcb->parent->state = READY;
+		/* If it calls wait or waitpid on child pid */
+		/* 0 and 1 both are included as hack. TODO : Cleanup */
+		if ((cur_pcb->parent->wait_pid == -1) || (cur_pcb->parent->wait_pid == cur_pcb->pid)
+				|| (cur_pcb->parent->wait_pid == 0)) {
+			cur_pcb->parent->state = READY;
+		}
 	}
 
 	/* Make all children's parent as init process */
 	/* If it has any children, add them to the init process siblings list as zombie */
 	add_all_children_to_sibling(&proc_array[1], cur_pcb);
 
-	/* Add it to init process siblings list */
-	/* add_child_to_siblings(&proc_array[1], cur_pcb); */
-
 	/* Remove it's entry from parent */
 	/* Remove it from its parent process siblings list */
 	/* rem_child_from_sibling(cur_pcb->parent, cur_pcb); */
 
-	/* Make Inint Ready for freeing zombies */
-	/* proc_array[0].state = READY; */
+	rem_child_from_sibling(cur_pcb->parent, cur_pcb);
+
+	/* Free page table pages */
+	/* Free all the physical pages allocated to the child and not shared */
+	free_page_entry((pml_t *)cur_pcb->pml4);
+	/* Free PCB struct */
+	deallocate_pcb(cur_pcb);
+	cur_pcb->state = AVAIL;
+#if 0
+#endif
 	kyield();
 }
 
 
 void kwait(pid_t pid)
 {
+	/* If the parent has no child, return */
+	if (!cur_pcb->sibling) {
+		return;
+	}
+
 	/* Mark state as WAIT */
 	cur_pcb->state = WAIT;
-	/*  Check if there is a running child */
+
+	/*  Check if there is atleast one ready child */
 	pcb_t *sib = cur_pcb->sibling;
 	while (sib) {
 		if (sib->state == READY) {
@@ -563,13 +599,17 @@ void kwait(pid_t pid)
 		}
 		sib = sib->sibling;
 	}
-	/* Remark state as READY */
+	/* Remark state as READY if there was no ready child */
 	cur_pcb->state = READY;
 	return;
+
 WAIT:
 	/* Yield to a different process */
 	kyield();
+	/* It will come here only when this process is marked ready
+	 * by either of its children */
 	/* Clean up all zombie children */
+	/* This is ideally unusefull here as all processess are cleaned up on exit only */
 	kill_zombie();
 }
 

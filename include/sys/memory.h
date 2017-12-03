@@ -97,6 +97,7 @@ typedef struct PCB {
 	char current_dir[100];
 	tarfs_entry_t *current_node;
 	int exit_status;
+	int wait_pid;
 } pcb_t;
 
 typedef struct mm_struct_t {
