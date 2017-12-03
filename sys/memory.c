@@ -553,7 +553,8 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags, uint64_t type)
 	}
 
 	uint64_t rstart = round_down(va_start, PG_SIZE);
-	uint64_t rsize = round_up(size, PG_SIZE);
+	uint64_t rend = round_up(va_start + size, PG_SIZE);
+	uint64_t rsize = rend - rstart;
 
 	pcb_t *pcb = cur_pcb;
 	mm_struct_t *mm = pcb->mm;
@@ -563,7 +564,7 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags, uint64_t type)
 		return 0;
 
 	vma->start = rstart;
-	vma->end = vma->start + rsize;
+	vma->end = rend;
 	vma->type = type;
 	vma->flags = flags;
 	return vma->start;
