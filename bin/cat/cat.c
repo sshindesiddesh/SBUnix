@@ -26,26 +26,21 @@ size_t get_line(int fp, char *buf)
 
 int main(int argc, char *argv[])
 {
-	/* TODO: need to change the main function, temorary testing done */
-	char buf[1024] = "\0";
-	while (1) {
-		__asm__ volatile("movq $99, %rax");
-		__asm__ volatile("int $0x80");
-		int x = 1, c = 0;
-			int f = open("dpp/abc.txt", O_RDONLY, 444);
-			if (f < 0) {
-				strcpy(buf, "open failed");
-				write(0, buf, 10);
-				return 0;
-			}
-			while (x != 0) {
-				x = read(f, &c, 1);
-				write(0, &c, 1);
-			}
-		while(1);
-		__asm__ volatile("movq $24, %rax");
-		__asm__ volatile("int $0x80");
-	}	
+	int x = 1, c = 0;
+	if(argc > 1)
+	{
+		int f = open(argv[1], O_RDONLY, 444);
+		if (f < 0) {
+			write(1, "\nCould not open the file", 30);
+			return 0;
+		}
+		while (x != 0) {
+			x = read(f, &c, 1);
+			write(1, &c, 1);
+		}
+	} else {
+		write(1, "\nNo argument for cat", 30);
+	}
 
 #if 0
 	int x = 1, c = 0;
@@ -60,6 +55,6 @@ int main(int argc, char *argv[])
 			write(1, &c, x);
 		}
 	}
-        return 0;
 #endif
+        return 0;
 }
