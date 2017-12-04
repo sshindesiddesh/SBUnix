@@ -92,6 +92,7 @@ typedef struct PCB {
 	uint8_t is_usr;
 	struct mm_struct_t *mm;
 	struct PCB *parent;
+	struct PCB *child_head;
 	struct PCB *sibling;
 	fd_t *fd[MAX_FD_CNT];
 	char current_dir[100];

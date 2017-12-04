@@ -31,7 +31,7 @@ pcb_t *tail = NULL;
 pcb_t *zombie_head = NULL;
 
 /* Global PID assigner */
-static uint64_t PID = -1;
+static uint64_t PID = 0;
 
 void set_proc_page_table(pcb_t *pcb);
 void free_page_entry(pml_t *pml);
@@ -42,10 +42,10 @@ pcb_t proc_array[MAX_NO_PROCESS];
 /* For debugging purpose */
 void print_siblings(pcb_t *pcb)
 {
-	pcb_t *sib = pcb->sibling;
-	kprintf("SIBS\n");
+	pcb_t *sib = pcb->child_head;
+	kprintf("SIBS of PID %d\n", pcb->pid);
 	while (sib) {
-		kprintf("sib PID %x\n", sib->pid);
+		kprintf("sib PID %x %p\n", sib->pid, sib);
 		sib = sib->sibling;
 	}
 }
@@ -57,23 +57,12 @@ void add_child_to_siblings(pcb_t *p_pcb, pcb_t *c_pcb)
 		while (1);
 	}
 
-	pcb_t *sib = p_pcb->sibling;
-#if 0
-	if (!sib) {
-		p_pcb->sibling = c_pcb;
+	pcb_t *child = p_pcb->child_head;
+	if (!child) {
+		p_pcb->child_head = c_pcb;
 	} else {
-		while (sib->sibling) {
-			sib = sib->sibling;
-		}
-		sib->sibling = c_pcb;
-		c_pcb->sibling = NULL;
-	}
-#endif
-	if (!sib) {
-		p_pcb->sibling = c_pcb;
-	} else {
-		c_pcb->sibling = p_pcb->sibling;
-		p_pcb->sibling = c_pcb;
+		c_pcb->sibling = p_pcb->child_head;
+		p_pcb->child_head = c_pcb;
 	}
 }
 
@@ -83,66 +72,24 @@ void rem_child_from_sibling(pcb_t *p_pcb, pcb_t *c_pcb)
 		kprintf("Parent Child corrupted\n");
 		while (1);
 	}
+	pcb_t *child = p_pcb->child_head;
 
-	pcb_t *sib = p_pcb->sibling;
-
-	/* No siblings present for the parent */
-	if (!sib) {
-		sib = NULL;
+	/* No children present for the parent */
+	if (!child) {
 		return;
 	}
 
-
-	/* Child first in the sibling list */
-	if (sib == c_pcb) {
-		sib = sib->sibling;
-		return;
+	pcb_t *child_p = NULL;
+	while (child != c_pcb) {
+		child_p = child;
+		child = child->sibling;
 	}
-
-	/* Go untill the previous node where child is present */
-	while (sib->sibling != c_pcb) {
-		sib = sib->sibling;
-	}
-
-	/* Point the previous node to next node */
-	sib->sibling = sib->sibling->sibling;
-}
-
-#if 0
-void add_to_zombie(pcb_t *pcb)
-{
-#if 0
-	kprintf("\nAdded Zombie %p\n", pcb);
-#endif
-	if (!zombie_head) {
-		zombie_head = pcb;
-		zombie_head->next = NULL;
+	if (child_p) {
+		child_p->sibling = child->sibling;
 	} else {
-		pcb->next = zombie_head;
-		zombie_head = pcb;
+		p_pcb->child_head = child->sibling;
 	}
 }
-
-void free_zombies()
-{
-	pcb_t *zhead = zombie_head;
-
-	while (zhead) {
-#if 0
-		kprintf("ZOMBIE FREE %p\n", zhead);
-#endif
-		/* Free page table pages */
-		/* Free all the physical pages allocated to the child and not shared */
-		free_page_entry((pml_t *)zhead->pml4);
-		/* Free PCB struct */
-		deallocate_pcb(zhead);
-		zhead = zhead->next;
-	}
-
-	/* After this clean up, zombie head should always be clen */
-	zombie_head = zhead;
-}
-#endif
 
 /* Always gives a zero filled page for PCB */
 pcb_t *get_new_pcb()
@@ -184,7 +131,6 @@ pcb_t *get_next_ready_pcb()
 	cur_index++;
 	/* TODO: Check for infinite loop */
 	for (; cur_index <= MAX_NO_PROCESS; cur_index++) {
-		//kprintf("ready cur_index %x\n", cur_index);
 		if (cur_index == MAX_NO_PROCESS) {
 			cur_index = 1;
 		}
@@ -194,8 +140,9 @@ pcb_t *get_next_ready_pcb()
 			break;
 		}
 	}
-
-	//kprintf("Next Ready PID %x\n", l_pcb->pid);
+#if 0
+	kprintf("Next Ready PID %x\n", l_pcb->pid);
+#endif
 	return l_pcb;
 }
 
@@ -229,22 +176,34 @@ pcb_t *create_clone_for_exec()
 
 	l_pcb->is_usr = 1;
 
+	/* PID of new process should be the PID of the existing process */
+	l_pcb->pid = cur_pcb->pid;
+
 	set_proc_page_table(l_pcb);
 
 	l_pcb->mm = (mm_struct_t *)kmalloc(PG_SIZE);
-
-	/* Change the sibling of currents parent as new process and remove the old one */
-	add_child_to_siblings(cur_pcb->parent, l_pcb);
-	rem_child_from_sibling(cur_pcb->parent, cur_pcb);
 
 	/* Make parent of current process as the parent of new process */
 	l_pcb->parent = cur_pcb->parent;
 
 	/* Make siblings of current process as siblings of new process */
+	l_pcb->child_head = cur_pcb->child_head;
 	l_pcb->sibling = cur_pcb->sibling;
 
-	/* PID of new process should be the PID of the existing process */
-	l_pcb->pid = cur_pcb->pid;
+	/* Change the sibling link in parent PCB which points to cur_pcb */
+	pcb_t *sib = cur_pcb->parent->child_head;
+	pcb_t *sib_p = NULL;
+	if (sib) {
+		while (sib != cur_pcb) {
+			sib_p = sib;
+			sib = sib->sibling;
+		}
+		if (sib_p) {
+			sib_p->sibling = l_pcb;
+		} else {
+			cur_pcb->parent->child_head = l_pcb;
+		}
+	}
 
 	return l_pcb;
 }
@@ -287,19 +246,23 @@ pcb_t *copy_user_process(pcb_t * p_pcb)
 	/* Assign parent as the current pcb */
 	c_pcb->parent = cur_pcb;
 
+	/* Set siblings to 0 */
+	c_pcb->sibling = 0;
+
 	/* return child pcb */
 	return c_pcb;
 }
 
 
 /* Add all children of parent process as siblings to the init_process and mark them zombie */
-void add_all_children_to_sibling(pcb_t *init_pcb, pcb_t *p_pcb)
+void add_all_children_to_init_proc(pcb_t *init_pcb, pcb_t *p_pcb)
 {
-	pcb_t *sib = p_pcb->sibling;
+	pcb_t *sib = p_pcb->child_head;
 	while (sib) {
 		/* TODO: Should child execute even after parent executes ?  */
 		/* sib->state = ZOMBIE; */
 		add_child_to_siblings(init_pcb, sib);
+		p_pcb->parent = init_pcb;
 		sib = sib->sibling;
 	}
 }
@@ -342,6 +305,7 @@ pcb_t *create_kernel_process(void *func)
 	return l_pcb;
 }
 
+
 /* Yield from process */
 void kyield(void)
 {
@@ -367,35 +331,11 @@ void __switch_ring3(pcb_t *pcb);
 pcb_t *usr_pcb_1;
 pcb_t *usr_pcb_2;
 
-
-/* Function to try all the syscalls */
-void try_syscall()
-{
-	/* Default */
-	__asm__ volatile ("mov $5, %rax");
-	__asm__ volatile ("int $0x80");
-
-	/* Write */
-	char *buf = "Hello World\n";
-	kprintf("buf %p\n", buf);
-	__asm__ volatile (
-		"movq $1, %%rax;"
-		"movq %0, %%rbx;"
-		: "=m"(buf)
-		:
-		: "rax", "rbx", "rcx", "rdx"
-		);
-	__asm__ volatile ("int $0x80");
-
-}
-
-
 void thread1()
 {
 	while (1) {
 		kprintf("thread 1");
 		kyield();
-
 	}
 }
 
@@ -411,7 +351,6 @@ void thread2()
 	while (1) {
 		kprintf("thread 2");
 		yield();
-
 	}
 }
 
@@ -424,10 +363,13 @@ void func2()
 
 void kill_zombie()
 {
+	return;
 	pcb_t *l_pcb = cur_pcb->sibling;
 	while (l_pcb) {
 		if (l_pcb->state == ZOMBIE) {
+#if 0
 			kprintf("***Killed Zombie PID %d***\n", l_pcb->pid);
+#endif
 			l_pcb->state = AVAIL;
 			rem_child_from_sibling(cur_pcb, l_pcb);
 			/* Free page table pages */
@@ -445,7 +387,7 @@ void init_process()
 {
 	while (1) {
 		kprintf("Init\n");
-		kwait(0);
+		kwait(-1);
 		kyield();
 	}
 }
@@ -459,8 +401,8 @@ void elf_process()
 	/* Init process will have it as first child */
 	pcb_t *init_proc = &proc_array[1];
 	usr_pcb_1->parent = init_proc;
-	init_proc->sibling = usr_pcb_1;
-	usr_pcb_1->sibling = NULL;
+	init_proc->child_head = usr_pcb_1;
+	usr_pcb_1->child_head = NULL;
 
 	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
 	load_elf_code(usr_pcb_1, (void *)start);
@@ -541,7 +483,7 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 void kexit(int status)
 {
 
-	kprintf("In Exit\n");
+	kprintf("PID %x called EXIT\n", cur_pcb->pid);
 #if 0
 	kprintf("PID %x called EXIT\n", cur_pcb->pid);
 #endif
@@ -559,15 +501,15 @@ void kexit(int status)
 		}
 	}
 
-	/* Make all children's parent as init process */
-	/* If it has any children, add them to the init process siblings list as zombie */
-	add_all_children_to_sibling(&proc_array[1], cur_pcb);
-
 	/* Remove it's entry from parent */
 	/* Remove it from its parent process siblings list */
 	/* rem_child_from_sibling(cur_pcb->parent, cur_pcb); */
-
+	/* Change the sibling link in parent PCB which points to cur_pcb */
 	rem_child_from_sibling(cur_pcb->parent, cur_pcb);
+
+	/* Make all children's parent as init process */
+	/* If it has any children, add them to the init process siblings list as zombie */
+	add_all_children_to_init_proc(&proc_array[1], cur_pcb);
 
 	/* Free page table pages */
 	/* Free all the physical pages allocated to the child and not shared */
@@ -575,8 +517,6 @@ void kexit(int status)
 	/* Free PCB struct */
 	deallocate_pcb(cur_pcb);
 	cur_pcb->state = AVAIL;
-#if 0
-#endif
 	kyield();
 }
 
@@ -584,7 +524,7 @@ void kexit(int status)
 void kwait(pid_t pid)
 {
 	/* If the parent has no child, return */
-	if (!cur_pcb->sibling) {
+	if (!cur_pcb->child_head) {
 		return;
 	}
 
@@ -592,7 +532,7 @@ void kwait(pid_t pid)
 	cur_pcb->state = WAIT;
 
 	/*  Check if there is atleast one ready child */
-	pcb_t *sib = cur_pcb->sibling;
+	pcb_t *sib = cur_pcb->child_head;
 	while (sib) {
 		if (sib->state == READY) {
 			goto WAIT;
@@ -610,7 +550,7 @@ WAIT:
 	 * by either of its children */
 	/* Clean up all zombie children */
 	/* This is ideally unusefull here as all processess are cleaned up on exit only */
-	kill_zombie();
+	/* kill_zombie(); */
 }
 
 void thread3()

@@ -45,6 +45,7 @@ void add_free_page(pa_t pa)
 {
 #if 0
 	kprintf("ADD PAGE : %p\n", pa);
+	kprintf("#ADD PAGE : %p pd :%p*\n", pa, pd);
 #endif
 	page_disc_t *pd = pa2page(pa);
 	/* Page reffered by any process  */
@@ -67,34 +68,35 @@ void add_free_page(pa_t pa)
 		while (1);
 	}
 
-	free_list_ptr->next = pd;
-	free_list_ptr = free_list_ptr->next;
+	pd->next = free_list_ptr;
+	free_list_ptr = pd;
 }
 
 pa_t get_free_pages(uint64_t n)
 {
+	if (n > 1) {
+		kprintf("More than one physical page requested\n");
+		while (1);
+	}
 	if (!free_list_ptr)
 		return 0;
 #ifdef MALLOC_DEBUG
-	kprintf("GFP start : fp %p\n", free_list_ptr);
+	kprintf("#GFP:pa %p fp %p*\n", page2pa(free_list_ptr), free_list_ptr);
 #endif
-	int i = n;
 	if (free_list_ptr->free == 0) {
 		kprintf("!!!Allocated page in the free list!!!\n");
 		while (1);
 	}
 	page_disc_t *ptr = free_list_ptr;
-	while (i--) {
-		if (ptr->free) {
-			ptr->free = 0;
-		} else {
-			kprintf("!!! Memory Inconsistency !!!\n");
-		}
-		ptr = free_list_ptr->next;
+	if (ptr->free) {
+		ptr->free = 0;
+	} else {
+		kprintf("!!! Memory Inconsistency !!!\n");
+		while (1);
 	}
-
 	pa_t pa = page2pa(free_list_ptr);
-	free_list_ptr = ptr;
+	free_list_ptr = free_list_ptr->next;
+
 #ifdef MALLOC_DEBUG
 	kprintf("GFP:pa %p\n", pa);
 	kprintf("GFP end : fp %p\n", free_list_ptr);
@@ -551,7 +553,8 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags, uint64_t type)
 	}
 
 	uint64_t rstart = round_down(va_start, PG_SIZE);
-	uint64_t rsize = round_up(size, PG_SIZE);
+	uint64_t rend = round_up(va_start + size, PG_SIZE);
+	uint64_t rsize = rend - rstart;
 
 	pcb_t *pcb = cur_pcb;
 	mm_struct_t *mm = pcb->mm;
@@ -561,7 +564,7 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags, uint64_t type)
 		return 0;
 
 	vma->start = rstart;
-	vma->end = vma->start + rsize;
+	vma->end = rend;
 	vma->type = type;
 	vma->flags = flags;
 	return vma->start;
@@ -822,11 +825,16 @@ void free_page_entry(pml_t *pml)
 									pa2page(pa)->ref_cnt--;
 									/* Page is still used by another process If */
 									/* COW is set and reference count is greater than 1 */
+#if 0
 									if (pa & PTE_COW) {
 										if (pa2page(pa)->ref_cnt == 0) {
 											add_free_page(pa & ~(0xFFF));
 										}
 									} else {
+										add_free_page(pa & ~(0xFFF));
+									}
+#endif
+									if (pa2page(pa)->ref_cnt == 0) {
 										add_free_page(pa & ~(0xFFF));
 									}
 								}
