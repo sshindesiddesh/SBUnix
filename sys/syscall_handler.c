@@ -15,6 +15,8 @@
 #define SYSCALL_MUNMAP	11
 #define SYSCALL_BRK	12
 #define SYSCALL_CHDIR	80
+#define SYSCALL_GETPID	39
+#define SYSCALL_GETPPID	110
 #define SYSCALL_INFO	99
 #define SYSCALL_YIELD	24
 #define SYSCALL_FORK	57
@@ -104,6 +106,12 @@ uint64_t __isr_syscall(syscall_in *in)
 			break;
 		case SYSCALL_EXIT:
 			kexit(in->first_param);
+			break;
+		case SYSCALL_GETPID:
+			out = kgetpid();
+			break;
+		case SYSCALL_GETPPID:
+			out = kgetppid();
 			break;
 		default:
 			kprintf("Error: Unknown System Call\n");

@@ -11,6 +11,7 @@
 #include <sys/idt.h>
 #include <unistd.h>
 #include <sys/ksyscall.h>
+#include <sys/elf64.h>
 
 
 #define MAX_NO_PROCESS	1000
@@ -269,7 +270,7 @@ void add_all_children_to_init_proc(pcb_t *init_pcb, pcb_t *p_pcb)
 		/* TODO: Should child execute even after parent executes ?  */
 		/* sib->state = ZOMBIE; */
 		add_child_to_siblings(init_pcb, sib);
-		p_pcb->parent = init_pcb;
+		sib->parent = init_pcb;
 		sib = sib->sibling;
 	}
 }
@@ -417,12 +418,70 @@ void elf_process()
 	__switch_ring3(usr_pcb_1);
 }
 
+char filename[100];
+char local_name[100];
 /* Try making it on stack */
-static char kargs[10][100];
+char kargs[20][100];
+
+char *pt;
+
+char *get_absolute_path(char *file, char *env[])
+{
+	struct posix_header_ustar *start = NULL;
+	/* Input file is NULL */
+	if (!file) {
+		return NULL;
+	/* Check if user entered absolute path */
+	} else {
+		start = (struct posix_header_ustar *)get_posix_header(file);
+		if (start) {
+			return file;
+		}
+	}
+	if (!env) {
+		return NULL;
+	}
+
+	/* Check with rest of the paths */
+	int i = 0, j = 0;
+	while (env[i]) {
+		strcpy(local_name, env[i]);
+		pt = strtok(local_name, "=");
+		while (pt) {
+			pt = strtok(NULL, ":");
+			if (pt) {
+				strcpy(filename, pt);
+				strcat(filename, "/");
+				strcat(filename, file);
+#if 0
+				kprintf("i = %d %s\n", i, filename);
+#endif
+				strcpy(kargs[j++], filename);
+			}
+		}
+		i++;
+	}
+	while (j > 0) {
+		start = (struct posix_header_ustar *)get_posix_header(kargs[j]);
+		if (start) {
+			if (is_proper_executable((Elf64_Ehdr *)start) == 0) {
+				return filename;
+			}
+		}
+		j--;
+	}
+
+	return NULL;
+}
 
 /* Execve */
-uint64_t kexecve(char *file, char *argv[], char *env[])
+uint64_t kexecve(char *in_file, char *argv[], char *env[])
 {
+	char *file = get_absolute_path(in_file, env);
+	if (!file) {
+		return -1;
+	}
+
 	uint64_t argc = 0, len, *u_rsp, i = 0;
 	/*Array of 10 pointers to be passed to the user */
 	uint64_t *uargv[10];
@@ -490,9 +549,9 @@ uint64_t kexecve(char *file, char *argv[], char *env[])
 void kexit(int status)
 {
 
-	kprintf("PID %x called EXIT\n", cur_pcb->pid);
 #if 0
 	kprintf("PID %x called EXIT\n", cur_pcb->pid);
+	kprintf("Parent %p pid %d\n", cur_pcb->parent, cur_pcb->parent->pid);
 #endif
 	/* Mark its exit status and change it's state to ZOMBIE */
 	cur_pcb->exit_status = 1;
@@ -527,6 +586,17 @@ void kexit(int status)
 	kyield();
 }
 
+pid_t kgetpid(void)
+{
+	return cur_pcb->pid;
+}
+
+pid_t kgetppid(void)
+{
+	if (cur_pcb->parent)
+		return cur_pcb->parent->pid;
+	else return -1;
+}
 
 void kwait(pid_t pid)
 {

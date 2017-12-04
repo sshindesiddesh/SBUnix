@@ -3,21 +3,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Pointer to environment variable from stack. */
-extern char **ep;
-
-/* All paths present in PATH variable are copied here. */
-//extern char env_p[30][100];
-
 /* Buffer to store user defined env variables */
 extern char usr_env[10][200];
-extern int usr_env_cnt;
 
 char *getenv(const char *name)
 {
 	int i = 0;
-	/*  Check in system variables. */
-	while (usr_env[i]) {
+	/*  Check in existing variables. */
+	while (usr_env[i][0]) {
 		if (!strncmp(usr_env[i], name, strlen(name)))
 			/* This only returns pointer to path and not starting
 			 * from the name of the variable. */
@@ -31,43 +24,43 @@ char *getenv(const char *name)
 int setenv(const char *name, const char *value, int overwrite)
 {
 	int i = 0;
-	/* The variable exists */
+	/* The variable exists, append to existing value */
 	if (overwrite == 1) {
+#if 0
+		printf(" old n:%s v:%s ",name, value);
+#endif
 		while (usr_env[i]) {
 			if (!strncmp(usr_env[i], name, strlen(name))) {
-				strcpy(usr_env[i] + strlen(name) + 1, value);
+				char temp[100] = "\0";
+				strcpy(temp, name);
+				strcat(temp, "=");
+				strcat(temp, usr_env[i] + strlen(name) + 1);
+				strcat(temp, ":");
+				strcat(temp, value);
+				strcpy(usr_env[i], temp);
+				strcpy(usr_env[++i], "\0");
 				break;
 			}
 			i++;
 		}
-	/* Create a variable */
+		/* Create a new variable */
 	} else if (overwrite == 0) {
+#if 0
 		printf(" n:%s v:%s ",name, value);
+#endif
 		i = 0;
-		while(usr_env[i])
+
+		while(usr_env[i][0] != 0)
 		{
-			puts(usr_env[i]);
 			i++;
 		}
+
 		char temp[100] = "\0";
 		strcpy(temp, name);
 		strcat(temp, "=");
 		strcat(temp, value);
 		strcpy(usr_env[i], temp);
-		puts(usr_env[i]);
-		strcpy(usr_env[++i], "\0");
-#if 0
-		i = 0;
-		strcpy(usr_env[usr_env_cnt] + i, name);
-		i += strlen(name);
-		strcpy(usr_env[usr_env_cnt] + i, "=");
-		i += 1;
-		strcpy(usr_env[usr_env_cnt] + i, value);
-		i = 0;
-		while(ep[++i]);
-		ep[i++] = usr_env[usr_env_cnt++];
-		ep[i] = NULL;
-#endif
+		usr_env[i + 1][0] = 0;
 	}
 	return 0;
-};
+}

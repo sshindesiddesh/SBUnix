@@ -11,5 +11,6 @@ va_t kmunmap(va_t va_start, uint64_t size);
 uint64_t kexecve(char *file, char *argv[], char *env[]);
 void kexit(int status);
 void kwait(pid_t pid);
-
+pid_t kgetpid(void);
+pid_t kgetppid(void);
 #endif
