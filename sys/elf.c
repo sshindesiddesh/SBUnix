@@ -37,11 +37,9 @@ int load_elf_code(pcb_t *pcb, void *start)
 				return -1;
 			}
 			/* mmap the virtual addresses */
-			va_t *addr = (va_t *)mmap(p_hdr->p_vaddr, p_hdr->p_filesz, PTE_P | p_hdr->p_flags, HEAP);
+			va_t *addr = (va_t *)mmap(p_hdr->p_vaddr, p_hdr->p_memsz, PTE_P | p_hdr->p_flags, HEAP);
 			memcpy((void *)addr, (void *)((Elf64_Addr)elf_hdr + p_hdr->p_offset), p_hdr->p_filesz);
-#ifdef TARFS_DEBUG
-			kprintf("start:%p size:%x\n", vma->start, p_hdr->p_filesz);
-#endif
+			memset((void *)(p_hdr->p_vaddr + p_hdr->p_filesz), 0, p_hdr->p_memsz - p_hdr->p_filesz);
 		}
 		p_hdr++;
 	}
@@ -49,6 +47,8 @@ int load_elf_code(pcb_t *pcb, void *start)
 	/* mmap user stack for all the space. Allocate lazily, one by one page */
 	mmap(STACK_LIMIT, STACK_TOP - STACK_LIMIT, PTE_P | PTE_W | PTE_U, STACK);
 	pcb->u_rsp = ((uint64_t)STACK_TOP - 8);
+	pcb->mm->brk = HEAP_START;
+	mmap(HEAP_START, HEAP_END-HEAP_START, PTE_P | PTE_W | PTE_U, HEAP);
 
 	return 0;
 }

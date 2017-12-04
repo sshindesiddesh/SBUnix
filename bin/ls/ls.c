@@ -50,10 +50,8 @@ void printdir(char *path)
 void printdir1(char *path)
 {
 	int dir = open(path, O_RDONLY, 444);
-	//uint64_t dir = opendir(path);
 	if (dir < 0) {
-		strcpy(buf, "Invalid Path");
-		write(1, buf, strlen(buf));
+		write(1, "Invalid path", 20);
 		return;
 	}
 	else {
@@ -63,7 +61,7 @@ void printdir1(char *path)
 		d = (struct dirent *)getdents(dir, b, sizeof(buf));
 		while ((d != NULL) && (strlen(d->d_name) > 0)) {
 			write(1, &(d->d_name), strlen(d->d_name));
-			write(1, "    ", 5);
+			write(1, "\t", 5);
 			d = (struct dirent *)getdents(dir, b, sizeof(buf));
 		}
 	}
@@ -72,16 +70,12 @@ void printdir1(char *path)
 
 int main(int argc, char *argv[])
 {
-	/* TODO: need to change the main function, temorary testing done */
-	while (1) {
-		__asm__ volatile("movq $99, %rax");
-		__asm__ volatile("int $0x80");
-		printdir1("/rootfs/bin/");
-		while(1);
-		__asm__ volatile("movq $24, %rax");
-		__asm__ volatile("int $0x80");
-	}	
-	printdir1(argv[1] ? argv[1] : ".");
-	put_c('\n', stdout);
+	char cwd[50] = "\0";
+	if (argc < 2) {
+		getcwd(cwd, sizeof(cwd));
+		printdir1(cwd);
+		return 0;
+	}
+	printdir1(argv[1]);
 	return 0;
 }

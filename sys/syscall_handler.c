@@ -50,7 +50,7 @@ uint64_t __isr_syscall(syscall_in *in)
 			out = kread(in->first_param, (char *)in->second_param, in->third_param);
 			break;
 		case SYSCALL_WRITE:
-			out = kwrite(in->first_param, (uint64_t)in->second_param, in->third_param);
+			out = kwrite(in->first_param, (char *)in->second_param, in->third_param);
 			break;
 		case SYSCALL_OPEN:
 			out = tarfs_open((char *)in->first_param, in->second_param);
@@ -109,6 +109,7 @@ uint64_t __isr_syscall(syscall_in *in)
 			kprintf("Error: Unknown System Call\n");
 			break;
 	}
+	__flush_tlb();
 	/* Set the output value in rax */
 	in->in_out = out;
 	return out;
@@ -119,27 +120,28 @@ uint64_t kread(uint64_t fd, void *buf, uint64_t length)
 	uint64_t count;
 	if (fd == STD_IN) {
 		count = console_read(fd , buf, length);
+#if 0
+		kprintf("READ: %p %s\n", buf, buf);
+#endif
 		return count;
 	} else {
 		count = tarfs_read(fd , buf, length);
 		return count;
 	}
-	return -1;
+	return count;
 }
 
-uint64_t kwrite(uint64_t fd, uint64_t buf, int length)
+uint64_t kwrite(uint64_t fd, char *buf, int length)
 {
 	if (fd == STD_OUT || fd == STD_ERR) {
-		const char *buf1 = (const char *)buf;
 		uint64_t count, i = 0;
-		if (length > strlen((char *)buf1))
-			length = strlen((char *)buf1);
+		if (length > strlen((char *)buf))
+			length = strlen((char *)buf);
 		count = length;
 		while (length >= 0) {
-			putchar(buf1[i++]);
+			putchar(buf[i++]);
 			length--;
 		}
-
 		return count;
 	}
 	return 0;

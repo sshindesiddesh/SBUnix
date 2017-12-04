@@ -163,7 +163,11 @@ pcb_t *create_user_process(void *func)
 	l_pcb->mm = (mm_struct_t *)kmalloc(PG_SIZE);
 
 	l_pcb->state = READY;
-	
+
+	strcpy(l_pcb->current_dir, "/rootfs/bin/");
+	dir_t *dir = tarfs_opendir("/rootfs/bin/");
+	if(dir != NULL && dir->node != NULL)
+		l_pcb->current_node = dir->node;
 	return l_pcb;
 }
 
@@ -189,6 +193,9 @@ pcb_t *create_clone_for_exec()
 	/* Make siblings of current process as siblings of new process */
 	l_pcb->child_head = cur_pcb->child_head;
 	l_pcb->sibling = cur_pcb->sibling;
+
+	strcpy(l_pcb->current_dir, cur_pcb->current_dir);
+	l_pcb->current_node = cur_pcb->current_node;
 
 	/* Change the sibling link in parent PCB which points to cur_pcb */
 	pcb_t *sib = cur_pcb->parent->child_head;

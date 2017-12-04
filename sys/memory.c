@@ -49,10 +49,12 @@ void add_free_page(pa_t pa)
 #endif
 	page_disc_t *pd = pa2page(pa);
 	/* Page reffered by any process  */
-	if (pd->ref_cnt >= 1) {
-		kprintf("!!Page reference count more than 1!!\n");
+	if (pd->ref_cnt != 0) {
+		kprintf("!!Page reference count more than 1!! %d\n", pd->ref_cnt);
 		while (1);
 	}
+
+	pd->ref_cnt = 0;
 
 	/* Page free bit is set */
 	if (pd->free) {
@@ -94,6 +96,14 @@ pa_t get_free_pages(uint64_t n)
 		kprintf("!!! Memory Inconsistency !!!\n");
 		while (1);
 	}
+
+	if (ptr->ref_cnt != 0) {
+		kprintf("!!! Free Page ref count greater than zero !!! %d Page %p\n", ptr->ref_cnt, page2pa(ptr));
+		while (1);
+	}
+
+	ptr->ref_cnt = 1;
+
 	pa_t pa = page2pa(free_list_ptr);
 	free_list_ptr = free_list_ptr->next;
 
@@ -262,7 +272,7 @@ void create_page_disc(uint64_t start, uint64_t length, void *physbase)
 #endif
 			}
 			/* This is -1 as kernel maps it once and increments count */
-			pd_cur[i].ref_cnt = -1;
+			pd_cur[i].ref_cnt = 0;
 			pd_cur[i].next = 0;
 			/* This page is free */
 			pd_cur[i].free = 1;
@@ -342,9 +352,6 @@ void unmap_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm
 			kprintf(" v %p p %p ptr %p\n", va + i, pa + i, pte_ptr);
 #endif
 			*pte_ptr = 0;
-			/* Decrease reference count */
-			page_disc_t *pd = pa2page(pa + i);
-			pd->ref_cnt--;
 		}
 	}
 	/* Flush TLB entries */
@@ -431,9 +438,6 @@ void map_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm)
 #endif
 			*pte_ptr = pa + i;
 			*pte_ptr = ((*pte_ptr) | perm);
-			/* Increase reference count */
-			page_disc_t *pd = pa2page(pa + i);
-			pd->ref_cnt++;
 		}
 	}
 	__flush_tlb();
@@ -448,7 +452,8 @@ void page_table_init()
 	/* TODO: Map only these regions ? */
 	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)VA, ((pa_t)phys_end - (pa_t)phys_base), (pa_t)phys_base, PTE_P | PTE_W);
 	/* TODO: 2 pages required ? */
-	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 4 * 0x1000, (pa_t)0xB8000, PTE_P | PTE_W);
+	/* 25 * 80 * 2 = 4000 <= PGSIZE */
+	map_page_entry((pml_t *)pa2va((pa_t)pml), (va_t)(KERNBASE + 0xB8000), 1 * 0x1000, (pa_t)0xB8000, PTE_P | PTE_W);
 }
 
 /* This function sets kernel and console page tables for a user process. */
@@ -553,7 +558,8 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags, uint64_t type)
 	}
 
 	uint64_t rstart = round_down(va_start, PG_SIZE);
-	uint64_t rsize = round_up(size, PG_SIZE);
+	uint64_t rend = round_up(va_start + size, PG_SIZE);
+	uint64_t rsize = rend - rstart;
 
 	pcb_t *pcb = cur_pcb;
 	mm_struct_t *mm = pcb->mm;
@@ -563,7 +569,7 @@ va_t mmap(va_t va_start, uint64_t size, uint64_t flags, uint64_t type)
 		return 0;
 
 	vma->start = rstart;
-	vma->end = vma->start + rsize;
+	vma->end = rend;
 	vma->type = type;
 	vma->flags = flags;
 	return vma->start;
@@ -719,13 +725,17 @@ void copy_vma_mapping(pcb_t *parent, pcb_t *child)
 		while (start < end) {
 			/* Only last level entries are marked as COW */
 			/* Mark parent page table entriess as COW and read only */
-			pte = get_pte_from_pml((pml_t *)pa2va((pa_t)parent->pml4), start, p_vma->flags);
-			if (pte) {
+			pte = get_pte_from_pml_unmap((pml_t *)pa2va((pa_t)parent->pml4), start, p_vma->flags);
+			if (pte && *pte) {
 				pa = (pa_t)(*pte & ~(0xFFF));
+				pa2page(pa)->ref_cnt++;
+#if 0
+				kprintf("#COWpa: %p refcnt %d\t*", pa, pa2page(pa)->ref_cnt);
+#endif
 				*pte = (pa | PTE_P | PTE_U | PTE_COW);
 				/* Mark last level child page table entries as COW and read only */
-				map_page_entry((pml_t *)pa2va((pa_t)child->pml4), start, PG_SIZE, (pa_t)pa, PTE_P | p_vma->flags);
-				pte = get_pte_from_pml((pml_t *)pa2va((pa_t)child->pml4), start, PTE_P | p_vma->flags);
+				map_page_entry((pml_t *)pa2va((pa_t)child->pml4), start, PG_SIZE, (pa_t)pa, PTE_P | PTE_U | PTE_W | p_vma->flags);
+				pte = get_pte_from_pml_unmap((pml_t *)pa2va((pa_t)child->pml4), start, PTE_P | p_vma->flags);
 				if (pte) {
 					pa = (pa_t)(*pte & ~(0xFFF));
 					*pte = (pa | PTE_P | PTE_U | PTE_COW);
@@ -768,6 +778,8 @@ void deallocate_all_vmas(pcb_t *pcb)
 		/* This is not required as all pages are freed from the page tables itself */
 		/* deallocate_vma(pcb, vma); */
 		vma = vma->next;
+
+		pa2page(va2pa((va_t)l_vma))->ref_cnt--;
 		/* Free VMA itself*/
 		add_free_page(va2pa((va_t)l_vma));
 	}
@@ -778,6 +790,7 @@ void deallocate_pcb(pcb_t *pcb)
 {
 	/* Deallocate all VMAs */
 	deallocate_all_vmas(pcb);
+	pa2page(va2pa((va_t)pcb->mm))->ref_cnt--;
 	/* Deallocate mm */
 	add_free_page(va2pa((va_t)pcb->mm));
 	/* TODO : Deallocate current node ??? */
@@ -820,11 +833,17 @@ void free_page_entry(pml_t *pml)
 							for (l = 0; l < PAGE_TABLE_SIZE; l++) {
 								pa = pte_ptr[l];
 								if (pa & PTE_P) {
+									pa = pa & ~(0xFFF);
+									if (!pa)
+										continue;
+#if 0
+									if (pa & PTE_COW) {
+										pa = pa & ~(0xFFF);
+									}
+									kprintf("#pa %p ref_cnt %d\t*", pa, pa2page(pa)->ref_cnt);
 									/* As page table entry is removed */
-									pa2page(pa)->ref_cnt--;
 									/* Page is still used by another process If */
 									/* COW is set and reference count is greater than 1 */
-#if 0
 									if (pa & PTE_COW) {
 										if (pa2page(pa)->ref_cnt == 0) {
 											add_free_page(pa & ~(0xFFF));
@@ -833,17 +852,26 @@ void free_page_entry(pml_t *pml)
 										add_free_page(pa & ~(0xFFF));
 									}
 #endif
+									if (pa2page(pa)->ref_cnt > 0) {
+										pa2page(pa)->ref_cnt--;
+									} else {
+										kprintf("ref cnt less than zero %p\n", pa);
+										while (1);
+									}
 									if (pa2page(pa)->ref_cnt == 0) {
 										add_free_page(pa & ~(0xFFF));
 									}
 								}
 							}
+							pa2page(va2pa((va_t)pte_ptr))->ref_cnt--;
 							add_free_page(va2pa((va_t)pte_ptr));
 						}
 					}
+					pa2page(va2pa((va_t)pgdir))->ref_cnt--;
 					add_free_page(va2pa((va_t)pgdir));
 				}
 			}
+			pa2page(va2pa((va_t)pdpe))->ref_cnt--;
 			add_free_page(va2pa((va_t)pdpe));
 		}
 	}
