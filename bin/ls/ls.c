@@ -51,8 +51,7 @@ void printdir1(char *path)
 {
 	int dir = open(path, O_RDONLY, 444);
 	if (dir < 0) {
-		strcpy(buf, "Invalid Path");
-		write(1, buf, strlen(buf));
+		write(1, "Invalid path", 20);
 		return;
 	}
 	else {
@@ -62,7 +61,7 @@ void printdir1(char *path)
 		d = (struct dirent *)getdents(dir, b, sizeof(buf));
 		while ((d != NULL) && (strlen(d->d_name) > 0)) {
 			write(1, &(d->d_name), strlen(d->d_name));
-			write(1, "    ", 5);
+			write(1, "\t", 5);
 			d = (struct dirent *)getdents(dir, b, sizeof(buf));
 		}
 	}
@@ -72,7 +71,7 @@ void printdir1(char *path)
 int main(int argc, char *argv[])
 {
 	char cwd[50] = "\0";
-	if(argc < 2)
+	if (argc > 1)
 		getcwd(cwd, sizeof(cwd));
 	printdir1(argv[1] ? argv[1] : cwd);
 	return 0;
