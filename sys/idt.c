@@ -57,9 +57,9 @@ void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 		while (1);
 	}
 
+	faultAddr = faultAddr/PG_SIZE*PG_SIZE;
 	/* If the page is present in the page tables */
 	if (err_code & PTE_P) {
-		faultAddr = faultAddr/PG_SIZE*PG_SIZE;
 		pte_t * pte = get_pte_from_pml_unmap((pml_t *)pa2va((pa_t)cur_pcb->pml4), faultAddr, -1);
 		/* If the COW bit is set */
 		if (*pte & PTE_COW) {

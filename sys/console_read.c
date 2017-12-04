@@ -52,5 +52,5 @@ uint64_t console_read(int fd, char *buf, uint64_t count)
 #if 0
 	kprintf("BUF: %s\n", buf);
 #endif
-	return cursor;
+	return strlen(buf);
 }

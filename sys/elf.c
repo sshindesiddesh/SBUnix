@@ -39,6 +39,7 @@ int load_elf_code(pcb_t *pcb, void *start)
 			/* mmap the virtual addresses */
 			va_t *addr = (va_t *)mmap(p_hdr->p_vaddr, p_hdr->p_memsz, PTE_P | p_hdr->p_flags, HEAP);
 			memcpy((void *)addr, (void *)((Elf64_Addr)elf_hdr + p_hdr->p_offset), p_hdr->p_filesz);
+			memset((void *)(p_hdr->p_vaddr + p_hdr->p_filesz), 0, p_hdr->p_memsz - p_hdr->p_filesz);
 		}
 		p_hdr++;
 	}
