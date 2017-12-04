@@ -173,11 +173,11 @@ void exec_cmd(const char *buf, char *argv[])
 		/* Use of export to change PATH or PS1 var */
 		char *ls[MAX_PARAM_SUPP];
 		parse_env_var(argv[1], ls);
-	        if (!strcmp("PS1", ls[0])) {
+		if (!strcmp("PS1", ls[0])) {
 			prompt_name = strcpy(prompt_name, ls[1]);
 			return;
-		/* Any other env variable user is trying to set/update */
-	        } else {
+			/* Any other env variable user is trying to set/update */
+		} else {
 			/* TODO : export $PATH=$PATH:$VAR will not work ini current scenario. */
 			/* If the env variable already exists */
 			if (getenv(ls[0])) {
@@ -193,14 +193,15 @@ void exec_cmd(const char *buf, char *argv[])
 					env_v = getenv(env_k);
 					env_t = strcat(env_t, env_v);
 					setenv(env_k, env_t, 1);
-				/* No other env variable in the path */
+					/* No other env variable in the path */
 				} else {
-					setenv(env_k, ls[1], 1);
+					setenv(env_key, ls[1], 1);
 
 				}
-			/* If the env variable does not exist. The overwrite is zero here. */
-			} else
+				/* If the env variable does not exist. The overwrite is zero here. */
+			} else {
 				setenv(ls[0], ls[1], 0);
+			}
 			return;
 		}
 	} else
@@ -604,9 +605,10 @@ int main(int argc, char* argv[], char *envp[])
 		return 0;
 	}
 
-	//write (1, "main\n", 6);
-
-	//char *new = "Hello";
+	usr_env[0][0] = 0;
+	char cur_path[50];
+	getcwd(cur_path, sizeof(cur_path));
+	setenv("PATH", cur_path, 0);
 	int bufsize = 0;
 	while (1) {
 		puts("\n");
