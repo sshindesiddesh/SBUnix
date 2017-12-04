@@ -33,6 +33,8 @@ struct dirent *readdir(uint64_t dir);
 uint64_t mmap(uint64_t va_start, uint64_t size, uint64_t flags, uint64_t type);
 uint64_t munmap(uint64_t va_start, uint64_t size);
 uint64_t brk(uint64_t npages);
+pid_t getpid(void);
+pid_t getppid(void);
 
 #if 0
 int unlink(const char *pathname);
@@ -43,8 +45,6 @@ pid_t wait(int *status)
 
 unsigned int sleep(unsigned int seconds);
 
-pid_t getpid(void);
-pid_t getppid(void);
 
 // OPTIONAL: implement for ``on-disk r/w file system (+10 pts)''
 off_t lseek(int fd, off_t offset, int whence);

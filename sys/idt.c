@@ -92,6 +92,9 @@ void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 				kprintf("!!!Segmentation Fault!!!");
 				while (1);
 			}
+#if 0
+			kprintf("Autogrow Successfull %p\n", faultAddr);
+#endif
 			/* Allocate only one page at the time of pagefault */
 			/* allocate_vma(cur_pcb, vma); */
 			allocate_page_in_vma(cur_pcb, vma, faultAddr);

@@ -586,6 +586,17 @@ void kexit(int status)
 	kyield();
 }
 
+pid_t kgetpid(void)
+{
+	return cur_pcb->pid;
+}
+
+pid_t kgetppid(void)
+{
+	if (cur_pcb->parent)
+		return cur_pcb->parent->pid;
+	else return -1;
+}
 
 void kwait(pid_t pid)
 {
