@@ -163,7 +163,13 @@ pcb_t *create_user_process(void *func)
 	l_pcb->mm = (mm_struct_t *)kmalloc(PG_SIZE);
 
 	l_pcb->state = READY;
-	
+
+#if 0
+	strcpy(l_pcb->current_dir, "/rootfs/bin/");
+	dir_t *dir = tarfs_opendir("/rootfs/bin/");
+	if(dir != NULL && dir->node != NULL)
+		l_pcb->current_node = dir->node;
+#endif
 	return l_pcb;
 }
 
