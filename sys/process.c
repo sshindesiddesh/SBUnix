@@ -194,6 +194,9 @@ pcb_t *create_clone_for_exec()
 	l_pcb->child_head = cur_pcb->child_head;
 	l_pcb->sibling = cur_pcb->sibling;
 
+	strcpy(l_pcb->current_dir, cur_pcb->current_dir);
+	l_pcb->current_node = cur_pcb->current_node;
+
 	/* Change the sibling link in parent PCB which points to cur_pcb */
 	pcb_t *sib = cur_pcb->parent->child_head;
 	pcb_t *sib_p = NULL;

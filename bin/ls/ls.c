@@ -71,8 +71,11 @@ void printdir1(char *path)
 int main(int argc, char *argv[])
 {
 	char cwd[50] = "\0";
-	if (argc > 1)
+	if (argc < 2) {
 		getcwd(cwd, sizeof(cwd));
-	printdir1(argv[1] ? argv[1] : cwd);
+		printdir1(cwd);
+		return 0;
+	}
+	printdir1(argv[1]);
 	return 0;
 }

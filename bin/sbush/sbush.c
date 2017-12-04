@@ -27,7 +27,7 @@ char pipe_buf[40];
 char **ep;
 
 /* This character array stores prompt name. */
-char p_name[50] = "\nsbush#";
+char p_name[50] = "sbush#";
 char *prompt_name = p_name;
 
 /* Buffer to store user defined env variables */
@@ -609,10 +609,9 @@ int main(int argc, char* argv[], char *envp[])
 	//char *new = "Hello";
 	int bufsize = 0;
 	while (1) {
-		//puts(p_name);
-		puts("sbush");
+		puts("\n");
+		puts(prompt_name);;
 		bufsize = read(0, line, 1);
-		//puts(line);
 		parse_cmd(line, s);
 		puts("Cat execution start\n");
 		if (bufsize > 1)

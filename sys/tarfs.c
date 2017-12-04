@@ -155,7 +155,6 @@ int tarfs_close(int fd_c)
 	/* close all open file descriptor for current pcb */
 	/* TODO free allocations doen previously */
 	if (cur_pcb->fd[fd_c]) {
-		kprintf(" closing fd_c :%d ", fd_c);
 		cur_pcb->fd[fd_c] = NULL;
 	}
 	return 0;
@@ -282,7 +281,7 @@ dir_t *tarfs_opendir(char *path)
 		return NULL;
 }
 
-/* change the current working directory return 1 on success, -1 on failure */
+/* change the current working directory return 0 on success, -1 on failure */
 uint64_t tarfs_chdir(char * path)
 {
 	char temp_path[100] = "\0";
@@ -304,8 +303,7 @@ uint64_t tarfs_chdir(char * path)
 	strcpy(cur_pcb->current_dir, temp_path);
 	/* handle change of current node as well */
         cur_pcb->current_node = dir->node;
-	kprintf("\n chdir complete......");
-	return 1;
+	return 0;
 }
 
 /* create node for given Dir or file in tarfs tree structure, return tarfs_entry */
