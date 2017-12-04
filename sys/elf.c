@@ -28,6 +28,10 @@ int load_elf_code(pcb_t *pcb, void *start)
 	Elf64_Phdr *p_hdr = (Elf64_Phdr *)((Elf64_Addr)elf_hdr + elf_hdr->e_phoff);
 	pcb->entry = elf_hdr->e_entry;
 
+	if (is_proper_executable(elf_hdr) != 0) {
+		return -1;
+	}
+
 	for (int i = 0 ; i < elf_hdr->e_phnum; i++) {
 		/* 1 is PT_LOAD, Loadable Segment */
 		if (p_hdr->p_type == PT_LOAD) {
