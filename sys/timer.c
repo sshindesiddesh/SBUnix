@@ -4,6 +4,7 @@
 #include <sys/config.h>
 #include <sys/process.h>
 
+extern uint64_t reading_flag;
 void timer_init()
 {
 		/* The system clock is at 1193180.
@@ -37,5 +38,8 @@ void kyield();
 
 void pre_empt_yield(void)
 {
+	/* pre-empt 1/2 a second */
+	if ((k%9 == 0) && reading_flag == 0) {
 		kyield();
+	}
 }

@@ -22,5 +22,5 @@ __switch_ring3:
 	 * After iretq we will return to ring 3 where these pages will be inaccessible. */
 	movq 0x10(%rdi), %rax
 	movq %rax, %cr3
-	sti
+	//sti
 	iretq

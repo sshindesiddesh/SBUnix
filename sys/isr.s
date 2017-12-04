@@ -34,7 +34,7 @@ isr20:
 	popq %rcx
 	popq %rbx
 	popq %rax
-	sti
+	//sti
 	iretq
 
 /* Keyboard ISR */
@@ -72,7 +72,7 @@ isr21:
 	popq %rcx
 	popq %rbx
 	popq %rax
-	sti
+	//sti
 	iretq
 
 /* Syscall */
@@ -121,7 +121,7 @@ isr80:
 	popq %rdx
 	popq %rcx
 	popq %rbx
-	sti
+	//sti
 	iretq
 
 .global excpE
@@ -162,5 +162,5 @@ excpE:
 	popq %rsi
 	/* There is extra push for error no in the page fault handler */
 	addq $8, %rsp
-	sti
+	//sti
 	iretq
