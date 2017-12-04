@@ -17,6 +17,7 @@
 #define SYSCALL_CHDIR	80
 #define SYSCALL_GETPID	39
 #define SYSCALL_GETPPID	110
+#define SYSCALL_KILL	62
 #define SYSCALL_INFO	99
 #define SYSCALL_YIELD	24
 #define SYSCALL_FORK	57
@@ -29,6 +30,7 @@
 #define SYSCALL_OPENDIR	300
 #define SYSCALL_CLOSEDIR 301
 #define SYSCALL_READDIR	302
+#define SYSCALL_PS	303
 
 void print_params(syscall_in *in)
 {
@@ -112,6 +114,12 @@ uint64_t __isr_syscall(syscall_in *in)
 			break;
 		case SYSCALL_GETPPID:
 			out = kgetppid();
+			break;
+		case SYSCALL_PS:
+			kps();
+			break;
+		case SYSCALL_KILL:
+			kkill();
 			break;
 		default:
 			kprintf("Error: Unknown System Call\n");

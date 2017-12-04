@@ -35,6 +35,8 @@ uint64_t munmap(uint64_t va_start, uint64_t size);
 uint64_t brk(uint64_t npages);
 pid_t getpid(void);
 pid_t getppid(void);
+uint64_t ps(void);
+uint64_t kill(void);
 
 #if 0
 int unlink(const char *pathname);
