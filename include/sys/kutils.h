@@ -14,5 +14,6 @@ void *memset(void *ptr, int value, size_t len);
 unsigned short *memsetw(unsigned short *dest, unsigned short src, size_t count);
 uint64_t octal_to_decimal(uint64_t octal);
 char *strcat(char *dst, char* src);
+void zero_out(void *buf, int b);
 
 #endif

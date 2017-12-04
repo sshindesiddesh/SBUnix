@@ -11,4 +11,5 @@ size_t strncmp(const char *s1, const char *s2, int len);
 char *strcpy(char *dst, const char *src);
 char *strcat(char *dst, const char *src);
 char *strtok(char *str, const char *delim);
+void zero_out(void *buf, int b);
 #endif

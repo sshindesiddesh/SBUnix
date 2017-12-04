@@ -83,5 +83,6 @@ dirent_t *tarfs_readdir(dir_t *dir);
 char *tarfs_getcwd(char *buf, size_t size);
 uint64_t tarfs_listdir(char * buf, dir_t * dir);
 uint64_t tarfs_getdents(uint64_t fd, uint64_t buf, uint64_t count);
+char *get_node_path(tarfs_entry_t *p_node);
 
 #endif

@@ -10,6 +10,8 @@
 
 extern pcb_t *cur_pcb;
 
+char extra_buf[100];
+
 /* return the current working dir */
 char *tarfs_getcwd(char *buf, size_t size)
 {
@@ -229,37 +231,26 @@ dir_t *tarfs_opendir(char *path)
 	temp_path = (char *)kmalloc(64);
 	strcpy(temp_path, path);
 
-	if (strcmp(temp_path, "/") == 0) { /* special handling for "/" */
+	if (strcmp(temp_path, "/") == 0) { /* special handling for only "/" */
 		ret_dir = (dir_t *)kmalloc(sizeof(dir_t));
 		ret_dir->current = 2;
 		ret_dir->node = root;
-		kprintf(" return :%s ", ret_dir->node->name);
 #ifdef TARFS_DEBUG
 		kprintf(" return :%s ", ret_dir->node->name);
 #endif
-		return ret_dir;
-	}
-#if 0
-	if (strcmp(temp_path, "..") == 0) {
-		ret_dir = (dir_t *)kmalloc(sizeof(dir_t));
-		ret_dir->current = 2;
-		ret_dir->node = node->child[1];
-		kprintf(" return :%s ", ret_dir->node->name);
 		return ret_dir;
 	}
 
 	/* handle relative path */
 	if (temp_path[0] != '/' && temp_path[0] != '.' && (strlen(temp_path) > 1))
 		node = cur_pcb->current_node;
-	
-#endif
+
 	name = strtok(temp_path, "/");
 	if (name == NULL)
 		return NULL;
 
 	/* handle . and .. in the path */
 	if ((strcmp(name, "..") == 0) || (strcmp(name, ".") == 0)) {
-		kprintf(" found %s ", name);
 		node = cur_pcb->current_node;
 	}
 
@@ -285,7 +276,6 @@ dir_t *tarfs_opendir(char *path)
 		ret_dir = (dir_t *)kmalloc(sizeof(dir_t));
 		ret_dir->current = 2;
                 ret_dir->node = node;
-		kprintf(" return :%s ", ret_dir->node->name);
 #ifdef TARFS_DEBUG
 		kprintf(" return :%s ", ret_dir->node->name);
 #endif
@@ -294,90 +284,60 @@ dir_t *tarfs_opendir(char *path)
 	else
 		return NULL;
 }
-void bzero(
-        void *string,
-        unsigned bytes)
-{
-        char *res = string;
 
-        while (bytes != 0) {
-                *res++ = 0;
-                bytes--;
-        }
-}
-
-char buffer[100];
 /* file traversal to find path */
-char *print_node(tarfs_entry_t *p_node)
+char *get_node_path(tarfs_entry_t *p_node)
 {
-	
-        char node_buf[10][30];
-//      char buffer[100];
-        int index = 0, i = 0;
-        int buf_i = 0;
-	bzero(node_buf,300);
-	buffer[0] = '\0';
-	buffer[1] = '\0'
-	char *str = buffer;
-
-        tarfs_entry_t *node = p_node;
-	kprintf(" input %s", node->name);
-        if (node == NULL)
-                return (char *)NULL;
+	int node_i = 0, buf_i = 0;
+	char temp_buf[20][20];
+	zero_out(temp_buf, 400);
+	extra_buf[0] = '\0';
+	extra_buf[1] = '\0';
+	char *s = extra_buf;
+	tarfs_entry_t *node = p_node;
+	if (node == NULL) {
+		return (char *)NULL;
+	}
 	if (node == root) {
 		return (char *)node->name;
 	}
-        while (node != root) {
-        	strcpy(node_buf[index],node->name);
-		kprintf("cpy %s",node_buf[index]);
-        	index++;
-        	node = node->child[1];
-        }
+	while (node != root) {
+		strcpy(temp_buf[node_i],node->name);
+		node_i++;
+			node = node->child[1];
+	}
 
-        while (index >=0)
-        {
-		kprintf(" i:%d ", index);
-                while( node_buf[index][buf_i] != '\0')
-                {
-                        *str = node_buf[index][buf_i];
-                        buf_i++;
-                        str++;
-                }
-		kprintf(" buffer %s ", buffer);
-                buf_i = 0;
-                index--;
-                if (index >= 0)
-                        *str++ = '/';
-        }
-        str++;
-        *str = '\0';
-	kprintf(" prnted: %s ", buffer);
-        return buffer;
+	while (node_i >= 0) {
+		while(temp_buf[node_i][buf_i] != '\0') {
+			*s = temp_buf[node_i][buf_i];
+			buf_i++;
+			s++;
+		}
+		node_i--;
+		buf_i = 0;
+		if (node_i >= 0)
+			*s++ = '/';
+	}
+	s++;
+	*s = '\0';
+	return extra_buf;
 }
+
 /* change the current working directory return 0 on success, -1 on failure */
 uint64_t tarfs_chdir(char * path)
 {
 	char temp_path[100] = "\0";
 	strcpy(temp_path, path);
-
-#if 0
-	if (temp_path[0] != '/' && (strlen(temp_path) > 1)) {
-		/* handling relative chdir */
-		char t2[100] = "\0";
-		strcpy(t2, cur_pcb->current_dir);
-		char *t;
-		t = strcat(t2, temp_path);
-		strcpy(temp_path, t);
-	}
-#endif
 	dir_t *dir = tarfs_opendir(temp_path);
+	
 	if ((dir == NULL) || (dir->node == NULL ))
 		return -1;
 
-//strcpy(current->cur_dir, print_node(newdir->node)); /* change the current working directory */
-	strcpy(cur_pcb->current_dir, print_node(dir->node));
+	strcpy(cur_pcb->current_dir, get_node_path(dir->node));
+	
 	/* handle change of current node as well */
-        cur_pcb->current_node = dir->node;
+	cur_pcb->current_node = dir->node;
+
 	return 0;
 }
 

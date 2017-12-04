@@ -11,6 +11,16 @@ size_t strlen(const char *buf)
 	return len;
 }
 
+/* zeero out given string */
+void zero_out(void *buf, int b)
+{
+	char *str = buf;
+	while (b != 0) {
+		*str++ = 0;
+		b--;
+	}
+}
+
 size_t strcmp(const char *s1, const char *s2)
 {
 	if (!s1 || !s2)
