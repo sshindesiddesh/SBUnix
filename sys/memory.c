@@ -729,7 +729,9 @@ void copy_vma_mapping(pcb_t *parent, pcb_t *child)
 			if (pte && *pte) {
 				pa = (pa_t)(*pte & ~(0xFFF));
 				pa2page(pa)->ref_cnt++;
+#if 0
 				kprintf("#COWpa: %p refcnt %d\t*", pa, pa2page(pa)->ref_cnt);
+#endif
 				*pte = (pa | PTE_P | PTE_U | PTE_COW);
 				/* Mark last level child page table entries as COW and read only */
 				map_page_entry((pml_t *)pa2va((pa_t)child->pml4), start, PG_SIZE, (pa_t)pa, PTE_P | PTE_U | PTE_W | p_vma->flags);

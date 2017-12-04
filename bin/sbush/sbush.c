@@ -27,7 +27,7 @@ char pipe_buf[40];
 char **ep;
 
 /* This character array stores prompt name. */
-char p_name[50] = "sbush#";
+char p_name[50] = "\nsbush#";
 char *prompt_name = p_name;
 
 /* Buffer to store user defined env variables */
@@ -35,6 +35,14 @@ char usr_env[10][200];
 int usr_env_cnt = 0;
 
 int put_c(int c, int fd);
+void put_s(char *str)
+{
+	if (!str)
+		return;
+	size_t i = 0;
+	while (str[i])
+		put_c(str[i++], 1);
+}
 
 void print(char *s)
 {
@@ -82,6 +90,7 @@ size_t get_line(int fp, char *buf)
 
 	do {
 		x = read(fp, &c, 1);
+		put_c(c, 1);
 		buf[pos++] = c;
 
 	} while (x > 0 && c != '\n');
@@ -110,8 +119,12 @@ void parse_cmd(char *str, char *s[])
 {
         size_t i = 0;
         s[i] = strtok(str, " ");
-        while (s[i])
+        while (s[i]) {
+#if 0
+		puts(s[i]);
+#endif
                 s[++i] = strtok(NULL, " ");
+	}
 
 	/* Replace all the dollar parameters with their values */
 	i = 0;
@@ -146,6 +159,7 @@ char env_val[200];
 
 void exec_cmd(const char *buf, char *argv[])
 {
+	puts("EXEC CMD\n");
 	if (!strcmp("exit", buf)) {
 		/* TO DO : This might be problematic as the shell wont exit untill the child completes
 		 * 	   would even not allow to input any command to shell as it is stuck here. 
@@ -207,7 +221,7 @@ void exec_cmd(const char *buf, char *argv[])
 	size_t c_pid = fork();
 
 	if (c_pid == 0) {
-		execvpe(buf, argv, ep);
+		execve(buf, argv, ep);
 		exit(EXIT_SUCCESS);
 	}
 
@@ -218,12 +232,6 @@ void exec_cmd(const char *buf, char *argv[])
 		waitpid(c_pid, &status, 0);
 }
 
-void put_s(char *str)
-{
-	size_t i = 0;
-	while (str[i])
-		put_c(str[i++], 1);
-}
 
 /* This function returns the number of commands with pipes.
  * No pipe means just one command.
@@ -353,51 +361,213 @@ ssize_t write1(int fd, const void *buf, size_t nbytes)
 	return out;
 }
 
+char new_name[50];
+
 int main(int argc, char* argv[], char *envp[])
 {
-	char buf[2] = {48, '\0'};
+#if 0
+        pid_t pid = fork();
+        while (1) {
+                if (pid == 0) {
+                        while (1) {
+                                write(1, "child\n", 6);
+                                execvpe("/rootfs/bin/cat", NULL, NULL);
+				exit(1);
+                                yield();
+                        }
+                } else {
+                        waitpid(pid, NULL, 0);
+                        pid = fork();
+                        if (pid == 0) {
+                                while (1) {
+                                        write(1, "child\n", 6);
+                                        execvpe("/rootfs/bin/cat", NULL, NULL);
+                                        yield();
+                                }
+                        } else {
+                                while (1) {
+                                        write(1, "parent\n", 7);
+                                        yield();
+                                        write(1, "parent\n", 7);
+                                }
+                        }
+                }
+                while (1) {
+                        yield();
+                }
+        }
+
+
+
+
+
+
+
+ while (1) {
+         if (pid == 0) {
+                 while (1) {
+			printf("Child 1%d\n", pid);
+                         yield();
+                 }
+         } else {
+                 pid_t pid2 = fork();
+                 if (pid2 == 0) {
+                         while (1) {
+				printf("Parent%d\n", pid2);
+                                 yield();
+				exit(0);
+                         }
+                 } else {
+                         while (1) {
+				printf("Grand Parent%d\n", pid2);
+                                 yield();
+                         }
+                 }
+         }
+         while (1) {
+                 yield();
+         }
+ }
+	//pid_t pid = fork();
+	if (pid == 0) {
+		write(1, "CHILD\n", 5);
+		execve("/rootfs/bin/cat", NULL, NULL);
+		yield();
+	
+	} else {
+		waitpid(pid, 0, 0);
+		write(1, "WAIT Done\n", 10);
+		yield();
+		while (1) {
+		write(1, "SBUSHDone\n", 10);
+		}
+	}
+#if 0
+	while (1) {
+		write(1, "Hello World\n", 11);
+		yield();
+		
+	}
+#endif
+#if 0
+	char *buf = (char *)mmap(0xFFF000, 0x10000, PROT_READ | PROT_WRITE, 3);
+	strcpy(buf, "Parent World\n");
+	pid_t pid = fork();
+	if (pid == 0) {
+		strcpy(buf, "Child World\n");
+		write(1, buf, strlen(buf));
+		execve("/rootfs/bin/cat", NULL, NULL);
+		yield();
+	
+	} else {
+		waitpid(pid, 0, 0);
+		write(1, buf, strlen(buf));
+		yield();
+		write(1, buf, strlen(buf));
+		while (1) {
+		strcpy(buf, "New World\n");
+		write(1, buf, strlen(buf));
+		yield();
+		}
+
+	}
+	//exit(0);
+	pid_t pid = fork();
+	if (pid == 0) {
+		strcpy(buf, "Child World\n");
+		write(1, buf, strlen(buf));
+		yield();
+	
+	} else {
+		write(1, buf, strlen(buf));
+		yield();
+		write(1, buf, strlen(buf));
+		strcpy(buf, "New World\n");
+		write(1, buf, strlen(buf));
+		yield();
+
+	}
+	exit(0);
+	
+	pid_t pid = fork();
+	char *buf = (char *)mmap(0xFFF000, 0x10000, PROT_READ | PROT_WRITE, 3);
+	strcpy(buf, "Parent World\n");
+	if (pid == 0) {
+		strcpy(buf, "Child World\n");
+		write(1, buf, strlen(buf));
+		yield();
+		write(1, buf, strlen(buf));
+	} else {
+		write(1, buf, strlen(buf));
+		yield();
+		write(1, buf, strlen(buf));
+	}
+
+	exit(0);
+
+ char buf[2] = {48, '\0'};
+ while (1) {
+         pid_t pid = fork();
+         if (pid == 0) {
+                 while (1) {
+			printf("Child 1%d\n", pid);
+                         yield();
+                 }
+         } else {
+                 pid_t pid2 = fork();
+                 if (pid2 == 0) {
+                         while (1) {
+				printf("Parent%d\n", pid2);
+                                 yield();
+                         }
+                 } else {
+                         while (1) {
+				printf("Grand Parent%d\n", pid2);
+                                 yield();
+                         }
+                 }
+         }
+         while (1) {
+                 yield();
+         }
+ }
+
+	write(0, "Main\n", 5);
+	//char *buf = (char *)mmap(0x1000, 0x1000, PROT_READ|PROT_WRITE, 3);
+	strcpy(buf ,"parent world\n");
 	while (1) {
 		pid_t pid = fork();
 		if (pid == 0) {
-			buf[0] = 48 + pid;
-			while (1) {
-				write(0, buf, 5);
-				write(0, "child\n", 5);
-				yield();
-			}
+			write(0, buf, 5);
+			strcpy(buf ,"child world\n");
+			write(0, buf, 5);
+			yield();
 		} else {
-			pid_t pid2 = fork();
-			buf[0] = 48 + pid2;
-			if (pid2 == 0) {
-				while (1) {
-					write(0, buf, 5);
-					write(0, "***child***\n", 5);
-					yield();
-				}
-			} else {
-				buf[0] = 48 + pid2;
-				while (1) {
-					write(0, buf, 5);
-					write(0, "parent\n", 5);
-					yield();
-				}
-			}
+			strcpy(buf ,"new parent world\n");
+			write(0, buf, 5);
+			yield();
+			strcpy(buf ,"new buf\n");
+			write(0, buf, 5);
 		}
+		write (0, "return", 0);
+		while (1);
 		while (1) {
 			yield();
 		}
 	}
-
+#endif
+#endif
 	/* Set env pointer */
-	set_ep(envp);
+	//set_ep(envp);
 	/* Set default environment with known system paths */
-	set_env_param(envp);
+	//set_env_param(envp);
 
 	/* This is for executing a shell script. */
 	if (argc >= 2) {
 		/* This is used to check if the input file starts with #!sbush
 		 * Only then we will execute the file.
 		 */
+		write (1, "main\n", 6);
 		size_t tmp = 0;
 		int f = open(argv[1], O_RDONLY, 444);
 		int bufsize = 1;
@@ -434,12 +604,29 @@ int main(int argc, char* argv[], char *envp[])
 		return 0;
 	}
 
+	//write (1, "main\n", 6);
+
+	//char *new = "Hello";
 	int bufsize = 0;
-
 	while (1) {
-		put_s(prompt_name);
-
-		bufsize = get_line(0, line);
+		//puts(p_name);
+		puts("sbush");
+		bufsize = read(0, line, 1);
+		//puts(line);
+		parse_cmd(line, s);
+		puts("Cat execution start\n");
+		if (bufsize > 1)
+			exec_cmd(s[0], s);
+#if 0
+		bufsize++;
+		size_t c_pid = fork();
+		if (c_pid == 0) {
+			execve("rootfs/bin/cat", 0, 0);
+		}
+		waitpid(c_pid, 0, 0);
+#endif
+		puts("Cat execution done\n");
+#if 0
 
 
 		/* Support for piping */
@@ -455,7 +642,7 @@ int main(int argc, char* argv[], char *envp[])
 
 		/* terminate the string for safety */
 		line[0] = '\0';
+#endif
 	}
-
 	return 0;
 }
