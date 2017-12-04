@@ -1,6 +1,16 @@
 #include <sys/defs.h>
 #include <sys/kutils.h>
 
+/* zeero out given string */
+void zero_out(void *buf, int b)
+{
+	char *str = buf;
+	while (b != 0) {
+		*str++ = 0;
+		b--;
+	}
+}
+
 char *strcat(char *dst, char* src)
 {
        size_t dst_len = strlen(dst);
