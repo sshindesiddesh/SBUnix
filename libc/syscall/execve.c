@@ -38,23 +38,14 @@ int execve(const char *file, char *const argv[], char *const envp[])
 	return out;
 }
 
-#if 0
+extern char *usr_env_p[50];
 int execvpe(const char *file, char *const argv[], char *const envp[])
 {
-	char cmd[100];
-	size_t k = 0;
 	int ret = -1;
-	/* Execute without addding any path. */
-	execve(file, argv, envp);
-	/* Execute with appending paths */
-	/* TODO : check if this can be checked against pointer. */
-	while (env_p[k][0]) {
-		strcpy(cmd, env_p[k]);
-		strcat(cmd, "/");
-		strcat(cmd, file);
-		ret = execve(cmd, argv, NULL);
-		k++;
+	ret = execve(file, argv, usr_env_p);
+	int i = 0;
+	while (usr_env_p[i]) {
+		printf("%s\n", usr_env_p[i++]);
 	}
 	return ret;
 }
-#endif

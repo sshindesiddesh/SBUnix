@@ -162,12 +162,11 @@ void exec_cmd(const char *buf, char *argv[])
 	}
 
 	size_t c_pid = fork();
-	printf("cpid %d\n", c_pid);
 
 	//char *en[] = {"ABC=adfadfadf:adfasdfadf:adsfafadf", "PATH=/adfadfadfafd:/rootfs/bin", 0};
 	if (c_pid == 0) {
 		//sleep(5);
-		execve(buf, argv, NULL);
+		execvpe(buf, argv, NULL);
 		/* This will make sure that, even if exec returns with error, the process is freed */
 		exit(EXIT_SUCCESS);
 	}
@@ -312,6 +311,10 @@ char new_name[50];
 
 int main(int argc, char* argv[], char *envp[])
 {
+	char cur_path[50];
+	getcwd(cur_path, sizeof(cur_path));
+	setenv("PATH", cur_path);
+
 	int bufsize = 0;
 
 	/* This is for executing a shell script. */
