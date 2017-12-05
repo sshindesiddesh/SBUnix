@@ -12,6 +12,16 @@ char env_val[200];
 /* All paths present in PATH variable are copied here. */
 char usr_env[50][100];
 
+void get_all_env()
+{
+	int i = 0;
+	while(usr_env_p[i]) {
+		puts("\n");
+		puts(usr_env_p[i]);
+		i++;
+	}
+}
+
 char *getenv(const char *name)
 {
 	int i = 0;

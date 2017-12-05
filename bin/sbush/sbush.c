@@ -26,6 +26,8 @@ char *prompt_name = p_name;
 
 int put_c(int c, int fd);
 
+void get_all_env();
+
 void put_s(char *str)
 {
 	if (!str)
@@ -84,7 +86,7 @@ void parse_cmd(char *str, char *s[])
 #endif
                 s[++i] = strtok(NULL, " ");
 	}
-
+#if 0
 	/* Replace all the dollar parameters with their values */
 	i = 0;
 	char par[40];
@@ -101,6 +103,7 @@ void parse_cmd(char *str, char *s[])
 		}
 		i++;
 	}
+#endif
 }
 
 void parse_env_var(char *str, char *s[])
@@ -125,6 +128,9 @@ void exec_cmd(const char *buf, char *argv[])
 	} else if (!strcmp("cd", buf)) {
 		if (!chdir(argv[1]))
 			return;
+	} else if (!strcmp("env", buf)) {
+		get_all_env();
+		return;
 	} else if (!strcmp("pwd", buf)) {
 		char pwd_buf[100];
 		if (!getcwd(pwd_buf, sizeof(pwd_buf)))
@@ -314,6 +320,7 @@ int main(int argc, char* argv[], char *envp[])
 	char cur_path[50];
 	getcwd(cur_path, sizeof(cur_path));
 	setenv("PATH", cur_path);
+	//printf("%s\n", getenv("PATH"));
 
 	int bufsize = 0;
 
