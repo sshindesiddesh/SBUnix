@@ -360,7 +360,7 @@ void thread2()
 {
 	while (1) {
 		kprintf("thread 2");
-		yield();
+		kyield();
 	}
 }
 
