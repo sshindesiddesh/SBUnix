@@ -33,7 +33,7 @@ int execve(const char *file, char *const argv[], char *const envp[])
 		: /* input parameters mapped to %0 and %1, repsectively */
 		"m" (file), "m" (argv), "m" (envp)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rdi", "rsi", "rdx"
+		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
 	);
 	return out;
 }

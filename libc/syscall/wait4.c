@@ -33,7 +33,7 @@ pid_t waitpid(pid_t pid, int *status, int options)
 		: /* input parameters mapped to %0 and %1, repsectively */
 		"m" (pid), "m" (status), "m"(options), "m"(rusage)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rdi", "rsi", "rdx", "rcx"
+		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
 	);
 	return out;
 }
