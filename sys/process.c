@@ -466,10 +466,13 @@ char *get_absolute_path(char *file, char *env[])
 		}
 		i++;
 	}
-	while (j > 0) {
+	while (j >= 0) {
 		start = (struct posix_header_ustar *)get_posix_header(kargs[j]);
 		if (start) {
 			if (is_proper_executable((Elf64_Ehdr *)start) == 0) {
+#if 0
+				kprintf("j = %d %s\n", j, filename);
+#endif
 				return filename;
 			}
 		}

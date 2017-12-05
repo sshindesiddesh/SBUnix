@@ -17,24 +17,15 @@ char line[MAX_IN_BUF_SIZE];
 
 char *s[MAX_PARAM_SUPP];
 
-/* All paths present in PATH variable are copied here. */
-char env_p[30][100];
-
 /* Buffer for copying in files from pipes. */
 char pipe_buf[40];
-
-/* Pointer to environment variable from stack. */
-char **ep;
 
 /* This character array stores prompt name. */
 char p_name[50] = "sbush#";
 char *prompt_name = p_name;
 
-/* Buffer to store user defined env variables */
-char usr_env[10][200];
-int usr_env_cnt = 0;
-
 int put_c(int c, int fd);
+
 void put_s(char *str)
 {
 	if (!str)
@@ -48,38 +39,6 @@ void print(char *s)
 {
 	while (*s != '\0')
 		put_c(*s++, 1);
-}
-
-/* Set the Environment Variable ponter from stack */
-void set_ep(char *env[])
-{
-	ep = env;
-}
-
-void set_env_param(char *env[])
-{
-	size_t i = 0;
-	char *p;
-	char path[200];
-
-	while (env[i]) {
-		if (!strncmp(env[i], "PATH", 4)) {
-			strcpy(path, env[i]);
-			break;
-		}
-		i++;
-	}
-        i = 0;
-        p = strtok(path, ":");
-	/* 5 is added to eliminate PATH from first variable
-	 * as it is tokenised using : */
-	strcpy(env_p[i], p + 5);
-	while (p) {
-		p = strtok(NULL, ":");
-		if (!p)
-			break;
-		strcpy(env_p[++i], p);
-	}
 }
 
 size_t get_line(int fp, char *buf)
@@ -154,9 +113,6 @@ void parse_env_var(char *str, char *s[])
 	return;
 }
 
-char env_key[20];
-char env_val[200];
-
 void exec_cmd(const char *buf, char *argv[])
 {
 	puts("EXEC CMD\n");
@@ -186,30 +142,8 @@ void exec_cmd(const char *buf, char *argv[])
 			return;
 			/* Any other env variable user is trying to set/update */
 		} else {
-			/* TODO : export $PATH=$PATH:$VAR will not work ini current scenario. */
-			/* If the env variable already exists */
-			if (getenv(ls[0])) {
-				char *env_k = env_key;
-				char *env_v;
-				char *env_t = env_val;
-				env_k = strtok(ls[1], ":");
-				/* If user is trying to append some existing variable */
-				if (env_k && env_k[0] == '$') {
-					env_t = strtok(NULL, ":");
-					env_t = strcat(env_t, ":");
-					env_k = strtok(env_k, "$");
-					env_v = getenv(env_k);
-					env_t = strcat(env_t, env_v);
-					setenv(env_k, env_t, 1);
-					/* No other env variable in the path */
-				} else {
-					setenv(env_key, ls[1], 1);
-
-				}
-				/* If the env variable does not exist. The overwrite is zero here. */
-			} else {
-				setenv(ls[0], ls[1], 0);
-			}
+			/* If the env variable does not exist. The overwrite is zero here. */
+			setenv(ls[0], ls[1]);
 			return;
 		}
 	} else
@@ -229,16 +163,19 @@ void exec_cmd(const char *buf, char *argv[])
 
 	size_t c_pid = fork();
 
+	//char *en[] = {"ABC=adfadfadf:adfasdfadf:adsfafadf", "PATH=/adfadfadfafd:/rootfs/bin", 0};
 	if (c_pid == 0) {
-		execve(buf, argv, ep);
+		//sleep(5);
+		execvpe(buf, argv, NULL);
+		/* This will make sure that, even if exec returns with error, the process is freed */
 		exit(EXIT_SUCCESS);
 	}
 
 	int status;
-	if (bg)
-		waitpid(c_pid, &status, WNOHANG);
-	else
+	if (bg) {
+	} else {
 		waitpid(c_pid, &status, 0);
+	}
 }
 
 
@@ -290,7 +227,7 @@ int pros_pipes(char *s[])
 			/* Remove extra spaces */
 			s[cmd_no] = strtok(s[cmd_no], " ");
 
-			execvpe(ls[0], ls, NULL);
+			execve(ls[0], ls, NULL);
 			exit(EXIT_SUCCESS);
 		}
 
@@ -374,202 +311,11 @@ char new_name[50];
 
 int main(int argc, char* argv[], char *envp[])
 {
-#if 0
-        pid_t pid = fork();
-        while (1) {
-                if (pid == 0) {
-                        while (1) {
-                                write(1, "child\n", 6);
-                                execvpe("/rootfs/bin/cat", NULL, NULL);
-				exit(1);
-                                yield();
-                        }
-                } else {
-                        waitpid(pid, NULL, 0);
-                        pid = fork();
-                        if (pid == 0) {
-                                while (1) {
-                                        write(1, "child\n", 6);
-                                        execvpe("/rootfs/bin/cat", NULL, NULL);
-                                        yield();
-                                }
-                        } else {
-                                while (1) {
-                                        write(1, "parent\n", 7);
-                                        yield();
-                                        write(1, "parent\n", 7);
-                                }
-                        }
-                }
-                while (1) {
-                        yield();
-                }
-        }
+	char cur_path[50];
+	getcwd(cur_path, sizeof(cur_path));
+	setenv("PATH", cur_path);
 
-
-
-
-
-
-
- while (1) {
-         if (pid == 0) {
-                 while (1) {
-			printf("Child 1%d\n", pid);
-                         yield();
-                 }
-         } else {
-                 pid_t pid2 = fork();
-                 if (pid2 == 0) {
-                         while (1) {
-				printf("Parent%d\n", pid2);
-                                 yield();
-				exit(0);
-                         }
-                 } else {
-                         while (1) {
-				printf("Grand Parent%d\n", pid2);
-                                 yield();
-                         }
-                 }
-         }
-         while (1) {
-                 yield();
-         }
- }
-	//pid_t pid = fork();
-	if (pid == 0) {
-		write(1, "CHILD\n", 5);
-		execve("/rootfs/bin/cat", NULL, NULL);
-		yield();
-	
-	} else {
-		waitpid(pid, 0, 0);
-		write(1, "WAIT Done\n", 10);
-		yield();
-		while (1) {
-		write(1, "SBUSHDone\n", 10);
-		}
-	}
-#if 0
-	while (1) {
-		write(1, "Hello World\n", 11);
-		yield();
-		
-	}
-#endif
-#if 0
-	char *buf = (char *)mmap(0xFFF000, 0x10000, PROT_READ | PROT_WRITE, 3);
-	strcpy(buf, "Parent World\n");
-	pid_t pid = fork();
-	if (pid == 0) {
-		strcpy(buf, "Child World\n");
-		write(1, buf, strlen(buf));
-		execve("/rootfs/bin/cat", NULL, NULL);
-		yield();
-	
-	} else {
-		waitpid(pid, 0, 0);
-		write(1, buf, strlen(buf));
-		yield();
-		write(1, buf, strlen(buf));
-		while (1) {
-		strcpy(buf, "New World\n");
-		write(1, buf, strlen(buf));
-		yield();
-		}
-
-	}
-	//exit(0);
-	pid_t pid = fork();
-	if (pid == 0) {
-		strcpy(buf, "Child World\n");
-		write(1, buf, strlen(buf));
-		yield();
-	
-	} else {
-		write(1, buf, strlen(buf));
-		yield();
-		write(1, buf, strlen(buf));
-		strcpy(buf, "New World\n");
-		write(1, buf, strlen(buf));
-		yield();
-
-	}
-	exit(0);
-	
-	pid_t pid = fork();
-	char *buf = (char *)mmap(0xFFF000, 0x10000, PROT_READ | PROT_WRITE, 3);
-	strcpy(buf, "Parent World\n");
-	if (pid == 0) {
-		strcpy(buf, "Child World\n");
-		write(1, buf, strlen(buf));
-		yield();
-		write(1, buf, strlen(buf));
-	} else {
-		write(1, buf, strlen(buf));
-		yield();
-		write(1, buf, strlen(buf));
-	}
-
-	exit(0);
-
- char buf[2] = {48, '\0'};
- while (1) {
-         pid_t pid = fork();
-         if (pid == 0) {
-                 while (1) {
-			printf("Child 1%d\n", pid);
-                         yield();
-                 }
-         } else {
-                 pid_t pid2 = fork();
-                 if (pid2 == 0) {
-                         while (1) {
-				printf("Parent%d\n", pid2);
-                                 yield();
-                         }
-                 } else {
-                         while (1) {
-				printf("Grand Parent%d\n", pid2);
-                                 yield();
-                         }
-                 }
-         }
-         while (1) {
-                 yield();
-         }
- }
-
-	write(0, "Main\n", 5);
-	//char *buf = (char *)mmap(0x1000, 0x1000, PROT_READ|PROT_WRITE, 3);
-	strcpy(buf ,"parent world\n");
-	while (1) {
-		pid_t pid = fork();
-		if (pid == 0) {
-			write(0, buf, 5);
-			strcpy(buf ,"child world\n");
-			write(0, buf, 5);
-			yield();
-		} else {
-			strcpy(buf ,"new parent world\n");
-			write(0, buf, 5);
-			yield();
-			strcpy(buf ,"new buf\n");
-			write(0, buf, 5);
-		}
-		write (0, "return", 0);
-		while (1);
-		while (1) {
-			yield();
-		}
-	}
-#endif
-#endif
-	/* Set env pointer */
-	//set_ep(envp);
-	/* Set default environment with known system paths */
-	//set_env_param(envp);
+	int bufsize = 0;
 
 	/* This is for executing a shell script. */
 	if (argc >= 2) {
@@ -593,13 +339,13 @@ int main(int argc, char* argv[], char *envp[])
 				}
 				continue;
 			}
-
+#if 0
 			/* Support for piping */
 			if (collect_pipe_cmds(line, s) > 1) {
 				pros_pipes(s);
 				continue;
 			}
-
+#endif
 			parse_cmd(line, s);
 
 			if (bufsize > 0)
@@ -613,20 +359,16 @@ int main(int argc, char* argv[], char *envp[])
 		return 0;
 	}
 
-	usr_env[0][0] = 0;
-	char cur_path[50];
-	getcwd(cur_path, sizeof(cur_path));
-	setenv("PATH", cur_path, 0);
-	int bufsize = 0;
 	while (1) {
 		puts("\n");
 		puts(prompt_name);;
 		bufsize = read(0, line, 1);
 		parse_cmd(line, s);
-		puts("Cat execution start\n");
+		ps();
 		if (bufsize > 1)
 			exec_cmd(s[0], s);
 #if 0
+		printf("%d %d\n", getpid(), getppid());
 		bufsize++;
 		size_t c_pid = fork();
 		if (c_pid == 0) {
@@ -634,7 +376,6 @@ int main(int argc, char* argv[], char *envp[])
 		}
 		waitpid(c_pid, 0, 0);
 #endif
-		puts("Cat execution done\n");
 #if 0
 
 

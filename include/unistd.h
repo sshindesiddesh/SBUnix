@@ -25,7 +25,7 @@ void exit(int status);
 int dup2(int oldfd, int newfd);
 uint64_t getdents(unsigned int fd, char *dir, unsigned int count);
 char *getenv(const char *name);
-int setenv(const char *name, const char *value, int overwrite);
+int setenv(const char *name, const char *value);
 uint64_t opendir(const char *pathname);
 uint64_t listdir(void *buf, uint64_t dir);
 uint64_t closedir(uint64_t dir);
