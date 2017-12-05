@@ -1,28 +1,42 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <string.h>
 
-//char *getenv(const char *name);
-//char* strcpy(char *dst, const char *src);
-
-int main(int argc, char *argv[])
+int main(int argc, char *argv[], char *env[])
 {
-	printf("in echo %d\n", argc);
+	int i = 0;
+	char *ptr;
+#if 0
+	printf("In echo\n");
+
+	if (argv) {
+		while (argv[i]) {
+			printf("%s\n", argv[i++]);
+		}
+	}
+	i  = 0;
+	if (env) {
+		while (env[i]) {
+			printf("%s\n", env[i++]);
+		}
+	}
+#endif
 	if (argc < 2) {
 		puts("\n");
 	} else {
-		printf("%s\n", argv[1]);
 		if(*argv[1] == '$') {
-			printf("Here\n");
-			char *buf = getenv("PATH");
-			printf("%p\n", buf);
-			/* echo env var if available */
-			//char buf[100] = "\0";
-			//puts(getenv(argv[1] + 1));
-			//strcpy(buf, getenv(&(*argv[1] + 1)));
-			//puts(((char *)&(argv[1][1])));
-			//puts(getenv((char *)&(argv[1][1])));
-			//printf("%s\n", getenv("PATH"));
+			if (env) {
+				while (env[i]) {
+					ptr = ((char *)&(argv[1][1]));
+					if (!strncmp(env[i], ptr, strlen(ptr))) {
+						ptr = ((char *)&(env[i][strlen(ptr)+1]));
+						puts(ptr);
+						return 0;
+					}
+					i++;
+				}
+			}
 		} else {
 			int i = 1;
 			while(argc > 1) {
