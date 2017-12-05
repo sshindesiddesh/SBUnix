@@ -4,6 +4,8 @@
 #include <sys/config.h>
 #include <sys/process.h>
 
+void decrement_sleep_count();
+void update_time(uint64_t time);
 extern uint64_t reading_flag;
 void timer_init()
 {
@@ -20,7 +22,6 @@ void timer_init()
 
 uint64_t k = 0, i = 0;
 
-void update_time(uint64_t time);
 
 void __isr_timer_cb(uint64_t count)
 {
@@ -28,6 +29,7 @@ void __isr_timer_cb(uint64_t count)
 	if (k == 18) {
 		/* kprintf("Cnt %d\n", i); */
 		update_time(i++);
+		decrement_sleep_count();
 		k = 0;
 	}
 	/* Acknowledge PIC */
