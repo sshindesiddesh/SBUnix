@@ -89,28 +89,36 @@ int setenv(const char *name, const char *value)
 #endif
 	char temp[100] = "\0";
 	/* TODO : export $PATH=$PATH:$VAR will not work ini current scenario. */
-	/* If the env variable already exists */
-	if (getenv(name)) {
-		char *env_k = env_key;
-		char *env_v;
-		char *env_t = env_val;
-		strcpy(temp, value);
-		env_k = strtok(temp, ":");
-		/* If user is trying to append some existing variable */
-		if (env_k && env_k[0] == '$') {
-			env_t = strtok(NULL, ":");
-			env_t = strcat(env_t, ":");
-			env_k = strtok(env_k, "$");
-			env_v = getenv(env_k);
-			env_t = strcat(env_t, env_v);
-			setenv_w(env_k, env_t, 1);
-			/* No other env variable in the path */
-		} else {
-			setenv_w(env_key, value, 1);
 
-		}
+	char temp_n[50];
+	strcpy(temp_n, name);
+	if(temp_n[0] == '$') {
+		char *name1 = strtok(temp_n, "$");
+		setenv(name1, value);
 	} else {
-		setenv_w(name, value, 0);
+		/* If the env variable already exists */
+		if (getenv(name)) {
+			char *env_k = env_key;
+			char *env_v;
+			char *env_t = env_val;
+			strcpy(temp, value);
+			env_k = strtok(temp, ":");
+			/* If user is trying to append some existing variable */
+			if (env_k && env_k[0] == '$') {
+				env_t = strtok(NULL, ":");
+				env_t = strcat(env_t, ":");
+				env_k = strtok(env_k, "$");
+				env_v = getenv(env_k);
+				env_t = strcat(env_t, env_v);
+				setenv_w(env_k, env_t, 1);
+				/* No other env variable in the path */
+			} else {
+				setenv_w(env_key, value, 1);
+
+			}
+		} else {
+			setenv_w(name, value, 0);
+		}
 	}
 	return 0;
 }
