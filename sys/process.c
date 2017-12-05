@@ -427,6 +427,8 @@ char filename[100];
 char local_name[100];
 /* Try making it on stack */
 char kargs[20][100];
+/* Try making it on stack */
+char kenv[20][100];
 
 char *pt;
 
@@ -490,9 +492,11 @@ uint64_t kexecve(char *in_file, char *argv[], char *env[])
 		return -1;
 	}
 
-	uint64_t argc = 0, len, *u_rsp, i = 0;
+	uint64_t len, *u_rsp;
+	int i = 0, ecnt = 0, argc = 0;
 	/*Array of 10 pointers to be passed to the user */
 	uint64_t *uargv[10];
+	uint64_t *uenv[10];
 
 	pcb_t * prv_pcb = cur_pcb;
 	cur_pcb->state = ZOMBIE;
@@ -510,6 +514,14 @@ uint64_t kexecve(char *in_file, char *argv[], char *env[])
 		}
 	}
 
+	/* Copy all env in kernel memory */
+	if (env) {
+		while (env[ecnt]) {
+			strcpy(kenv[ecnt], env[ecnt]);
+			ecnt++;
+		}
+	}
+
 	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header(file);
 
 
@@ -521,6 +533,14 @@ uint64_t kexecve(char *in_file, char *argv[], char *env[])
 	/*  TODOG : Hardcode required ??? */
 	u_rsp = (uint64_t *)(STACK_TOP - 8);
 
+	/* Copy env values on user stack */
+	for (i = ecnt - 1; i >= 0; i--) {
+		len = strlen(kenv[i]) + 1;
+		u_rsp -= len;
+		memcpy((char *)u_rsp, kenv[i], len);
+		uenv[i] = u_rsp;
+	}
+
 	/* Copy argument values on user stack */
 	for (i = argc - 1; i > 0; i--) {
 		len = strlen(kargs[i]) + 1;
@@ -528,6 +548,21 @@ uint64_t kexecve(char *in_file, char *argv[], char *env[])
 		memcpy((char *)u_rsp, kargs[i], len);
 		uargv[i] = u_rsp;
 	}
+
+
+	/* Copy NULL */
+	u_rsp--;
+	*(uint64_t *)u_rsp = 0;
+
+	/* Copy env pointers on user stack */
+	for (i = ecnt - 1; i >= 0; i--) {
+		u_rsp--;
+		*(uint64_t *)u_rsp = (uint64_t)uenv[i];
+	}
+
+	/* Copy NULL */
+	u_rsp--;
+	*(uint64_t *)u_rsp = 0;
 
 	/* Copy argument pointers on user stack */
 	for (i = argc - 1; i > 0; i--) {
