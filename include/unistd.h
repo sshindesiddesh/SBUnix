@@ -37,6 +37,7 @@ pid_t getpid(void);
 pid_t getppid(void);
 uint64_t ps(void);
 uint64_t kill(void);
+unsigned int sleep(unsigned int seconds);
 
 #if 0
 int unlink(const char *pathname);
@@ -45,7 +46,6 @@ int waitpid(int pid, int *status);
 
 pid_t wait(int *status)
 
-unsigned int sleep(unsigned int seconds);
 
 
 // OPTIONAL: implement for ``on-disk r/w file system (+10 pts)''

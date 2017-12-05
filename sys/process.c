@@ -128,10 +128,12 @@ void init_proc_array()
 
 pcb_t *get_next_ready_pcb()
 {
+
+	int local_count = 0;
 	pcb_t *l_pcb = NULL;
 	cur_index++;
 	/* TODO: Check for infinite loop */
-	for (; cur_index <= MAX_NO_PROCESS; cur_index++) {
+	for (; local_count <= MAX_NO_PROCESS; cur_index++, local_count++) {
 		if (cur_index == MAX_NO_PROCESS) {
 			cur_index = 1;
 		}
@@ -610,15 +612,43 @@ void kps()
 	kprintf("\nNAME\tPID\tPPID\n");
 	for (i = 0; i < MAX_NO_PROCESS; i++) {
 		if (proc_array[i].state == READY) {
-			kprintf("%s\t%d\t%d\n", proc_array[i].proc_name, proc_array[i].pid, proc_array[i].parent->pid);
+			if (proc_array[i].parent) {
+				kprintf("%s\t%d\t%d\n", proc_array[i].proc_name, proc_array[i].pid, proc_array[i].parent->pid);
+			}
 		}
 	}
 	kprintf("\n");
 }
 
+void decrement_sleep_count()
+{
+	int i;
+	uint32_t sleep;
+
+	for (i = 1; i < MAX_NO_PROCESS; i++) {
+		if (proc_array[i].state == SLEEP) {
+			sleep = proc_array[i].sleep_seconds;
+			if (sleep > 2) {
+				proc_array[i].sleep_seconds--;
+			} else {
+				proc_array[i].sleep_seconds = 0;
+				proc_array[i].state = READY;
+			}
+		}
+	}
+
+}
+
 void kkill()
 {
 
+}
+
+void ksleep(uint64_t seconds)
+{
+	cur_pcb->state = SLEEP;
+	cur_pcb->sleep_seconds = seconds;
+	kyield();
 }
 
 void kwait(pid_t pid)
@@ -639,6 +669,7 @@ void kwait(pid_t pid)
 		}
 		sib = sib->sibling;
 	}
+
 	/* Remark state as READY if there was no ready child */
 	cur_pcb->state = READY;
 	return;

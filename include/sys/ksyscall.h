@@ -15,4 +15,5 @@ pid_t kgetpid(void);
 pid_t kgetppid(void);
 void kps();
 void kkill();
+void ksleep(uint64_t);
 #endif

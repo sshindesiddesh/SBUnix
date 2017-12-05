@@ -99,6 +99,7 @@ typedef struct PCB {
 	tarfs_entry_t *current_node;
 	int exit_status;
 	int wait_pid;
+	uint32_t sleep_seconds;
 	char proc_name[100];
 } pcb_t;
 

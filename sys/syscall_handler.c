@@ -16,6 +16,7 @@
 #define SYSCALL_BRK	12
 #define SYSCALL_CHDIR	80
 #define SYSCALL_GETPID	39
+#define SYSCALL_SLEEP	35
 #define SYSCALL_GETPPID	110
 #define SYSCALL_KILL	62
 #define SYSCALL_INFO	99
@@ -120,6 +121,9 @@ uint64_t __isr_syscall(syscall_in *in)
 			break;
 		case SYSCALL_KILL:
 			kkill();
+			break;
+		case SYSCALL_SLEEP:
+			ksleep(in->first_param);
 			break;
 		default:
 			kprintf("Error: Unknown System Call\n");
