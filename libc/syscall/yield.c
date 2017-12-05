@@ -26,6 +26,6 @@ void yield()
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax"
+		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
 	);
 }
