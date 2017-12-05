@@ -38,6 +38,7 @@ int execve(const char *file, char *const argv[], char *const envp[])
 	return out;
 }
 
+#if 0
 int execvpe(const char *file, char *const argv[], char *const envp[])
 {
 	char cmd[100];
@@ -56,3 +57,4 @@ int execvpe(const char *file, char *const argv[], char *const envp[])
 	}
 	return ret;
 }
+#endif
