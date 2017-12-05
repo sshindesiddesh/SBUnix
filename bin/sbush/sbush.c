@@ -144,12 +144,14 @@ void exec_cmd(const char *buf, char *argv[])
 		char *ls[MAX_PARAM_SUPP];
 		parse_env_var(argv[1], ls);
 		if (!strcmp("PS1", ls[0])) {
-			prompt_name = strcpy(prompt_name, ls[1]);
+			if(ls[1])
+				prompt_name = strcpy(prompt_name, ls[1]);
 			return;
 			/* Any other env variable user is trying to set/update */
 		} else {
 			/* If the env variable does not exist. The overwrite is zero here. */
-			setenv(ls[0], ls[1]);
+			if(ls[1])
+				setenv(ls[0], ls[1]);
 			return;
 		}
 	} else
