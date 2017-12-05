@@ -29,9 +29,11 @@ void _start() {
 		usr_env_p[i] = NULL;
 	}
 
+#if 0
 	char cur_path[50];
 	getcwd(cur_path, sizeof(cur_path));
 	setenv("PATH", cur_path);
+#endif
 
 	/* Move value pointed by rsp to rdi which is the first argument to a funcion */
 	__asm("movq (%rsp), %rdi");

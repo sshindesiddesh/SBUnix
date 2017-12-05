@@ -29,14 +29,20 @@ int main(int argc, char *argv[])
 	int x = 1, c = 0;
 	if(argc > 1)
 	{
-		int f = open(argv[1], O_RDONLY, 444);
-		if (f < 0) {
-			write(1, "\nCould not open the file", 30);
-			return 0;
-		}
-		while (x != 0) {
-			x = read(f, &c, 1);
-			write(1, &c, 1);
+		/* first check if its a directory */
+		uint64_t status = opendir(argv[1]);
+		if (status) {
+			write(1, "\n input is a directory ", 30);
+		} else {
+			int f = open(argv[1], O_RDONLY, 444);
+			if (f < 0) {
+				write(1, "\nCould not open the file", 30);
+				return 0;
+			}
+			while (x != 0) {
+				x = read(f, &c, 1);
+				write(1, &c, 1);
+			}
 		}
 	} else {
 		write(1, "\nNo argument for cat", 30);

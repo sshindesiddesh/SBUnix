@@ -125,6 +125,14 @@ void exec_cmd(const char *buf, char *argv[])
 	} else if (!strcmp("cd", buf)) {
 		if (!chdir(argv[1]))
 			return;
+	} else if (!strcmp("pwd", buf)) {
+		char pwd_buf[100];
+		if (!getcwd(pwd_buf, sizeof(pwd_buf)))
+			return;
+		else {
+			puts(pwd_buf);
+			return;
+		}
 	} else if (!strcmp("export", buf)) {
 		/* Use of export to change PATH or PS1 var */
 		char *ls[MAX_PARAM_SUPP];

@@ -76,6 +76,14 @@ int main(int argc, char *argv[])
 		printdir1(cwd);
 		return 0;
 	}
-	printdir1(argv[1]);
+
+	/* check if the input is a directory or not */
+	uint64_t status = opendir(argv[1]);
+	if (status) {
+		printdir1(argv[1]);
+	} else {
+		write(1, "\n Input is not a directory", 30);
+	}
+
 	return 0;
 }
