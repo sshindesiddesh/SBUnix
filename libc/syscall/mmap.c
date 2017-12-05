@@ -31,7 +31,7 @@ uint64_t mmap(uint64_t va_start, uint64_t size, uint64_t flags, uint64_t type)
 		: /* input parameters mapped to %0 and %1, repsectively */
 		"m" (va_start), "m" (size), "m" (flags), "m" (type)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rdi", "rsi", "rdx", "r10"
+		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
 	);
 	return out;
 }

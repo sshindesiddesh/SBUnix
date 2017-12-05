@@ -30,7 +30,7 @@ int pipe(int pipefd[2])
 		: /* input parameters mapped to %0 and %1, repsectively */
 		"m" (pipefd)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rdi"
+		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
 	);
 	return out;
 }
