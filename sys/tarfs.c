@@ -102,6 +102,20 @@ int tarfs_open(char *path, uint64_t mode)
 
 	strcpy(temp_path, path);
 
+	if (strcmp(temp_path, "/") == 0) { /* special handling for only "/" */
+		ret_fd->node = node;
+		ret_fd->perm = mode;
+		ret_fd->current = node->start;
+		while ((cur_pcb->fd[++fd_cnt] != NULL) && fd_cnt < MAX_FD_CNT);
+		if (fd_cnt >= MAX_FD_CNT) {
+			return -1;
+		}
+		else {
+			cur_pcb->fd[fd_cnt] = ret_fd;
+			return fd_cnt;
+		}
+	}
+
 	/* handle relative path */
 	if (temp_path[0] != '/' && (strlen(temp_path) > 1))
 		node = cur_pcb->current_node;
