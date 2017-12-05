@@ -43,9 +43,11 @@ int execvpe(const char *file, char *const argv[], char *const envp[])
 {
 	int ret = -1;
 	ret = execve(file, argv, usr_env_p);
+#if 0
 	int i = 0;
 	while (usr_env_p[i]) {
 		printf("%s\n", usr_env_p[i++]);
 	}
+#endif
 	return ret;
 }
