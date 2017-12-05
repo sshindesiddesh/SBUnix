@@ -12,8 +12,6 @@ __context_switch:
 
 .global __exit_switch
 __exit_switch:
-	cli
 	movq 8(%rdi), %rsp
 	popq %rdi
-	sti
 	retq

@@ -128,10 +128,12 @@ void init_proc_array()
 
 pcb_t *get_next_ready_pcb()
 {
+
+	int local_count = 0;
 	pcb_t *l_pcb = NULL;
 	cur_index++;
 	/* TODO: Check for infinite loop */
-	for (; cur_index <= MAX_NO_PROCESS; cur_index++) {
+	for (; local_count <= MAX_NO_PROCESS; cur_index++, local_count++) {
 		if (cur_index == MAX_NO_PROCESS) {
 			cur_index = 1;
 		}
@@ -358,7 +360,7 @@ void thread2()
 {
 	while (1) {
 		kprintf("thread 2");
-		yield();
+		kyield();
 	}
 }
 
@@ -411,6 +413,9 @@ void elf_process()
 	usr_pcb_1->parent = init_proc;
 	init_proc->child_head = usr_pcb_1;
 	usr_pcb_1->child_head = NULL;
+
+	/* Set process Name */
+	strcpy(usr_pcb_1->proc_name, "SBUSH");
 
 	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
 	load_elf_code(usr_pcb_1, (void *)start);
@@ -490,6 +495,8 @@ uint64_t kexecve(char *in_file, char *argv[], char *env[])
 	cur_pcb->state = ZOMBIE;
 
 	cur_pcb = create_clone_for_exec();
+	/* Set process Name */
+	strcpy(cur_pcb->proc_name, file);
 
 	/* Copy all arguments in kernel memory */
 	strcpy(kargs[argc++], file);
@@ -598,6 +605,52 @@ pid_t kgetppid(void)
 	else return -1;
 }
 
+/* Prints all active process */
+void kps()
+{
+	int i;
+	kprintf("\nNAME\tPID\tPPID\n");
+	for (i = 0; i < MAX_NO_PROCESS; i++) {
+		if (proc_array[i].state == READY) {
+			if (proc_array[i].parent) {
+				kprintf("%s\t%d\t%d\n", proc_array[i].proc_name, proc_array[i].pid, proc_array[i].parent->pid);
+			}
+		}
+	}
+	kprintf("\n");
+}
+
+void decrement_sleep_count()
+{
+	int i;
+	uint32_t sleep;
+
+	for (i = 1; i < MAX_NO_PROCESS; i++) {
+		if (proc_array[i].state == SLEEP) {
+			sleep = proc_array[i].sleep_seconds;
+			if (sleep > 2) {
+				proc_array[i].sleep_seconds--;
+			} else {
+				proc_array[i].sleep_seconds = 0;
+				proc_array[i].state = READY;
+			}
+		}
+	}
+
+}
+
+void kkill()
+{
+
+}
+
+void ksleep(uint64_t seconds)
+{
+	cur_pcb->state = SLEEP;
+	cur_pcb->sleep_seconds = seconds;
+	kyield();
+}
+
 void kwait(pid_t pid)
 {
 	/* If the parent has no child, return */
@@ -616,6 +669,7 @@ void kwait(pid_t pid)
 		}
 		sib = sib->sibling;
 	}
+
 	/* Remark state as READY if there was no ready child */
 	cur_pcb->state = READY;
 	return;
@@ -653,6 +707,8 @@ void process_init()
 	init_proc_array();
 	pcb_t *pcb0 = &proc_array[0];
 	pcb_t *pcb1 = create_kernel_process(init_process);
+	/* Set process Name */
+	strcpy(pcb1->proc_name, "INIT");
 	//create_kernel_process(thread1);
 	//create_kernel_process(thread2);
 	//create_kernel_process(thread3);

@@ -44,7 +44,7 @@ pte_t *get_pte_from_pml_unmap(pml_t *pml, va_t va, uint64_t perm);
 void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 {
 #ifdef	VMA_DEBUG
-	kprintf("!!!Pagefault : Address: %p Error %x !!!\n", faultAddr, err_code);
+	kprintf("!!!Pagefault : Address: %p Error %x Process PID %d!!!\n", faultAddr, err_code, cur_pcb->pid);
 #endif
 	if (!cur_pcb) {
 		kprintf("!!!Segmentation Fault!!!");
