@@ -30,7 +30,7 @@ unsigned int sleep(unsigned int seconds)
 		: /* input parameters mapped to %0 and %1, repsectively */
 		"m" (seconds)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rdi"
+		"rax", "rdi", "rbx", "rcx", "rsi"
 	);
 	return out;
 }

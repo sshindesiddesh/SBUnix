@@ -128,14 +128,12 @@ void init_proc_array()
 
 pcb_t *get_next_ready_pcb()
 {
-
-	int local_count = 0;
 	pcb_t *l_pcb = NULL;
 	cur_index++;
 	/* TODO: Check for infinite loop */
-	for (; local_count <= MAX_NO_PROCESS; cur_index++, local_count++) {
+	for (; ; cur_index++) {
 		if (cur_index == MAX_NO_PROCESS) {
-			cur_index = 1;
+			cur_index = 0;
 		}
 
 		if (proc_array[cur_index].state == READY) {
@@ -321,12 +319,15 @@ void kyield(void)
 {
 	pcb_t *prv_pcb = cur_pcb;
 	cur_pcb = get_next_ready_pcb();
+	if (!cur_pcb) {
+		kprintf("Yield: Next PCB 0\n");
+		while (1);
+	}
 
 	/* This is hardcoded for now as rsp is not updated after returning from the syscall. TODO: Check this. */
 	set_tss_rsp((void *)&cur_pcb->kstack[KSTACK_SIZE - 8]);
 	
 #ifdef PROC_DEBUG
-	kprintf("SCH: PID %d", cur_pcb->pid);
 #endif
 #if	ENABLE_USER_PAGING
 	__asm__ volatile("mov %0, %%cr3":: "b"(cur_pcb->pml4));
@@ -668,7 +669,13 @@ void decrement_sleep_count()
 			sleep = proc_array[i].sleep_seconds;
 			if (sleep > 2) {
 				proc_array[i].sleep_seconds--;
+#if 0
+				kprintf("SLEEP secs %d\n", proc_array[i].sleep_seconds);
+#endif
 			} else {
+#if 0
+				kprintf("SLEEP Done\n");
+#endif
 				proc_array[i].sleep_seconds = 0;
 				proc_array[i].state = READY;
 			}
@@ -684,9 +691,15 @@ void kkill()
 
 void ksleep(uint64_t seconds)
 {
+#if 0
+	kprintf("PCB %d sleep %d seconds \n", cur_pcb->pid, seconds);
+#endif
 	cur_pcb->state = SLEEP;
 	cur_pcb->sleep_seconds = seconds;
 	kyield();
+#if 0
+	kprintf("Sleep Done\n");
+#endif
 }
 
 void kwait(pid_t pid)
