@@ -475,7 +475,7 @@ char *get_absolute_path(char *file, char *env[])
 #if 0
 				kprintf("j = %d %s\n", j, filename);
 #endif
-				return filename;
+				return kargs[j];
 			}
 		}
 		j--;
