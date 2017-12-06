@@ -62,7 +62,7 @@ int setenv_w(const char *name, const char *value, int overwrite)
 	/* Create a new variable */
 	} else if (overwrite == 0) {
 #if 0
-		printf(" n:%s v:%s ",name, value);
+		printf(" new n:%s v:%s ",name, value);
 #endif
 		i = 0;
 
@@ -70,14 +70,44 @@ int setenv_w(const char *name, const char *value, int overwrite)
 			i++;
 		}
 
-
-		strcpy(temp, name);
-		strcat(temp, "=");
-		strcat(temp, value);
-		strcpy(usr_env[i], temp);
-		usr_env_p[usr_env_p_cnt] = usr_env[i];
-		usr_env_p_cnt++;
-		usr_env_p[usr_env_p_cnt] = NULL;
+		if(value[0] == '$') {
+			char *env_k = env_key;
+			char *env_v;
+			char *env_t = env_val;
+			strcpy(temp, value);
+			env_k = strtok(temp, ":");
+			if (env_k && env_k[0] == '$') {
+				env_t = strtok(NULL, ":");
+				if (env_t) {
+					env_t = strcat(env_t, ":");
+					env_k = strtok(env_k, "$");
+					if (env_k) {
+						env_v = getenv(env_k);
+						if (env_v) {
+							env_t = strcat(env_t, env_v);
+							setenv_w(name, env_t, 0);
+						}
+					}
+				} else {
+					char *t;
+					t = strtok(env_k, "$");
+					env_v = getenv(t);
+					if(env_v)
+						setenv_w(name, env_v, 0);
+				}
+				/* No other env variable in the path */
+			} else {
+				setenv_w(name, value, 0);
+			}
+		} else {
+			strcpy(temp, name);
+			strcat(temp, "=");
+			strcat(temp, value);
+			strcpy(usr_env[i], temp);
+			usr_env_p[usr_env_p_cnt] = usr_env[i];
+			usr_env_p_cnt++;
+			usr_env_p[usr_env_p_cnt] = NULL;
+		}
 	}
 	return 0;
 }
@@ -90,13 +120,9 @@ int setenv(const char *name, const char *value)
 	char temp[100] = "\0";
 	/* TODO : export $PATH=$PATH:$VAR will not work ini current scenario. */
 
-	char temp_n[50];
+	char temp_n[50] = "\0";
 	strcpy(temp_n, name);
 	if(temp_n[0] == '$') {
-#if 0
-		char *name1 = strtok(temp_n, "$");
-		setenv(name1, value);
-#endif
 		puts("Usage: export VAR_NAME=VALUE. $ not permitted.\n");
 	} else {
 		/* If the env variable already exists */
@@ -119,11 +145,16 @@ int setenv(const char *name, const char *value)
 							setenv_w(name, env_t, 1);
 						}
 					}
+				} else {
+					char *t;
+					t = strtok(env_k, "$");
+					env_v = getenv(t);
+					if(env_v)
+						setenv_w(name, env_v, 1);
 				}
 				/* No other env variable in the path */
 			} else {
 				setenv_w(name, value, 1);
-
 			}
 		} else {
 			setenv_w(name, value, 0);
