@@ -671,9 +671,10 @@ void kps()
 		if ((proc_array[i].state == READY) ||
 			(proc_array[i].state == WAIT) ||
 			(proc_array[i].state == SLEEP)) {
-			kprintf("%d\t%d\t%s\n", proc_array[i].pid, proc_array[i].pid, proc_array[i].proc_name);
 			if (proc_array[i].parent != 0) {
 				kprintf("%d\t%d\t%s\n", proc_array[i].pid, proc_array[i].parent->pid, proc_array[i].proc_name);
+			} else {
+				kprintf("%d\tNO PARENT\t%s\n", proc_array[i].pid, proc_array[i].proc_name);
 			}
 		}
 	}
