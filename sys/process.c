@@ -665,16 +665,15 @@ void kexit(int status)
 
 void kshutdown()
 {
-	kprintf("Shutdown...\n");
 	int cur_pid = cur_pcb->pid;
 	int i = 0;
-	for (i = 1; i < MAX_NO_PROCESS; i++) {
-		if (proc_array[i].pid != cur_pid) {
+	for (i = 2; i < MAX_NO_PROCESS; i++) {
+		if (proc_array[i].pid != cur_pid && proc_array[i].state != AVAIL) {
 			kkill(i);
 		}
 	}
-	kkill(cur_pid);
 	kprintf("==============================================================\n");
+	while (1);
 }
 
 void kkill(uint64_t pid)
