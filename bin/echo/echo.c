@@ -31,6 +31,7 @@ int main(int argc, char *argv[], char *env[])
 					ptr = ((char *)&(argv[1][1]));
 					if (!strncmp(env[i], ptr, strlen(ptr))) {
 						ptr = ((char *)&(env[i][strlen(ptr)+1]));
+						puts("\n");
 						puts(ptr);
 						return 0;
 					}
