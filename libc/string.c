@@ -3,6 +3,17 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+uint64_t stoi(const char *s)
+{
+	uint64_t i;
+	i = 0;
+	while(*s >= '0' && *s <= '9') {
+		i = i * 10 + (*s - '0');
+		s++;
+	}
+	return i;
+}
+
 /* Returns Length of the String */
 size_t strlen(const char *buf)
 {

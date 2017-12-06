@@ -12,4 +12,5 @@ char *strcpy(char *dst, const char *src);
 char *strcat(char *dst, const char *src);
 char *strtok(char *str, const char *delim);
 void zero_out(void *buf, int b);
+uint64_t stoi(const char *s);
 #endif
