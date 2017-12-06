@@ -61,6 +61,7 @@ void add_child_to_siblings(pcb_t *p_pcb, pcb_t *c_pcb)
 	pcb_t *child = p_pcb->child_head;
 	if (!child) {
 		p_pcb->child_head = c_pcb;
+		c_pcb->sibling = NULL;
 	} else {
 		c_pcb->sibling = p_pcb->child_head;
 		p_pcb->child_head = c_pcb;
@@ -129,9 +130,10 @@ void init_proc_array()
 pcb_t *get_next_ready_pcb()
 {
 	pcb_t *l_pcb = NULL;
+	int count = 0;
 	cur_index++;
 	/* TODO: Check for infinite loop */
-	for (; ; cur_index++) {
+	for (; ; cur_index++, count++) {
 		if (cur_index == MAX_NO_PROCESS) {
 			cur_index = 0;
 		}
@@ -139,6 +141,10 @@ pcb_t *get_next_ready_pcb()
 		if (proc_array[cur_index].state == READY) {
 			l_pcb = &proc_array[cur_index];
 			break;
+		}
+		if ((count > MAX_NO_PROCESS)) {
+			proc_array[1].state = READY;
+			return &proc_array[1];
 		}
 	}
 #if 0
@@ -254,8 +260,11 @@ pcb_t *copy_user_process(pcb_t * p_pcb)
 	/* Assign parent as the current pcb */
 	c_pcb->parent = cur_pcb;
 
-	/* Set siblings to 0 */
+	/* Make sibling NULL, Will be reinitialized later */
 	c_pcb->sibling = 0;
+
+	/* Make child head NULL */
+	c_pcb->child_head = 0;
 
 	/* return child pcb */
 	return c_pcb;
@@ -266,13 +275,19 @@ pcb_t *copy_user_process(pcb_t * p_pcb)
 void add_all_children_to_init_proc(pcb_t *init_pcb, pcb_t *p_pcb)
 {
 	pcb_t *sib = p_pcb->child_head;
-	while (sib) {
+	if (!sib)
+		return;
+	/* Attach end of process siblings next to inits childhead */
+	pcb_t *head = p_pcb->child_head;
+	while (sib->sibling) {
 		/* TODO: Should child execute even after parent executes ?  */
 		/* sib->state = ZOMBIE; */
-		add_child_to_siblings(init_pcb, sib);
+		/* add_child_to_siblings(init_pcb, sib); */
 		sib->parent = init_pcb;
 		sib = sib->sibling;
 	}
+	sib->sibling = init_pcb->child_head;
+	init_pcb->child_head = head;
 }
 
 int kfork()
@@ -399,6 +414,9 @@ void init_process()
 	while (1) {
 		kprintf("Init\n");
 		kwait(-1);
+		__asm__ __volatile__ ("sti");
+		__asm__ __volatile__ ("hlt");
+		__asm__ __volatile__ ("cli");
 		kyield();
 	}
 }
@@ -650,8 +668,11 @@ void kps()
 	int i;
 	kprintf("\nPID\tPPID\tCMD\n");
 	for (i = 0; i < MAX_NO_PROCESS; i++) {
-		if (proc_array[i].state == READY) {
-			if (proc_array[i].parent) {
+		if ((proc_array[i].state == READY) ||
+			(proc_array[i].state == WAIT) ||
+			(proc_array[i].state == SLEEP)) {
+			kprintf("%d\t%d\t%s\n", proc_array[i].pid, proc_array[i].pid, proc_array[i].proc_name);
+			if (proc_array[i].parent != 0) {
 				kprintf("%d\t%d\t%s\n", proc_array[i].pid, proc_array[i].parent->pid, proc_array[i].proc_name);
 			}
 		}
@@ -696,6 +717,9 @@ void ksleep(uint64_t seconds)
 #endif
 	cur_pcb->state = SLEEP;
 	cur_pcb->sleep_seconds = seconds;
+	/* Explicitly wake up INIT : TODO: Necessary or create idle task ??? */
+	proc_array[1].state = READY;
+
 	kyield();
 #if 0
 	kprintf("Sleep Done\n");
