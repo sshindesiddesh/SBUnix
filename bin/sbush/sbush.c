@@ -86,7 +86,6 @@ void parse_env_var(char *str, char *s[])
 
 void exec_cmd(const char *buf, char *argv[])
 {
-	puts("EXEC CMD\n");
 	if (!strcmp("exit", buf)) {
 		/* TO DO : This might be problematic as the shell wont exit untill the child completes
 		 * 	   would even not allow to input any command to shell as it is stuck here. 

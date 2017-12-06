@@ -424,7 +424,9 @@ void kill_zombie()
 void init_process()
 {
 	while (1) {
+#if 0
 		kprintf("Init\n");
+#endif
 		kwait(-1);
 		__asm__ __volatile__ ("sti");
 		__asm__ __volatile__ ("hlt");
@@ -446,7 +448,7 @@ void elf_process()
 	usr_pcb_1->child_head = NULL;
 
 	/* Set process Name */
-	strcpy(usr_pcb_1->proc_name, "SBUSH");
+	strcpy(usr_pcb_1->proc_name, "/rootfs/bin/sbush");
 
 	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
 	load_elf_code(usr_pcb_1, (void *)start);
@@ -678,7 +680,9 @@ void kshutdown()
 
 void kkill(uint64_t pid)
 {
+#if 0
 	kprintf("Kill for PID %d from PID %d\n", pid, cur_pcb->pid);
+#endif
 	pcb_t *l_pcb = get_pcb_from_pid(pid);
 	if (l_pcb == 0) {
 		kprintf("Cannot kill process\n");
@@ -744,7 +748,7 @@ void kps()
 			if (proc_array[i].parent != 0) {
 				kprintf("%d\t%d\t%s\n", proc_array[i].pid, proc_array[i].parent->pid, proc_array[i].proc_name);
 			} else {
-				kprintf("%d\tNO PARENT\t%s\n", proc_array[i].pid, proc_array[i].proc_name);
+				kprintf("%d\t--\t%s\n", proc_array[i].pid, proc_array[i].proc_name);
 			}
 		}
 	}
@@ -849,7 +853,7 @@ void process_init()
 	pcb_t *pcb0 = &proc_array[0];
 	pcb_t *pcb1 = create_kernel_process(init_process);
 	/* Set process Name */
-	strcpy(pcb1->proc_name, "INIT");
+	strcpy(pcb1->proc_name, "init");
 	//create_kernel_process(thread1);
 	//create_kernel_process(thread2);
 	//create_kernel_process(thread3);
