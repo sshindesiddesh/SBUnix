@@ -113,7 +113,7 @@ int setenv(const char *name, const char *value)
 				setenv_w(env_k, env_t, 1);
 				/* No other env variable in the path */
 			} else {
-				setenv_w(env_key, value, 1);
+				setenv_w(name, value, 1);
 
 			}
 		} else {
