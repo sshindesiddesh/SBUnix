@@ -23,6 +23,7 @@ char pipe_buf[40];
 /* This character array stores prompt name. */
 char p_name[50] = "sbush#";
 char *prompt_name = p_name;
+extern char *usr_env_p[50];
 
 int put_c(int c, int fd);
 
@@ -174,7 +175,7 @@ void exec_cmd(const char *buf, char *argv[])
 	//char *en[] = {"ABC=adfadfadf:adfasdfadf:adsfafadf", "PATH=/adfadfadfafd:/rootfs/bin", 0};
 	if (c_pid == 0) {
 		//sleep(5);
-		execvpe(buf, argv, NULL);
+		execvpe(buf, argv, usr_env_p);
 		/* This will make sure that, even if exec returns with error, the process is freed */
 		exit(EXIT_SUCCESS);
 	}
@@ -235,7 +236,7 @@ int pros_pipes(char *s[])
 			/* Remove extra spaces */
 			s[cmd_no] = strtok(s[cmd_no], " ");
 
-			execve(ls[0], ls, NULL);
+			execvpe(ls[0], ls, usr_env_p);
 			exit(EXIT_SUCCESS);
 		}
 
