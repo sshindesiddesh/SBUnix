@@ -7,31 +7,32 @@
 #include <unistd.h>
 
 
-#define SYSCALL_READ	0
-#define SYSCALL_WRITE	1
-#define SYSCALL_OPEN	2
-#define SYSCALL_CLOSE	3
-#define SYSCALL_MMAP	9
-#define SYSCALL_MUNMAP	11
-#define SYSCALL_BRK	12
-#define SYSCALL_CHDIR	80
-#define SYSCALL_GETPID	39
-#define SYSCALL_SLEEP	35
-#define SYSCALL_GETPPID	110
-#define SYSCALL_KILL	62
-#define SYSCALL_INFO	99
-#define SYSCALL_YIELD	24
-#define SYSCALL_FORK	57
-#define SYSCALL_EXECVE	59
-#define SYSCALL_EXIT	60
-#define SYSCALL_WAIT	61
-#define SYSCALL_DUP2	33
-#define SYSCALL_GETCWD	79
-#define SYSCALL_GETDENTS 78
-#define SYSCALL_OPENDIR	300
-#define SYSCALL_CLOSEDIR 301
-#define SYSCALL_READDIR	302
-#define SYSCALL_PS	303
+#define SYSCALL_READ		0
+#define SYSCALL_WRITE		1
+#define SYSCALL_OPEN		2
+#define SYSCALL_CLOSE		3
+#define SYSCALL_MMAP		9
+#define SYSCALL_MUNMAP		11
+#define SYSCALL_BRK		12
+#define SYSCALL_YIELD		24
+#define SYSCALL_DUP2		33
+#define SYSCALL_SLEEP		35
+#define SYSCALL_GETPID		39
+#define SYSCALL_SHUTDOWN	48
+#define SYSCALL_FORK		57
+#define SYSCALL_EXECVE		59
+#define SYSCALL_EXIT		60
+#define SYSCALL_WAIT		61
+#define SYSCALL_KILL		62
+#define SYSCALL_GETCWD		79
+#define SYSCALL_GETDENTS	78
+#define SYSCALL_CHDIR		80
+#define SYSCALL_INFO		99
+#define SYSCALL_GETPPID		110
+#define SYSCALL_OPENDIR		300
+#define SYSCALL_CLOSEDIR 	301
+#define SYSCALL_READDIR		302
+#define SYSCALL_PS		303
 
 void print_params(syscall_in *in)
 {
@@ -124,6 +125,9 @@ uint64_t __isr_syscall(syscall_in *in)
 			break;
 		case SYSCALL_SLEEP:
 			ksleep(in->first_param);
+			break;
+		case SYSCALL_SHUTDOWN:
+			kshutdown();
 			break;
 		default:
 			kprintf("Error: Unknown System Call\n");
