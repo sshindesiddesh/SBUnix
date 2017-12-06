@@ -127,6 +127,18 @@ void init_proc_array()
 
 }
 
+pcb_t *get_pcb_from_pid(uint64_t pid)
+{
+	int i;
+	/* Cannot Kill Init process */
+	for (i = 2; i < MAX_NO_PROCESS; i++) {
+		if (proc_array[i].pid == pid) {
+			return &proc_array[i];
+		}
+	}
+	return NULL;
+}
+
 pcb_t *get_next_ready_pcb()
 {
 	pcb_t *l_pcb = NULL;
@@ -650,6 +662,50 @@ void kexit(int status)
 	kyield();
 }
 
+void kkill(uint64_t pid)
+{
+	kprintf("Kill for PID %d from PID %d\n", pid, cur_pcb->pid);
+	pcb_t *l_pcb = get_pcb_from_pid(pid);
+	if (l_pcb == 0) {
+		kprintf("Cannot kill process\n");
+		return;
+	}
+
+	if (l_pcb == cur_pcb) {
+		kexit(0);
+	}
+	/* Mark its exit status and change it's state to ZOMBIE */
+	l_pcb->exit_status = 1;
+	l_pcb->state = ZOMBIE;
+
+	/* If parent is in wait state, make it ready */
+	if (l_pcb->parent->state == WAIT) {
+		/* If it calls wait or waitpid on child pid */
+		/* 0 and 1 both are included as hack. TODO : Cleanup */
+		if ((l_pcb->parent->wait_pid == -1) || (l_pcb->parent->wait_pid == l_pcb->pid)
+				|| (l_pcb->parent->wait_pid == 0)) {
+			l_pcb->parent->state = READY;
+		}
+	}
+
+	/* Remove it's entry from parent */
+	/* Remove it from its parent process siblings list */
+	/* rem_child_from_sibling(cur_pcb->parent, cur_pcb); */
+	/* Change the sibling link in parent PCB which points to cur_pcb */
+	rem_child_from_sibling(l_pcb->parent, l_pcb);
+
+	/* Make all children's parent as init process */
+	/* If it has any children, add them to the init process siblings list as zombie */
+	add_all_children_to_init_proc(&proc_array[1], l_pcb);
+
+	/* Free page table pages */
+	/* Free all the physical pages allocated to the child and not shared */
+	free_page_entry((pml_t *)l_pcb->pml4);
+	/* Free PCB struct */
+	deallocate_pcb(l_pcb);
+	l_pcb->state = AVAIL;
+}
+
 pid_t kgetpid(void)
 {
 	return cur_pcb->pid;
@@ -703,11 +759,6 @@ void decrement_sleep_count()
 			}
 		}
 	}
-
-}
-
-void kkill()
-{
 
 }
 

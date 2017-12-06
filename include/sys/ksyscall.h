@@ -14,6 +14,6 @@ void kwait(pid_t pid);
 pid_t kgetpid(void);
 pid_t kgetppid(void);
 void kps();
-void kkill();
+void kkill(uint64_t pid);
 void ksleep(uint64_t);
 #endif

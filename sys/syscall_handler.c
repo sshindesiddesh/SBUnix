@@ -120,7 +120,7 @@ uint64_t __isr_syscall(syscall_in *in)
 			kps();
 			break;
 		case SYSCALL_KILL:
-			kkill();
+			kkill(in->first_param);
 			break;
 		case SYSCALL_SLEEP:
 			ksleep(in->first_param);

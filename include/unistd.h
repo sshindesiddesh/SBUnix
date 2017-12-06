@@ -36,7 +36,7 @@ uint64_t brk(uint64_t npages);
 pid_t getpid(void);
 pid_t getppid(void);
 uint64_t ps(void);
-uint64_t kill(void);
+uint64_t kill(uint64_t pid);
 unsigned int sleep(unsigned int seconds);
 
 #if 0
