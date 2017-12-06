@@ -373,7 +373,6 @@ int main(int argc, char* argv[], char *envp[])
 		puts(prompt_name);;
 		bufsize = read(0, line, 1);
 		parse_cmd(line, s);
-		ps();
 		if (bufsize > 1)
 			exec_cmd(s[0], s);
 #if 0

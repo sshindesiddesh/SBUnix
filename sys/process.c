@@ -648,11 +648,11 @@ pid_t kgetppid(void)
 void kps()
 {
 	int i;
-	kprintf("\nNAME\tPID\tPPID\n");
+	kprintf("\nPID\tPPID\tCMD\n");
 	for (i = 0; i < MAX_NO_PROCESS; i++) {
 		if (proc_array[i].state == READY) {
 			if (proc_array[i].parent) {
-				kprintf("%s\t%d\t%d\n", proc_array[i].proc_name, proc_array[i].pid, proc_array[i].parent->pid);
+				kprintf("%d\t%d\t%s\n", proc_array[i].pid, proc_array[i].parent->pid, proc_array[i].proc_name);
 			}
 		}
 	}
