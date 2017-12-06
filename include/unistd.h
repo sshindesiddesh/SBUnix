@@ -38,13 +38,11 @@ pid_t getppid(void);
 uint64_t ps(void);
 uint64_t kill(uint64_t pid);
 unsigned int sleep(unsigned int seconds);
+int waitpid(int pid, int *status);
+pid_t wait(int *status);
 
 #if 0
 int unlink(const char *pathname);
-int waitpid(int pid, int *status);
-
-
-pid_t wait(int *status)
 
 
 

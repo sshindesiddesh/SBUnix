@@ -123,7 +123,7 @@ void exec_cmd(const char *buf, char *argv[])
 		/* TO DO : This might be problematic as the shell wont exit untill the child completes
 		 * 	   would even not allow to input any command to shell as it is stuck here. 
 		 */
-		waitpid(0, NULL, 0);
+		waitpid(0, NULL);
 		exit(EXIT_SUCCESS);
 	} else if (!strcmp("cd", buf)) {
 		if (!chdir(argv[1]))
@@ -182,7 +182,7 @@ void exec_cmd(const char *buf, char *argv[])
 	int status;
 	if (bg) {
 	} else {
-		waitpid(c_pid, &status, 0);
+		waitpid(c_pid, &status);
 	}
 }
 
@@ -240,7 +240,7 @@ int pros_pipes(char *s[])
 		}
 
 		/* Wait for the child process to get executed. */
-		waitpid(c_pid, &status, 0);
+		waitpid(c_pid, &status);
 
 		close(fd[1]);
 
