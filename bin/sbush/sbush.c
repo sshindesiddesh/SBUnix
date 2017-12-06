@@ -155,6 +155,8 @@ void exec_cmd(const char *buf, char *argv[])
 				setenv(ls[0], ls[1]);
 			return;
 		}
+	} else if (!strcmp("shutdown", buf)) {
+		shutdown();
 	} else
 		;
 

@@ -40,6 +40,7 @@ uint64_t kill(uint64_t pid);
 unsigned int sleep(unsigned int seconds);
 int waitpid(int pid, int *status);
 pid_t wait(int *status);
+uint64_t shutdown(void);
 
 #if 0
 int unlink(const char *pathname);
