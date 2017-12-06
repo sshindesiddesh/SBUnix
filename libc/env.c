@@ -93,8 +93,11 @@ int setenv(const char *name, const char *value)
 	char temp_n[50];
 	strcpy(temp_n, name);
 	if(temp_n[0] == '$') {
+#if 0
 		char *name1 = strtok(temp_n, "$");
 		setenv(name1, value);
+#endif
+		puts("Usage: export VAR_NAME=VALUE. $ not permitted.\n");
 	} else {
 		/* If the env variable already exists */
 		if (getenv(name)) {
@@ -106,11 +109,17 @@ int setenv(const char *name, const char *value)
 			/* If user is trying to append some existing variable */
 			if (env_k && env_k[0] == '$') {
 				env_t = strtok(NULL, ":");
-				env_t = strcat(env_t, ":");
-				env_k = strtok(env_k, "$");
-				env_v = getenv(env_k);
-				env_t = strcat(env_t, env_v);
-				setenv_w(env_k, env_t, 1);
+				if (env_t) {
+					env_t = strcat(env_t, ":");
+					env_k = strtok(env_k, "$");
+					if (env_k) {
+						env_v = getenv(env_k);
+						if (env_v) {
+							env_t = strcat(env_t, env_v);
+							setenv_w(name, env_t, 1);
+						}
+					}
+				}
 				/* No other env variable in the path */
 			} else {
 				setenv_w(name, value, 1);
