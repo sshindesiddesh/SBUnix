@@ -38,5 +38,5 @@ int waitpid(int pid, int *status)
 
 pid_t wait(int *status)
 {
-	return waitpid(-1, status);
+	return waitpid(0, status);
 }

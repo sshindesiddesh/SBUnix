@@ -10,6 +10,7 @@ int main(int argc, char *argv[], char *env[])
 		execvpe("/rootfs/bin/echo", argv_my, env_my);
 		exit(0);
 	}
+	waitpid(pid, 0);
 
 	char * const argv_my1[] = {"/rootfs/bin/sbush", "/rootfs/etc/rc", NULL};
 	char * const env_my1[] = {"PATH=/rootfs/bin", NULL};
@@ -25,7 +26,9 @@ int main(int argc, char *argv[], char *env[])
 	if (pid == 0) {
 		execvpe("/rootfs/bin/sbush", NULL, env_my);
 	}
-	waitpid(pid, 0);
+
+	while ((int)wait(0) >= 0);
+
 	puts("\nSBUSH was killed.. Shutting down system...\n");
 	shutdown();
 		while (1);
