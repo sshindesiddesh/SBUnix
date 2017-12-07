@@ -347,7 +347,6 @@ void unmap_page_entry(pml_t *pml, va_t va, uint64_t size, pa_t pa, uint64_t perm
 	for (i = 0; i < size; i += PG_SIZE) {
 		pte_ptr = get_pte_from_pml_unmap(pml, va + i, perm);
 		if (pte_ptr) {
-			kprintf(" v %p p %p ptr %p\n", va + i, pa + i, pte_ptr);
 #ifdef PG_DEBUG
 			kprintf(" v %p p %p ptr %p\n", va + i, pa + i, pte_ptr);
 #endif
@@ -669,7 +668,7 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	while(modulep[0] != 0x9001) modulep += modulep[1]+2;
 	for(smap = (struct smap_t*)(modulep+2); smap < (struct smap_t*)((char*)modulep+modulep[1]+2*4); ++smap) {
 		if (smap->type == 1 /* memory */ && smap->length != 0) {
-			kprintf("Available Physical Memory [%p-%p] Length %p\n", smap->base, smap->base + smap->length, smap->length);
+			//kprintf("Available Physical Memory [%p-%p] Length %p\n", smap->base, smap->base + smap->length, smap->length);
 			if (smap->base == 0) {
 				create_page_disc(smap->base, smap->length, physbase);
 			} else {
@@ -682,15 +681,15 @@ void memory_init(uint32_t *modulep, void *physbase, void *physfree)
 	}
 
 	phys_base = (uint64_t)physbase;
-	kprintf("physbase %p\n", (uint64_t)physbase);
-	kprintf("physfree %p\n", (uint64_t)physfree);
-	kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
+	//kprintf("physbase %p\n", (uint64_t)physbase);
+	//kprintf("physfree %p\n", (uint64_t)physfree);
+	//kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
 
 	page_table_init();
 
 	__asm__ volatile("mov %0, %%cr3":: "b"(pml));
 	change_console_ptr();
-	kprintf("Hello World\n");
+	//kprintf("Hello World\n");
 
 #if	ENABLE_USER_PAGING
 #else
