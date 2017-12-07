@@ -4,7 +4,8 @@
 
 /* Random values. Consider changing them */
 #define HEAP_START	0x08000000
-#define HEAP_END	0x10000000
+/* Stack end - 10 * 0x1000 , 10 pages buffered */
+#define HEAP_END	0xEFEF0000
 #define STACK_TOP	0xF0000000
 /* TODO : Change this. Currently 256 4K pages for stack */
 #define STACK_LIMIT	0xEFF00000
