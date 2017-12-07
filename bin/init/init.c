@@ -13,10 +13,9 @@ int main(int argc, char *argv[], char *env[])
 	waitpid(pid, 0);
 
 	char * const argv_my1[] = {"/rootfs/bin/sbush", "/rootfs/etc/rc", NULL};
-	char * const env_my1[] = {"PATH=/rootfs/bin", NULL};
 	pid = fork();
 	if (pid == 0) {
-		execvpe("/rootfs/bin/sbush", argv_my1, env_my1);
+		execvpe("/rootfs/bin/sbush", argv_my1, env_my);
 		exit(0);
 	}
 
