@@ -6,11 +6,15 @@
 
 /* binary to test all basic functionality at a single point */
 char buffer[100] = "\0";
+
 int main(int argc, char *argv[], char *env[])
 {
 	printf("\nProcess PID:%d PPID:%d\n", getpid(), getppid());
 	getcwd(buffer, sizeof(buffer));
 	printf("PWD: %s\n", buffer);
+	chdir("/../../../rootfs/bin/../etc/../rootfs/etc");
+	getcwd(buffer, sizeof(buffer));
+	printf("new PWD: %s\n", buffer);
 
 	/* test for open, read, close in a file, assuming /rootfs/bin/abc.txt already present */
 	int f, x = 1, c = 0;
@@ -28,9 +32,9 @@ int main(int argc, char *argv[], char *env[])
 	close(f);
 
 	/* testing stdin stdout read write */
+	write(1, "Please type:", 15);
 	read(0, buffer, 128);
 	write(1, buffer, sizeof(buffer));
-	write(1, "I am here", 9);
 	
 	/* testing malloc and free */
 	c = 0;

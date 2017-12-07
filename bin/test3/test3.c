@@ -10,15 +10,13 @@ int main(int argc, char *argv[], char *envp[])
 	char *a, *b, *c;
 	while(i < 100000) {
 		a = (char *)malloc(900000);
-		strcpy(a, "hello there");
-		//puts(a);
+		strcpy(a+800000, "hello there");
 		b = (char *)malloc(1000);
 		free(a);
 		free(b);
 		a = (char *)malloc(1000);
 		c = (char *)malloc(200);
 		strcpy(c, "hello there c");
-		//puts(c);
 		free(c);
 		free(a);
 		i++;
