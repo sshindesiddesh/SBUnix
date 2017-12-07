@@ -93,6 +93,10 @@ void exec_cmd(const char *buf, char *argv[])
 		waitpid(0, NULL);
 		exit(EXIT_SUCCESS);
 	} else if (!strcmp("cd", buf)) {
+		if(!argv[1]) {
+			chdir("/rootfs/");
+			return;
+		}
 		if (!chdir(argv[1]))
 			return;
 	} else if (!strcmp("env", buf)) {

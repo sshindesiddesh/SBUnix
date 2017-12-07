@@ -253,8 +253,11 @@ int tarfs_closedir(dir_t * dir)
 dir_t *tarfs_opendir_user(char *path, dir_t *ret_dir)
 {
 	dir_t *l_dir = tarfs_opendir(path);
-	memcpy(ret_dir, l_dir, sizeof(dir_t));
-	return ret_dir;
+	if(l_dir) {
+		memcpy(ret_dir, l_dir, sizeof(dir_t));
+		return ret_dir;
+	} else
+		return NULL;
 }
 
 /* open a directory, returns a descriptor to dir */
