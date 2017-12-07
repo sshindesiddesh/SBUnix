@@ -431,15 +431,17 @@ void init_process()
 		kprintf("Init\n");
 #endif
 		kwait(-1);
+		kyield();
 		__asm__ __volatile__ ("sti");
 		__asm__ __volatile__ ("hlt");
 		__asm__ __volatile__ ("cli");
-		kyield();
+		#if 0
 		if (proc_array[1].child_head == 0) {
 			kprintf("All processes killed\n");
 			kprintf("Shutting Down...\n");
 			kshutdown();
 		}
+		#endif
 	}
 }
 
@@ -456,9 +458,11 @@ void elf_process()
 	usr_pcb_1->child_head = NULL;
 
 	/* Set process Name */
-	strcpy(usr_pcb_1->proc_name, "/rootfs/bin/sbush");
+	strcpy(usr_pcb_1->proc_name, "/rootfs/bin/init");
 
-	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
+	/* struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush"); */
+
+	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/init");
 	load_elf_code(usr_pcb_1, (void *)start);
 	set_tss_rsp((void *)&usr_pcb_1->kstack[KSTACK_SIZE - 8]);
 	__switch_ring3(usr_pcb_1);
