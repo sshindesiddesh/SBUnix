@@ -841,7 +841,7 @@ pid_t kwait(pid_t pid)
 
 	/* Remark state as READY if there was no ready child */
 	cur_pcb->state = READY;
-	return -1;
+	return 0;
 
 WAIT:
 	/* Yield to a different process */
