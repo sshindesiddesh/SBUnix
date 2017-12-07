@@ -22,16 +22,14 @@ int main(int argc, char *argv[], char *env[])
 		}
 	}
 #endif
-	if (argc < 2) {
-		puts("\n");
-	} else {
+	puts("\n");
+	if (argc >= 2) {
 		if(*argv[1] == '$') {
 			if (env) {
 				while (env[i]) {
 					ptr = ((char *)&(argv[1][1]));
 					if (!strncmp(env[i], ptr, strlen(ptr))) {
 						ptr = ((char *)&(env[i][strlen(ptr)+1]));
-						puts("\n");
 						puts(ptr);
 						return 0;
 					}

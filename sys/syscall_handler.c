@@ -71,13 +71,13 @@ uint64_t __isr_syscall(syscall_in *in)
 			out = tarfs_getdents(in->first_param, (uint64_t)in->second_param, in->third_param);
 			break;
 		case SYSCALL_OPENDIR:
-			out = (uint64_t)tarfs_opendir((char *)in->first_param);
+			out = (uint64_t)tarfs_opendir_user((char *)in->first_param, (dir_t *)in->second_param);
 			break;
 		case SYSCALL_CLOSEDIR:
-			out = (uint64_t)tarfs_closedir((dir_t *)in->first_param);
+			out = (uint64_t)tarfs_closedir_user((DIR *)in->first_param);
 			break;
 		case SYSCALL_READDIR:
-			out = (uint64_t)tarfs_readdir((dir_t *)in->first_param);
+			out = (uint64_t)tarfs_readdir_user((uint64_t *)in->first_param, (struct dirent *)in->second_param);
 			break;
 		case SYSCALL_MMAP:
 			out = kmmap(in->first_param, in->second_param, in->third_param, in->fourth_param);
@@ -177,15 +177,16 @@ uint64_t kbrk(uint64_t npages)
 	size = npages*PG_SIZE;
 	address = cur_pcb->mm->brk;
 
-	if (cur_pcb->mm)
-		kprintf("mm alocated, %d", npages);
 	mm_struct_t *mm = cur_pcb->mm;
 	if(mm) {
-	mm->brk += size;
-	mm->data_end += size;
-	mm->t_vm += size;
-	kprintf("returning from kbrk, address %p, mm->brk %p", address, mm->brk);
-	return address;}
+		mm->brk += size;
+		mm->data_end += size;
+		mm->t_vm += size;
+#if 0
+		kprintf("returning from kbrk, address %p, mm->brk %p", address, mm->brk);
+#endif
+		return address;
+	}
 	else
 	return -1;
 }

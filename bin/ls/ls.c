@@ -49,18 +49,19 @@ void printdir(char *path)
 
 void printdir1(char *path)
 {
+	write(1, "\n", 2);
 	int dir = open(path, O_RDONLY, 444);
+
 	if (dir < 0) {
 		write(1, "Invalid path", 20);
 		return;
 	}
 	else {
-		char temp[1024];
-		char *b = temp;
+		char *b = buf;
 		struct dirent *d;
 		d = (struct dirent *)getdents(dir, b, sizeof(buf));
 		while ((d != NULL) && (strlen(d->d_name) > 0)) {
-			write(1, &(d->d_name), strlen(d->d_name));
+			write(1, (d->d_name), strlen(d->d_name));
 			write(1, "\t", 5);
 			d = (struct dirent *)getdents(dir, b, sizeof(buf));
 		}
@@ -78,7 +79,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* check if the input is a directory or not */
-	uint64_t status = opendir(argv[1]);
+	DIR *status = opendir(argv[1]);
 	if (status) {
 		printdir1(argv[1]);
 	} else {
