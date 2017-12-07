@@ -69,7 +69,15 @@ int main(int argc, char *argv[], char *env[])
 		c++;
 	}
 
+	/* testing gets puts putchar */
+
+	char *s = buffer;
 	puts("Tested malloc and free\n");
+	putchar('X');
+	puts("\ntesting gets, type:");
+	gets(s);
+	puts("\n content you tyyped:");
+	puts(s);
 
 	/* testing seg fault */
 #if 0

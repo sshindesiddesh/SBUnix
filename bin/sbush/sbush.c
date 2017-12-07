@@ -183,7 +183,7 @@ int main(int argc, char* argv[], char *envp[])
 				tmp = 1;
 				if (strcmp(line, "#!sbush")) {
 					/* TO DO : Do not use printf. use exec cmd for echo. */
-					puts("The File you provided does not begin with #!sbush \n");
+					puts("\nThe File you provided does not begin with #!sbush");
 					return 0;
 				}
 				continue;
