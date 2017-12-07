@@ -13,7 +13,7 @@
 #include <sys/ksyscall.h>
 #include <sys/elf64.h>
 
-
+void clear();
 #define MAX_NO_PROCESS	1000
 /* TODO: Bug : Scheduler schedukes few tasks repetatively.  Cannot see for finite. During infinite, something goes wrong */
 
@@ -32,7 +32,7 @@ pcb_t *tail = NULL;
 pcb_t *zombie_head = NULL;
 
 /* Global PID assigner */
-static uint64_t PID = 0;
+static uint64_t PID = -1;
 
 void set_proc_page_table(pcb_t *pcb);
 void free_page_entry(pml_t *pml);
@@ -61,6 +61,7 @@ void add_child_to_siblings(pcb_t *p_pcb, pcb_t *c_pcb)
 	pcb_t *child = p_pcb->child_head;
 	if (!child) {
 		p_pcb->child_head = c_pcb;
+		c_pcb->sibling = NULL;
 	} else {
 		c_pcb->sibling = p_pcb->child_head;
 		p_pcb->child_head = c_pcb;
@@ -97,7 +98,7 @@ pcb_t *get_new_pcb()
 {
 	pcb_t *l_pcb = NULL;
 	int i;
-	for (i = 1; i < MAX_NO_PROCESS; i++) {
+	for (i = 0; i < MAX_NO_PROCESS; i++) {
 		if (proc_array[i].state == AVAIL) {
 			l_pcb = &proc_array[i];
 			memset(l_pcb, 0, sizeof(l_pcb));
@@ -126,12 +127,25 @@ void init_proc_array()
 
 }
 
+pcb_t *get_pcb_from_pid(uint64_t pid)
+{
+	int i;
+	/* Cannot Kill Init process */
+	for (i = 2; i < MAX_NO_PROCESS; i++) {
+		if (proc_array[i].pid == pid) {
+			return &proc_array[i];
+		}
+	}
+	return NULL;
+}
+
 pcb_t *get_next_ready_pcb()
 {
 	pcb_t *l_pcb = NULL;
+	int count = 0;
 	cur_index++;
 	/* TODO: Check for infinite loop */
-	for (; ; cur_index++) {
+	for (; ; cur_index++, count++) {
 		if (cur_index == MAX_NO_PROCESS) {
 			cur_index = 0;
 		}
@@ -139,6 +153,10 @@ pcb_t *get_next_ready_pcb()
 		if (proc_array[cur_index].state == READY) {
 			l_pcb = &proc_array[cur_index];
 			break;
+		}
+		if ((count > MAX_NO_PROCESS)) {
+			proc_array[1].state = READY;
+			return &proc_array[1];
 		}
 	}
 #if 0
@@ -254,8 +272,11 @@ pcb_t *copy_user_process(pcb_t * p_pcb)
 	/* Assign parent as the current pcb */
 	c_pcb->parent = cur_pcb;
 
-	/* Set siblings to 0 */
+	/* Make sibling NULL, Will be reinitialized later */
 	c_pcb->sibling = 0;
+
+	/* Make child head NULL */
+	c_pcb->child_head = 0;
 
 	/* return child pcb */
 	return c_pcb;
@@ -266,13 +287,22 @@ pcb_t *copy_user_process(pcb_t * p_pcb)
 void add_all_children_to_init_proc(pcb_t *init_pcb, pcb_t *p_pcb)
 {
 	pcb_t *sib = p_pcb->child_head;
-	while (sib) {
+	if (!sib)
+		return;
+	/* Attach end of process siblings next to inits childhead */
+	pcb_t *head = p_pcb->child_head;
+	while (sib->sibling) {
 		/* TODO: Should child execute even after parent executes ?  */
 		/* sib->state = ZOMBIE; */
-		add_child_to_siblings(init_pcb, sib);
+		/* add_child_to_siblings(init_pcb, sib); */
 		sib->parent = init_pcb;
 		sib = sib->sibling;
 	}
+	sib->parent = init_pcb;
+	sib->sibling = init_pcb->child_head;
+	if (sib->sibling)
+		sib->sibling->parent = init_pcb;
+	init_pcb->child_head = head;
 }
 
 int kfork()
@@ -394,12 +424,16 @@ void kill_zombie()
 }
 
 /* This is a kernel process */
-void init_process()
+void idle_process()
 {
 	while (1) {
-		kprintf("Init\n");
-		kwait(-1);
+#if 1
+		//kprintf("IDLE\n");
+#endif
 		kyield();
+		__asm__ __volatile__ ("sti");
+		__asm__ __volatile__ ("hlt");
+		__asm__ __volatile__ ("cli");
 	}
 }
 
@@ -407,18 +441,19 @@ int load_elf_code(pcb_t *pcb, void *start);
 
 void elf_process()
 {
+	//kprintf("ELF\n");
 	/* TODO: Hardcode ??? */
 	/* SBUSH will have init as its parent */
 	/* Init process will have it as first child */
-	pcb_t *init_proc = &proc_array[1];
-	usr_pcb_1->parent = init_proc;
-	init_proc->child_head = usr_pcb_1;
 	usr_pcb_1->child_head = NULL;
+	usr_pcb_1->sibling = NULL;
 
 	/* Set process Name */
-	strcpy(usr_pcb_1->proc_name, "SBUSH");
+	strcpy(usr_pcb_1->proc_name, "/rootfs/bin/init");
 
-	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush");
+	/* struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/sbush"); */
+
+	struct posix_header_ustar *start = (struct posix_header_ustar *)get_posix_header("/rootfs/bin/init");
 	load_elf_code(usr_pcb_1, (void *)start);
 	set_tss_rsp((void *)&usr_pcb_1->kstack[KSTACK_SIZE - 8]);
 	__switch_ring3(usr_pcb_1);
@@ -430,6 +465,9 @@ char local_name[100];
 char kargs[20][100];
 /* Try making it on stack */
 char kenv[20][100];
+/*Array of 10 pointers to be passed to the user */
+uint64_t *uargv[10];
+uint64_t *uenv[10];
 
 char *pt;
 
@@ -452,6 +490,10 @@ char *get_absolute_path(char *file, char *env[])
 
 	/* Check with rest of the paths */
 	int i = 0, j = 0;
+
+	/* Mark the first entry NULL */
+	strcpy(kargs[0], "");
+
 	while (env[i]) {
 		strcpy(local_name, env[i]);
 		pt = strtok(local_name, "=");
@@ -469,14 +511,19 @@ char *get_absolute_path(char *file, char *env[])
 		}
 		i++;
 	}
+
+	/* Mark the next entry NULL */
+	strcpy(kargs[j], "");
+
 	while (j >= 0) {
 		start = (struct posix_header_ustar *)get_posix_header(kargs[j]);
 		if (start) {
 			if (is_proper_executable((Elf64_Ehdr *)start) == 0) {
 #if 0
-				kprintf("j = %d %s\n", j, filename);
+				kprintf("j = %d %s\n", j, kargs[j]);
 #endif
-				return kargs[j];
+				strcpy(filename, kargs[j]);
+				return filename;
 			}
 		}
 		j--;
@@ -495,9 +542,6 @@ uint64_t kexecve(char *in_file, char *argv[], char *env[])
 
 	uint64_t len, *u_rsp;
 	int i = 0, ecnt = 0, argc = 0;
-	/*Array of 10 pointers to be passed to the user */
-	uint64_t *uargv[10];
-	uint64_t *uenv[10];
 
 	pcb_t * prv_pcb = cur_pcb;
 	cur_pcb->state = ZOMBIE;
@@ -594,7 +638,8 @@ uint64_t kexecve(char *in_file, char *argv[], char *env[])
 
 void kexit(int status)
 {
-
+	if (cur_pcb->pid < 2)
+		return;
 #if 0
 	kprintf("PID %x called EXIT\n", cur_pcb->pid);
 	kprintf("Parent %p pid %d\n", cur_pcb->parent, cur_pcb->parent->pid);
@@ -607,9 +652,12 @@ void kexit(int status)
 	if (cur_pcb->parent->state == WAIT) {
 		/* If it calls wait or waitpid on child pid */
 		/* 0 and 1 both are included as hack. TODO : Cleanup */
-		if ((cur_pcb->parent->wait_pid == -1) || (cur_pcb->parent->wait_pid == cur_pcb->pid)
-				|| (cur_pcb->parent->wait_pid == 0)) {
+		if ((cur_pcb->parent->wait_pid == 0) || (cur_pcb->parent->wait_pid == cur_pcb->pid)) {
+#if 0
+			kprintf("PID %d is ready \n", cur_pcb->parent->pid);
+#endif
 			cur_pcb->parent->state = READY;
+			cur_pcb->parent->wait_pid = cur_pcb->pid;
 		}
 	}
 
@@ -632,6 +680,71 @@ void kexit(int status)
 	kyield();
 }
 
+void kshutdown()
+{
+	int cur_pid = cur_pcb->pid;
+	int i = 0;
+	for (i = 2; i < MAX_NO_PROCESS; i++) {
+		if (proc_array[i].pid != cur_pid && proc_array[i].state != AVAIL) {
+			kkill(proc_array[i].pid);
+		}
+	}
+	//clear();
+	kprintf("\n==============================================================");
+	kprintf("\n================= OS Shutting down ===========================");
+	kprintf("\n==============================================================");
+	while (1);
+}
+
+void kkill(uint64_t pid)
+{
+#if 0
+	kprintf("Kill for PID %d from PID %d\n", pid, cur_pcb->pid);
+#endif
+	pcb_t *l_pcb = get_pcb_from_pid(pid);
+	if (l_pcb == 0) {
+		return;
+	}
+
+	if (pid < 2) {
+		return;
+	}
+
+	if (l_pcb == cur_pcb) {
+		kexit(0);
+	}
+	/* Mark its exit status and change it's state to ZOMBIE */
+	l_pcb->exit_status = 1;
+	l_pcb->state = ZOMBIE;
+
+	/* If parent is in wait state, make it ready */
+	if (l_pcb->parent->state == WAIT) {
+		/* If it calls wait or waitpid on child pid */
+		/* 0 and 1 both are included as hack. TODO : Cleanup */
+		if ((l_pcb->parent->wait_pid == -1) || (l_pcb->parent->wait_pid == l_pcb->pid)
+				|| (l_pcb->parent->wait_pid == 0)) {
+			l_pcb->parent->state = READY;
+		}
+	}
+
+	/* Remove it's entry from parent */
+	/* Remove it from its parent process siblings list */
+	/* rem_child_from_sibling(cur_pcb->parent, cur_pcb); */
+	/* Change the sibling link in parent PCB which points to cur_pcb */
+	rem_child_from_sibling(l_pcb->parent, l_pcb);
+
+	/* Make all children's parent as init process */
+	/* If it has any children, add them to the init process siblings list as zombie */
+	add_all_children_to_init_proc(&proc_array[1], l_pcb);
+
+	/* Free page table pages */
+	/* Free all the physical pages allocated to the child and not shared */
+	free_page_entry((pml_t *)l_pcb->pml4);
+	/* Free PCB struct */
+	deallocate_pcb(l_pcb);
+	l_pcb->state = AVAIL;
+}
+
 pid_t kgetpid(void)
 {
 	return cur_pcb->pid;
@@ -648,14 +761,22 @@ pid_t kgetppid(void)
 void kps()
 {
 	int i;
-	kprintf("\nNAME\tPID\tPPID\n");
-	for (i = 0; i < MAX_NO_PROCESS; i++) {
-		if (proc_array[i].state == READY) {
-			if (proc_array[i].parent) {
-				kprintf("%s\t%d\t%d\n", proc_array[i].proc_name, proc_array[i].pid, proc_array[i].parent->pid);
+	kprintf("\n-----------------------------------------------------------------");
+	kprintf("\n   PID   |   PPID   |   Process Name   ");
+	kprintf("\n-----------------------------------------------------------------");
+	for (i = 1; i < MAX_NO_PROCESS; i++) {
+		if ((proc_array[i].state == READY) ||
+			(proc_array[i].state == WAIT) ||
+			(proc_array[i].state == SLEEP)) {
+			if (proc_array[i].parent != 0) {
+				kprintf("\n    %d    |    %d     |    %s   ", proc_array[i].pid, proc_array[i].parent->pid, proc_array[i].proc_name);
+			} else {
+				kprintf("\n    %d    |    --    |    %s   ", proc_array[i].pid, proc_array[i].proc_name);
 			}
 		}
 	}
+
+	kprintf("\n-----------------------------------------------------------------");
 	kprintf("\n");
 }
 
@@ -684,11 +805,6 @@ void decrement_sleep_count()
 
 }
 
-void kkill()
-{
-
-}
-
 void ksleep(uint64_t seconds)
 {
 #if 0
@@ -702,12 +818,14 @@ void ksleep(uint64_t seconds)
 #endif
 }
 
-void kwait(pid_t pid)
+pid_t kwait(pid_t pid)
 {
 	/* If the parent has no child, return */
 	if (!cur_pcb->child_head) {
-		return;
+		return -1;
 	}
+
+	cur_pcb->wait_pid = pid;
 
 	/* Mark state as WAIT */
 	cur_pcb->state = WAIT;
@@ -723,7 +841,7 @@ void kwait(pid_t pid)
 
 	/* Remark state as READY if there was no ready child */
 	cur_pcb->state = READY;
-	return;
+	return -1;
 
 WAIT:
 	/* Yield to a different process */
@@ -733,6 +851,7 @@ WAIT:
 	/* Clean up all zombie children */
 	/* This is ideally unusefull here as all processess are cleaned up on exit only */
 	/* kill_zombie(); */
+	return cur_pcb->wait_pid;
 }
 
 void thread3()
@@ -752,25 +871,22 @@ void thread4()
 	}
 }
 
+pcb_t pcb0;
 /* Initialise kernel thread creation. */
 void process_init()
 {
 	init_proc_array();
-	pcb_t *pcb0 = &proc_array[0];
-	pcb_t *pcb1 = create_kernel_process(init_process);
+	pcb_t *pcb1 = create_kernel_process(idle_process);
+
 	/* Set process Name */
-	strcpy(pcb1->proc_name, "INIT");
-	//create_kernel_process(thread1);
-	//create_kernel_process(thread2);
-	//create_kernel_process(thread3);
-	//create_kernel_process(thread4);
+	strcpy(pcb1->proc_name, "idle");
 
 	usr_pcb_1 = create_user_process(elf_process);
 
 	/* Set to pcb of init process. Required as cur_pcb for first yield */
 	cur_pcb = pcb1;
 	/* This happens only once and kernel should not return to this stack. */
-	__context_switch(pcb0, pcb1);
+	__context_switch(&pcb0, pcb1);
 
 	kprintf("We will never return here\n");
 	while (1);

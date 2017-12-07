@@ -96,7 +96,7 @@ typedef struct PCB {
 	struct PCB *sibling;
 	fd_t *fd[MAX_FD_CNT];
 	char current_dir[100];
-	tarfs_entry_t *current_node;
+	file_entry_t *current_node;
 	int exit_status;
 	int wait_pid;
 	uint32_t sleep_seconds;

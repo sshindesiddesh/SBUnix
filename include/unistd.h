@@ -26,25 +26,24 @@ int dup2(int oldfd, int newfd);
 uint64_t getdents(unsigned int fd, char *dir, unsigned int count);
 char *getenv(const char *name);
 int setenv(const char *name, const char *value);
-uint64_t opendir(const char *pathname);
+//uint64_t opendir(const char *pathname);
 uint64_t listdir(void *buf, uint64_t dir);
-uint64_t closedir(uint64_t dir);
-struct dirent *readdir(uint64_t dir);
+//uint64_t closedir(uint64_t dir);
+//struct dirent *readdir(uint64_t dir);
 uint64_t mmap(uint64_t va_start, uint64_t size, uint64_t flags, uint64_t type);
 uint64_t munmap(uint64_t va_start, uint64_t size);
 uint64_t brk(uint64_t npages);
 pid_t getpid(void);
 pid_t getppid(void);
 uint64_t ps(void);
-uint64_t kill(void);
+uint64_t kill(uint64_t pid);
 unsigned int sleep(unsigned int seconds);
+int waitpid(int pid, int *status);
+pid_t wait(int *status);
+uint64_t shutdown(void);
 
 #if 0
 int unlink(const char *pathname);
-int waitpid(int pid, int *status);
-
-
-pid_t wait(int *status)
 
 
 

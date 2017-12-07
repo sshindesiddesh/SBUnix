@@ -7,31 +7,32 @@
 #include <unistd.h>
 
 
-#define SYSCALL_READ	0
-#define SYSCALL_WRITE	1
-#define SYSCALL_OPEN	2
-#define SYSCALL_CLOSE	3
-#define SYSCALL_MMAP	9
-#define SYSCALL_MUNMAP	11
-#define SYSCALL_BRK	12
-#define SYSCALL_CHDIR	80
-#define SYSCALL_GETPID	39
-#define SYSCALL_SLEEP	35
-#define SYSCALL_GETPPID	110
-#define SYSCALL_KILL	62
-#define SYSCALL_INFO	99
-#define SYSCALL_YIELD	24
-#define SYSCALL_FORK	57
-#define SYSCALL_EXECVE	59
-#define SYSCALL_EXIT	60
-#define SYSCALL_WAIT	61
-#define SYSCALL_DUP2	33
-#define SYSCALL_GETCWD	79
-#define SYSCALL_GETDENTS 78
-#define SYSCALL_OPENDIR	300
-#define SYSCALL_CLOSEDIR 301
-#define SYSCALL_READDIR	302
-#define SYSCALL_PS	303
+#define SYSCALL_READ		0
+#define SYSCALL_WRITE		1
+#define SYSCALL_OPEN		2
+#define SYSCALL_CLOSE		3
+#define SYSCALL_MMAP		9
+#define SYSCALL_MUNMAP		11
+#define SYSCALL_BRK		12
+#define SYSCALL_YIELD		24
+#define SYSCALL_DUP2		33
+#define SYSCALL_SLEEP		35
+#define SYSCALL_GETPID		39
+#define SYSCALL_SHUTDOWN	48
+#define SYSCALL_FORK		57
+#define SYSCALL_EXECVE		59
+#define SYSCALL_EXIT		60
+#define SYSCALL_WAIT		61
+#define SYSCALL_KILL		62
+#define SYSCALL_GETCWD		79
+#define SYSCALL_GETDENTS	78
+#define SYSCALL_CHDIR		80
+#define SYSCALL_INFO		99
+#define SYSCALL_GETPPID		110
+#define SYSCALL_OPENDIR		300
+#define SYSCALL_CLOSEDIR 	301
+#define SYSCALL_READDIR		302
+#define SYSCALL_PS		303
 
 void print_params(syscall_in *in)
 {
@@ -70,13 +71,13 @@ uint64_t __isr_syscall(syscall_in *in)
 			out = tarfs_getdents(in->first_param, (uint64_t)in->second_param, in->third_param);
 			break;
 		case SYSCALL_OPENDIR:
-			out = (uint64_t)tarfs_opendir((char *)in->first_param);
+			out = (uint64_t)tarfs_opendir_user((char *)in->first_param, (dir_t *)in->second_param);
 			break;
 		case SYSCALL_CLOSEDIR:
-			out = (uint64_t)tarfs_closedir((dir_t *)in->first_param);
+			out = (uint64_t)tarfs_closedir_user((DIR *)in->first_param);
 			break;
 		case SYSCALL_READDIR:
-			out = (uint64_t)tarfs_readdir((dir_t *)in->first_param);
+			out = (uint64_t)tarfs_readdir_user((uint64_t *)in->first_param, (struct dirent *)in->second_param);
 			break;
 		case SYSCALL_MMAP:
 			out = kmmap(in->first_param, in->second_param, in->third_param, in->fourth_param);
@@ -97,7 +98,7 @@ uint64_t __isr_syscall(syscall_in *in)
 			kexecve((char *)in->first_param, (char **)in->second_param, (char **)in->third_param);
 			break;
 		case SYSCALL_WAIT:
-			kwait((pid_t)in->first_param);
+			out = kwait((pid_t)in->first_param);
 			break;
 		case SYSCALL_DUP2:
 			break;
@@ -120,10 +121,13 @@ uint64_t __isr_syscall(syscall_in *in)
 			kps();
 			break;
 		case SYSCALL_KILL:
-			kkill();
+			kkill(in->first_param);
 			break;
 		case SYSCALL_SLEEP:
 			ksleep(in->first_param);
+			break;
+		case SYSCALL_SHUTDOWN:
+			kshutdown();
 			break;
 		default:
 			kprintf("Error: Unknown System Call\n");
@@ -173,15 +177,16 @@ uint64_t kbrk(uint64_t npages)
 	size = npages*PG_SIZE;
 	address = cur_pcb->mm->brk;
 
-	if (cur_pcb->mm)
-		kprintf("mm alocated, %d", npages);
 	mm_struct_t *mm = cur_pcb->mm;
 	if(mm) {
-	mm->brk += size;
-	mm->data_end += size;
-	mm->t_vm += size;
-	kprintf("returning from kbrk, address %p, mm->brk %p", address, mm->brk);
-	return address;}
+		mm->brk += size;
+		mm->data_end += size;
+		mm->t_vm += size;
+#if 0
+		kprintf("returning from kbrk, address %p, mm->brk %p", address, mm->brk);
+#endif
+		return address;
+	}
 	else
 	return -1;
 }

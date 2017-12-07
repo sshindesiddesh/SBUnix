@@ -38,11 +38,10 @@ int execve(const char *file, char *const argv[], char *const envp[])
 	return out;
 }
 
-extern char *usr_env_p[50];
 int execvpe(const char *file, char *const argv[], char *const envp[])
 {
 	int ret = -1;
-	ret = execve(file, argv, usr_env_p);
+	ret = execve(file, argv, envp);
 #if 0
 	int i = 0;
 	while (usr_env_p[i]) {
