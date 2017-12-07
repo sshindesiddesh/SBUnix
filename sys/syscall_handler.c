@@ -98,7 +98,7 @@ uint64_t __isr_syscall(syscall_in *in)
 			kexecve((char *)in->first_param, (char **)in->second_param, (char **)in->third_param);
 			break;
 		case SYSCALL_WAIT:
-			kwait((pid_t)in->first_param);
+			out = kwait((pid_t)in->first_param);
 			break;
 		case SYSCALL_DUP2:
 			break;
