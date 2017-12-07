@@ -9,6 +9,7 @@ char buffer[100] = "\0";
 
 int main(int argc, char *argv[], char *env[])
 {
+
 	printf("\nProcess PID:%d PPID:%d\n", getpid(), getppid());
 	getcwd(buffer, sizeof(buffer));
 	printf("PWD: %s\n", buffer);
@@ -28,8 +29,30 @@ int main(int argc, char *argv[], char *env[])
 			x = read(f, &c, 1);
 			write(1, &c, 1);
 		}
+		close(f);
 	}
-	close(f);
+
+	/* Opendir Readdir Closedir */
+	DIR * dir = opendir("/rootfs/etc1/");
+	if(dir == NULL) {
+		puts("Directory does not exist");
+	} else {
+    		puts("Directory exists");
+	}
+
+	dir = opendir("/rootfs/bin/");
+	if(dir == NULL) {
+		puts("Directory does not exist");
+	} else {
+		puts("Directory exists");
+	}
+
+	struct dirent* cur_dir = NULL;
+		while((cur_dir = readdir(dir)) != NULL) {
+			puts(cur_dir->d_name);
+			puts(" ");
+    		}
+	closedir(dir);
 
 	/* testing stdin stdout read write */
 	write(1, "Please type:", 15);
@@ -84,6 +107,6 @@ int main(int argc, char *argv[], char *env[])
 	strcpy(addr2, "Hello World2");
 	printf("%s\n", addr2);
 #endif
-		
+
 	return 0;
 }
