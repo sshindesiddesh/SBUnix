@@ -1,15 +1,21 @@
 #include <stdio.h>
 #include <unistd.h>
 
-
 int main(int argc, char *argv[], char *env[])
 {
-	printf("INIT\n");
 	char * const argv_my[] = {"/rootfs/bin/echo", "===========================Welcome===========================\n", NULL};
 	char * const env_my[] = {"PATH=/rootfs/bin", NULL};
 	pid_t pid = fork();
 	if (pid == 0) {
 		execvpe("/rootfs/bin/echo", argv_my, env_my);
+		exit(0);
+	}
+
+	char * const argv_my1[] = {"/rootfs/bin/sbush", "/rootfs/etc/rc", NULL};
+	char * const env_my1[] = {"PATH=/rootfs/bin", NULL};
+	pid = fork();
+	if (pid == 0) {
+		execvpe("/rootfs/bin/sbush", argv_my1, env_my1);
 		exit(0);
 	}
 
