@@ -1,4 +1,13 @@
-cd
-cat
-ls
-update here...
+------------------- SBUSH Commands' Help -----------------
+ps              Display the consise snapshot of the current processes
+pwd             Print name of current working directory
+cd              Change directory
+cat [file_path] Output file's content. Absolute/relative file path accepted
+ls [Directory]  List directory content. Absolute/relative path accepted
+sleep [sec]     Suspend shell execution for an interval specified in seconds
+[process] &     Start process in background Eg. sleep 20 &
+echo [string]   Echo string(s) or env variables to std out Eg. Echo $PATH
+env             Display key=value pairs of all current environment variables
+export [k]=[v]  Set custom value to shell vars Eg. export PATH=$PATH:/bin/
+sbush [file]    Execute cmds line by line (Mandatory first line : #!sbush)
+shutdown        Bring the system down by killing all current processes
