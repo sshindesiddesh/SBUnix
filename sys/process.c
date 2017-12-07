@@ -298,7 +298,10 @@ void add_all_children_to_init_proc(pcb_t *init_pcb, pcb_t *p_pcb)
 		sib->parent = init_pcb;
 		sib = sib->sibling;
 	}
+	sib->parent = init_pcb;
 	sib->sibling = init_pcb->child_head;
+	if (sib->sibling)
+		sib->sibling->parent = init_pcb;
 	init_pcb->child_head = head;
 }
 
@@ -432,6 +435,11 @@ void init_process()
 		__asm__ __volatile__ ("hlt");
 		__asm__ __volatile__ ("cli");
 		kyield();
+		if (proc_array[1].child_head == 0) {
+			kprintf("All processes killed\n");
+			kprintf("Shutting Down...\n");
+			kshutdown();
+		}
 	}
 }
 
@@ -627,7 +635,6 @@ uint64_t kexecve(char *in_file, char *argv[], char *env[])
 
 void kexit(int status)
 {
-
 #if 0
 	kprintf("PID %x called EXIT\n", cur_pcb->pid);
 	kprintf("Parent %p pid %d\n", cur_pcb->parent, cur_pcb->parent->pid);
@@ -860,6 +867,7 @@ void process_init()
 	//create_kernel_process(thread4);
 
 	usr_pcb_1 = create_user_process(elf_process);
+	proc_array[1].child_head = usr_pcb_1;
 
 	/* Set to pcb of init process. Required as cur_pcb for first yield */
 	cur_pcb = pcb1;
