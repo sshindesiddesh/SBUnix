@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <unistd.h>
-int b = 0;
 int main(int argc, char *argv[])
 {
 	int a = 0;
@@ -8,20 +7,18 @@ int main(int argc, char *argv[])
 	if (pid == 0) {
 		while (1) {
 			a++;
-			if (a == 100)
+			if (a == 1000000) {
+				printf("Hi %d\n", getpid());
 				a = 0;
-			b++;
-			if (b == 100)
-				b = 0;
+			}
 		}
 	} else {
 		while (1) {
 			a++;
-			if (a == 100)
+			if (a == 1000000) {
+				printf("Bye %d\n", getpid());
 				a = 0;
-			b++;
-			if (b == 100)
-				b = 0;
+			}
 		}
 	}
         return 0;
