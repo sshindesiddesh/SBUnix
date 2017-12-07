@@ -4,6 +4,7 @@
 
 int main(int argc, char *argv[], char *env[])
 {
+	printf("INIT\n");
 	char * const argv_my[] = {"/rootfs/bin/echo", "===========================Welcome===========================\n", NULL};
 	char * const env_my[] = {"PATH=/rootfs/bin", NULL};
 	pid_t pid = fork();
@@ -12,7 +13,7 @@ int main(int argc, char *argv[], char *env[])
 		exit(0);
 	}
 
-	wait(0);
+	waitpid(pid, 0);
 
 	while (1) {
 		pid = fork();
