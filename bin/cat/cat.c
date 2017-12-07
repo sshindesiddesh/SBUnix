@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <dirent.h>
+
 char* strcpy(char *dst, const char *src);
 
 int put_c(int c, int fd)
@@ -30,7 +32,7 @@ int main(int argc, char *argv[])
 	if(argc > 1)
 	{
 		/* first check if its a directory */
-		uint64_t status = opendir(argv[1]);
+		DIR *status = opendir(argv[1]);
 		if (status) {
 			write(1, "\n input is a directory ", 30);
 		} else {

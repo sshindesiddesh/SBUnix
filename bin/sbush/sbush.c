@@ -103,6 +103,7 @@ void exec_cmd(const char *buf, char *argv[])
 		if (!getcwd(pwd_buf, sizeof(pwd_buf)))
 			return;
 		else {
+			puts("\n");
 			puts(pwd_buf);
 			return;
 		}
