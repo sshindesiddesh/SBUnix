@@ -657,6 +657,7 @@ void kexit(int status)
 			kprintf("PID %d is ready \n", cur_pcb->parent->pid);
 #endif
 			cur_pcb->parent->state = READY;
+			cur_pcb->parent->wait_pid = cur_pcb->pid;
 		}
 	}
 
@@ -817,11 +818,11 @@ void ksleep(uint64_t seconds)
 #endif
 }
 
-void kwait(pid_t pid)
+pid_t kwait(pid_t pid)
 {
 	/* If the parent has no child, return */
 	if (!cur_pcb->child_head) {
-		return;
+		return -1;
 	}
 
 	cur_pcb->wait_pid = pid;
@@ -840,7 +841,7 @@ void kwait(pid_t pid)
 
 	/* Remark state as READY if there was no ready child */
 	cur_pcb->state = READY;
-	return;
+	return -1;
 
 WAIT:
 	/* Yield to a different process */
@@ -850,6 +851,7 @@ WAIT:
 	/* Clean up all zombie children */
 	/* This is ideally unusefull here as all processess are cleaned up on exit only */
 	/* kill_zombie(); */
+	return cur_pcb->wait_pid;
 }
 
 void thread3()
