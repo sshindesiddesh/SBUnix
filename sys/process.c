@@ -13,7 +13,7 @@
 #include <sys/ksyscall.h>
 #include <sys/elf64.h>
 
-
+void clear();
 #define MAX_NO_PROCESS	1000
 /* TODO: Bug : Scheduler schedukes few tasks repetatively.  Cannot see for finite. During infinite, something goes wrong */
 
@@ -686,7 +686,10 @@ void kshutdown()
 			kkill(i);
 		}
 	}
-	kprintf("==============================================================\n");
+	clear();
+	kprintf("\n==============================================================");
+	kprintf("\n================= OS Shutting down ===========================");
+	kprintf("\n==============================================================");
 	while (1);
 }
 
@@ -751,18 +754,22 @@ pid_t kgetppid(void)
 void kps()
 {
 	int i;
-	kprintf("\nPID\tPPID\tCMD\n");
-	for (i = 0; i < MAX_NO_PROCESS; i++) {
+	kprintf("\n-----------------------------------------------------------------");
+	kprintf("\n   PID   |   PPID   |   Process Name   ");
+	kprintf("\n-----------------------------------------------------------------");
+	for (i = 1; i < MAX_NO_PROCESS; i++) {
 		if ((proc_array[i].state == READY) ||
 			(proc_array[i].state == WAIT) ||
 			(proc_array[i].state == SLEEP)) {
 			if (proc_array[i].parent != 0) {
-				kprintf("%d\t%d\t%s\n", proc_array[i].pid, proc_array[i].parent->pid, proc_array[i].proc_name);
+				kprintf("\n    %d    |    %d     |    %s   ", proc_array[i].pid, proc_array[i].parent->pid, proc_array[i].proc_name);
 			} else {
-				kprintf("%d\t--\t%s\n", proc_array[i].pid, proc_array[i].proc_name);
+				kprintf("\n    %d    |    --    |    %s   ", proc_array[i].pid, proc_array[i].proc_name);
 			}
 		}
 	}
+
+	kprintf("\n-----------------------------------------------------------------");
 	kprintf("\n");
 }
 

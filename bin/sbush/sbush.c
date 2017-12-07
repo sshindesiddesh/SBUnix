@@ -18,7 +18,9 @@ char line[MAX_IN_BUF_SIZE];
 char *s[MAX_PARAM_SUPP];
 
 /* This character array stores prompt name. */
-char p_name[50] = "sbush#";
+char p_name[70];
+int ps_flag = 0;
+char cur_dir[50];
 char *prompt_name = p_name;
 extern char *usr_env_p[50];
 int putc(int c, int fd);
@@ -97,8 +99,8 @@ void exec_cmd(const char *buf, char *argv[])
 			chdir("/rootfs/");
 			return;
 		}
-		if (!chdir(argv[1]))
-			return;
+		chdir(argv[1]);
+		return;
 	} else if (!strcmp("env", buf)) {
 		get_all_env();
 		return;
@@ -116,8 +118,10 @@ void exec_cmd(const char *buf, char *argv[])
 		char *ls[MAX_PARAM_SUPP];
 		parse_env_var(argv[1], ls);
 		if (!strcmp("PS1", ls[0])) {
-			if(ls[1])
+			if(ls[1]) {
 				prompt_name = strcpy(prompt_name, ls[1]);
+				ps_flag = 1;
+			}
 			return;
 			/* Any other env variable user is trying to set/update */
 		} else {
@@ -199,8 +203,20 @@ int main(int argc, char* argv[], char *envp[])
 	}
 
 	while (1) {
+		if (!ps_flag) {
+			zero_out(p_name, 50);
+			char *p_str = p_name;
+			int p_name_size = strlen("user:~");
+			strcpy(p_str, "user:~");
+			p_str += p_name_size;
+			getcwd(cur_dir, 50);
+			strcpy(p_str, cur_dir);
+			p_str++;
+			p_name_size = strlen(p_name);
+			p_name[p_name_size] = '$';
+		}
 		puts("\n");
-		puts(prompt_name);;
+		puts(prompt_name);
 		bufsize = read(0, line, 1);
 		parse_cmd(line, s);
 		if (bufsize > 1)
