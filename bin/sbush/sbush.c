@@ -176,6 +176,7 @@ int main(int argc, char* argv[], char *envp[])
 		int f = open(argv[1], O_RDONLY, 444);
 		int bufsize = 1;
 
+		if (f > 2) {
 		while (bufsize > 0) {
 			bufsize = get_line(f, line);
 
@@ -196,6 +197,9 @@ int main(int argc, char* argv[], char *envp[])
 
 			/* terminate the string for safety */
 			line[0] = '\0';
+		}
+		} else {
+			puts("\nInvalid file");
 		}
 		close(f);
 		exit(EXIT_SUCCESS);
