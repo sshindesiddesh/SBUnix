@@ -33,7 +33,7 @@ size_t get_line(int fp, char *buf)
 
 	do {
 		x = read(fp, &c, 1);
-		putc(c, 1);
+		//putc(c, 1);
 		buf[pos++] = c;
 
 	} while (x > 0 && c != '\n');
@@ -146,10 +146,9 @@ void exec_cmd(const char *buf, char *argv[])
 		exit(EXIT_SUCCESS);
 	}
 
-	int status;
 	if (bg) {
 	} else {
-		waitpid(c_pid, &status);
+		waitpid(c_pid, 0);
 	}
 }
 
@@ -164,7 +163,6 @@ int main(int argc, char* argv[], char *envp[])
 		/* This is used to check if the input file starts with #!sbush
 		 * Only then we will execute the file.
 		 */
-		write (1, "main\n", 6);
 		size_t tmp = 0;
 		int f = open(argv[1], O_RDONLY, 444);
 		int bufsize = 1;
@@ -174,9 +172,9 @@ int main(int argc, char* argv[], char *envp[])
 
 			if (!tmp) {
 				tmp = 1;
-				if (strcmp(line, "#!rootfs/bin/sbush")) {
+				if (strcmp(line, "#!sbush")) {
 					/* TO DO : Do not use printf. use exec cmd for echo. */
-					puts("The File you provided does not begin with #!rootfs/bin/sbush \n");
+					puts("The File you provided does not begin with #!sbush \n");
 					return 0;
 				}
 				continue;
