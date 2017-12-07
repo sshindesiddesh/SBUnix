@@ -638,6 +638,8 @@ uint64_t kexecve(char *in_file, char *argv[], char *env[])
 
 void kexit(int status)
 {
+	if (cur_pcb->pid < 2)
+		return;
 #if 0
 	kprintf("PID %x called EXIT\n", cur_pcb->pid);
 	kprintf("Parent %p pid %d\n", cur_pcb->parent, cur_pcb->parent->pid);
@@ -683,10 +685,10 @@ void kshutdown()
 	int i = 0;
 	for (i = 2; i < MAX_NO_PROCESS; i++) {
 		if (proc_array[i].pid != cur_pid && proc_array[i].state != AVAIL) {
-			kkill(i);
+			kkill(proc_array[i].pid);
 		}
 	}
-	clear();
+	//clear();
 	kprintf("\n==============================================================");
 	kprintf("\n================= OS Shutting down ===========================");
 	kprintf("\n==============================================================");
@@ -700,6 +702,10 @@ void kkill(uint64_t pid)
 #endif
 	pcb_t *l_pcb = get_pcb_from_pid(pid);
 	if (l_pcb == 0) {
+		return;
+	}
+
+	if (pid < 2) {
 		return;
 	}
 

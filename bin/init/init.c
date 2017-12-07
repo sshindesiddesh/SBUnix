@@ -15,13 +15,13 @@ int main(int argc, char *argv[], char *env[])
 
 	waitpid(pid, 0);
 
-	while (1) {
-		pid = fork();
-		if (pid == 0) {
-			execvpe("/rootfs/bin/sbush", NULL, env_my);
-		}
-		waitpid(pid, 0);
-		puts("\nSBUSH Invoked Again\n");
+	pid = fork();
+	if (pid == 0) {
+		execvpe("/rootfs/bin/sbush", NULL, env_my);
 	}
+	waitpid(pid, 0);
+	puts("\nSBUSH was killed.. Shutting down system...\n");
+	shutdown();
+		while (1);
 	return 0;
 }
