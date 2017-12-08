@@ -2,7 +2,7 @@
 #define _TARFS_H
 #include <sys/defs.h>
 #include <sys/elf64.h>
-#include <dirent.h>
+#include <sys/dirent.h>
 
 #define O_RDONLY	0000		/* open for read only */
 #define	O_WRONLY	0001		/* open for writing only */
