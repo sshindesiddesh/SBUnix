@@ -15,12 +15,14 @@ cd /rootfs/bin/
 pwd
 cd ../etc/
 pwd
+sleep 1
 echo testing ls:
 ls /rootfs/bin
 ls
 ls rootfs/
 ls /rootfs/bin/abc.txt
 ls /
+sleep 1
 echo testing cat:
 cat /rootfs/bin/abc.txt
 cat
