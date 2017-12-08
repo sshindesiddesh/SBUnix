@@ -16,4 +16,6 @@ uint64_t stoi(const char *s);
 void putchar(int c);
 char *gets(char *s);
 int puts(const char *str);
+void *memcpy(void *dest, const void *src, int n);
+void *memset(void *ptr, int value, size_t len);
 #endif

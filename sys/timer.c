@@ -44,7 +44,7 @@ void pre_empt_yield(void)
 	/* pre-empt 1/2 a second */
 	/* if ((k%9 == 0) && reading_flag == 0) {
 	 * SBUSH waits on read where reading flag is set for most of the times */
-	if ((k%9 == 0)) {
+	if ((k%3 == 0)) {
 		kyield();
 	}
 }

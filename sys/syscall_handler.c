@@ -50,6 +50,11 @@ int putchar(int c);
 int console_read(int fd, char *buf, uint64_t count);
 uint64_t __isr_syscall(syscall_in *in)
 {
+#if 0
+	if (in->in_out != 0 && in->in_out != 1) {
+		kprintf("syscall %d %d\n", in->in_out, cur_pcb->pid);
+	}
+#endif
 	uint64_t out = 0;
 	switch (in->in_out) {
 		case SYSCALL_READ:

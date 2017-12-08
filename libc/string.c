@@ -4,6 +4,26 @@
 #include <stdlib.h>
 #define MAX_STD_IN_BUFFER 512
 
+/* Memory Copy function */
+void *memcpy(void *dest, const void *src, int n)
+{
+	char *d = (char *)dest;
+	char *s = (char *)src;
+	int i;
+	for (i = 0; i < n; i++)
+		d[i] = s[i];
+	return d;
+}
+
+/* Function to Initialize memory */
+void *memset(void *ptr, int value, size_t len)
+{
+	uint8_t *p = (uint8_t *)ptr;
+	while (len--)
+		*p++ = value;
+	return ptr;
+}
+
 void putchar(int c)
 {
 	write(1, &c, 1);

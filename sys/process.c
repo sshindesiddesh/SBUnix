@@ -158,7 +158,7 @@ pcb_t *get_next_ready_pcb()
 	cur_index++;
 	/* TODO: Check for infinite loop */
 	for (; ; cur_index++, count++) {
-		if (cur_index == MAX_NO_PROCESS) {
+		if (cur_index >= MAX_NO_PROCESS) {
 			cur_index = 1;
 		}
 
@@ -166,8 +166,9 @@ pcb_t *get_next_ready_pcb()
 			l_pcb = &proc_array[cur_index];
 			break;
 		}
-		if ((count > MAX_NO_PROCESS)) {
+		if ((count > (MAX_NO_PROCESS + 10))) {
 			proc_array[1].state = READY;
+			cur_index = 1;
 			return &proc_array[1];
 		}
 	}
@@ -365,6 +366,10 @@ void kyield(void)
 		kprintf("Yield: Next PCB 0\n");
 		while (1);
 	}
+
+#if 0
+	kprintf("PRV PID %d CUR PID %d\n", prv_pcb->pid, cur_pcb->pid);
+#endif
 
 	/* This is hardcoded for now as rsp is not updated after returning from the syscall. TODO: Check this. */
 	set_tss_rsp((void *)&cur_pcb->kstack[KSTACK_SIZE - 8]);
@@ -641,6 +646,7 @@ uint64_t kexecve(char *in_file, char *argv[], char *env[])
 	/* Free PCB struct */
 	deallocate_pcb(prv_pcb);
 	prv_pcb->state = AVAIL;
+	prv_pcb->pid = 0;
 
 
 	__switch_ring3(cur_pcb);
@@ -653,7 +659,7 @@ void kexit(int status)
 	if (cur_pcb->pid < 2)
 		return;
 #if 0
-	kprintf("PID %x called EXIT\n", cur_pcb->pid);
+	kprintf("PID %d called EXIT\n", cur_pcb->pid);
 	kprintf("Parent %p pid %d\n", cur_pcb->parent, cur_pcb->parent->pid);
 #endif
 	/* Mark its exit status and change it's state to ZOMBIE */
@@ -689,6 +695,7 @@ void kexit(int status)
 	/* Free PCB struct */
 	deallocate_pcb(cur_pcb);
 	cur_pcb->state = AVAIL;
+	cur_pcb->pid = 0;
 	kyield();
 }
 
@@ -755,6 +762,7 @@ void kkill(uint64_t pid)
 	/* Free PCB struct */
 	deallocate_pcb(l_pcb);
 	l_pcb->state = AVAIL;
+	l_pcb->pid = 0;
 }
 
 pid_t kgetpid(void)
@@ -835,6 +843,7 @@ void ksleep(uint64_t seconds)
 
 pid_t kwait(pid_t pid)
 {
+	int flag = 0;
 	/* If the parent has no child, return */
 	if (!cur_pcb->child_head) {
 		return -1;
@@ -847,18 +856,31 @@ pid_t kwait(pid_t pid)
 
 	/*  Check if there is atleast one ready child */
 	pcb_t *sib = cur_pcb->child_head;
-	while (sib) {
-		if (sib->state == READY) {
-			goto WAIT;
+	if (pid == 0) {
+		while (sib) {
+			if (sib->state == READY) {
+				flag = 1;
+				break;
+			}
+			sib = sib->sibling;
 		}
-		sib = sib->sibling;
+	} else {
+		/* Check if child exists */
+		while (sib) {
+			if (sib->pid == pid) {
+				flag =  1;
+				break;
+			}
+			sib = sib->sibling;
+		}
 	}
 
-	/* Remark state as READY if there was no ready child */
-	cur_pcb->state = READY;
-	return 0;
+	if (flag == 0) {
+		/* Remark state as READY if there was no ready child */
+		cur_pcb->state = READY;
+		return 0;
+	}
 
-WAIT:
 	/* Yield to a different process */
 	kyield();
 	/* It will come here only when this process is marked ready
