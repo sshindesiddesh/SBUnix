@@ -8,7 +8,6 @@ int main(int argc, char *argv[])
 		while (1) {
 			a++;
 			if (a == 1000000) {
-				printf("Hi %d\n", getpid());
 				a = 0;
 			}
 		}
@@ -16,7 +15,6 @@ int main(int argc, char *argv[])
 		while (1) {
 			a++;
 			if (a == 1000000) {
-				printf("Bye %d\n", getpid());
 				a = 0;
 			}
 		}
