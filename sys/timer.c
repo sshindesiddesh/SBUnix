@@ -22,14 +22,15 @@ void timer_init()
 
 uint64_t k = 0, i = 0;
 
-
+extern int sleep_cnt;;
 void __isr_timer_cb(uint64_t count)
 {
 	k++;
 	if (k == 18) {
 		/* kprintf("Cnt %d\n", i); */
 		update_time(i++);
-		decrement_sleep_count();
+		if(sleep_cnt > 1)
+			decrement_sleep_count();
 		k = 0;
 	}
 	/* Acknowledge PIC */

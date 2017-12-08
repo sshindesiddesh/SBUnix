@@ -8,9 +8,10 @@ int main(int argc, char *argv[], char *envp[])
 {
 	int i = 0;
 	char *a, *b, *c;
-	while(i < 100000) {
+	while(i < 5000) {
 		a = (char *)malloc(900000);
-		strcpy(a+800000, "hello there");
+		strcpy(a+80000, "h");
+		puts(a+80000);
 		b = (char *)malloc(1000);
 		free(a);
 		free(b);

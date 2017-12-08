@@ -147,7 +147,7 @@ pcb_t *get_next_ready_pcb()
 	/* TODO: Check for infinite loop */
 	for (; ; cur_index++, count++) {
 		if (cur_index == MAX_NO_PROCESS) {
-			cur_index = 0;
+			cur_index = 1;
 		}
 
 		if (proc_array[cur_index].state == READY) {
@@ -805,17 +805,20 @@ void decrement_sleep_count()
 
 }
 
+int sleep_cnt = 1;
 void ksleep(uint64_t seconds)
 {
 #if 0
 	kprintf("PCB %d sleep %d seconds \n", cur_pcb->pid, seconds);
 #endif
+	sleep_cnt++;
 	cur_pcb->state = SLEEP;
 	cur_pcb->sleep_seconds = seconds;
 	kyield();
 #if 0
 	kprintf("Sleep Done\n");
 #endif
+	sleep_cnt--;
 }
 
 pid_t kwait(pid_t pid)
