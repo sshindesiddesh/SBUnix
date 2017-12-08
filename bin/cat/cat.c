@@ -37,7 +37,7 @@ int main(int argc, char *argv[], char *env[])
 		if (status) {
 			write(1, "Input is a directory\n", 30);
 		} else {
-			int f = open(argv[1], O_RDONLY, 444);
+			int f = open(argv[1], O_RDONLY);
 			if (f < 0) {
 				write(1, "Could not open the file\n", 30);
 				return 0;
