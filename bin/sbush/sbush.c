@@ -104,6 +104,21 @@ void exec_cmd(const char *buf, char *argv[])
 	} else if (!strcmp("env", buf)) {
 		get_all_env();
 		return;
+	} else if (!strcmp("help", buf)) {
+		int fd, x = 1, c = 0;
+		fd = open("/rootfs/etc/help", O_RDONLY, 444);
+
+		if (fd < 0) {
+			return;
+		} else {
+			printf("\n");
+			while (x != 0) {
+				x = read(fd, &c, 1);
+				write(1, &c, 1);
+			}
+			close(fd);
+		}
+		return;
 	} else if (!strcmp("pwd", buf)) {
 		char pwd_buf[100];
 		if (!getcwd(pwd_buf, sizeof(pwd_buf)))

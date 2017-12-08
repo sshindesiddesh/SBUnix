@@ -11,12 +11,12 @@ int main(int argc, char *argv[], char *env[])
 {
 	/* test for open, read, close in a file, assuming /rootfs/bin/cat already present */
 	int f, x = 1, c = 0;
-	f = open("/rootfs/bin/cat", O_RDONLY, 444);
+	f = open("/rootfs/etc/help", O_RDONLY, 444);
 
 	if (f < 0) {
 		write(1, "\nCould not open the file", 30);
 	} else {
-		printf("content of cat binary:\n");
+		printf("\ncontent of cat binary:\n");
 		while (x != 0) {
 			x = read(f, &c, 1);
 			write(1, &c, 1);
@@ -27,7 +27,8 @@ int main(int argc, char *argv[], char *env[])
 	/* Opendir Readdir Closedir */
 	DIR * dir = opendir("/rootfs/etc1/");
 	if(dir == NULL) {
-		puts("\nDirectory does not exist");
+		puts("\nDirectory does not exist:");
+		puts("/rootfs/etc1/");
 	} else {
 		puts("\nDirectory exists");
 	}
@@ -36,12 +37,13 @@ int main(int argc, char *argv[], char *env[])
 	if(dir == NULL) {
 		puts("\nDirectory does not exist");
 	} else {
-		puts("\nDirectory exists, content:\n");
+		puts("\nDirectory exists:");
+		puts("/rootfs/bin/");
 
 		struct dirent* cur_dir = NULL;
 		while((cur_dir = readdir(dir)) != NULL) {
-			puts(cur_dir->d_name);
 			puts("    ");
+			puts(cur_dir->d_name);
 		}
 		closedir(dir);
 
