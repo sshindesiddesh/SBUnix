@@ -26,7 +26,7 @@ size_t get_line(int fp, char *buf)
 
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[], char *env[])
 {
 	write(1, "\n", 2);
 	int x = 1, c = 0;

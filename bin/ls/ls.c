@@ -69,7 +69,7 @@ void printdir1(char *path)
 	close(dir);
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[], char *env[])
 {
 	char cwd[50] = "\0";
 	if (argc < 2) {

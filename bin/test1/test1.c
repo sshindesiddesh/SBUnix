@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
-int main(int argc, char *argv[])
+
+int main(int argc, char* argv[], char *envp[])
 {
 	int a = 0;
 	pid_t pid = fork();
