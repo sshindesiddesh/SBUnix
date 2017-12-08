@@ -4,7 +4,7 @@
 
 #define PG_SIZE 4096
 #define KERNBASE        (0xffffffff80000000)
-#define MAX_FD_CNT 100
+#define MAX_FD_CNT 20
 
 #define PTE_P           0x001   // Present
 #define PTE_W           0x002   // Writeable

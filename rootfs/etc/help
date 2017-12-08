@@ -8,6 +8,6 @@ sleep [sec]     Suspend shell execution for an interval specified in seconds
 [process] &     Start process in background Eg. sleep 20 &
 echo [string]   Echo string(s) or env variables to std out Eg. Echo $PATH
 env             Display key=value pairs of all current environment variables
-export [k]=[v]  Set custom value to shell vars Eg. export PATH=$PATH:/bin/
+export [k]=[v]  Set custom value to shell vars Eg. export PATH=/rootfs/bin/
 sbush [file]    Execute cmds line by line (Mandatory first line : #!sbush)
 shutdown        Bring the system down by killing all current processes

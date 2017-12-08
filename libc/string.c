@@ -2,6 +2,20 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#define MAX_STD_IN_BUFFER 512
+
+void putchar(int c)
+{
+	write(1, &c, 1);
+}
+
+int puts(const char *str)
+{
+        int i = 0;
+        while (str[i] != '\0')
+                putchar(str[i++]);
+        return i;
+}
 
 uint64_t stoi(const char *s)
 {
@@ -12,6 +26,12 @@ uint64_t stoi(const char *s)
 		s++;
 	}
 	return i;
+}
+
+char *gets(char *s)
+{
+	read(0, s, MAX_STD_IN_BUFFER);
+	return s;
 }
 
 /* Returns Length of the String */

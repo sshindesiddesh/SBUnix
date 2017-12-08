@@ -176,6 +176,7 @@ int main(int argc, char* argv[], char *envp[])
 		int f = open(argv[1], O_RDONLY, 444);
 		int bufsize = 1;
 
+		if (f > 2) {
 		while (bufsize > 0) {
 			bufsize = get_line(f, line);
 
@@ -183,7 +184,7 @@ int main(int argc, char* argv[], char *envp[])
 				tmp = 1;
 				if (strcmp(line, "#!sbush")) {
 					/* TO DO : Do not use printf. use exec cmd for echo. */
-					puts("The File you provided does not begin with #!sbush \n");
+					puts("\nThe File you provided does not begin with #!sbush");
 					return 0;
 				}
 				continue;
@@ -196,6 +197,9 @@ int main(int argc, char* argv[], char *envp[])
 
 			/* terminate the string for safety */
 			line[0] = '\0';
+		}
+		} else {
+			puts("\nInvalid file");
 		}
 		close(f);
 		exit(EXIT_SUCCESS);

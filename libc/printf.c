@@ -1,6 +1,8 @@
 #include <sys/defs.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <string.h>
 
 /* Conversion Function for all required base */
 char *generic_conv(unsigned long n, int b)
@@ -14,19 +16,6 @@ char *generic_conv(unsigned long n, int b)
 		n /= b;
 	} while (n);
 	return p;
-}
-
-void putchar(int c)
-{
-	write(1, &c, 1);
-}
-
-int puts(const char *str)
-{
-        int i = 0;
-        while (str[i] != '\0')
-                putchar(str[i++]);
-        return i;
 }
 
 int printf(const char *fmt, ...)
