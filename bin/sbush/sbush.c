@@ -107,7 +107,7 @@ void exec_cmd(const char *buf, char *argv[])
 		return;
 	} else if (!strcmp("help", buf)) {
 		int fd, x = 1, c = 0;
-		fd = open("/rootfs/etc/help", O_RDONLY, 444);
+		fd = open("/rootfs/etc/help", O_RDONLY);
 
 		if (fd < 0) {
 			return;
