@@ -93,17 +93,28 @@ void rem_child_from_sibling(pcb_t *p_pcb, pcb_t *c_pcb)
 	}
 }
 
+uint64_t avb_index = 0;
 /* Always gives a zero filled page for PCB */
 pcb_t *get_new_pcb()
 {
 	pcb_t *l_pcb = NULL;
-	int i;
-	for (i = 0; i < MAX_NO_PROCESS; i++) {
+	int i, count_index = 0;
+	for (i = avb_index;; i++, count_index++) {
 		if (proc_array[i].state == AVAIL) {
 			l_pcb = &proc_array[i];
 			memset(l_pcb, 0, sizeof(l_pcb));
 			/* TODO: Check this */
 			proc_array[i].state = READY;
+			avb_index = i + 1;
+			break;
+		}
+
+		if (i == MAX_NO_PROCESS) {
+			avb_index = 2;
+		}
+
+		if (count_index >= MAX_NO_PROCESS) {
+			l_pcb = NULL;
 			break;
 		}
 	}
@@ -112,6 +123,7 @@ pcb_t *get_new_pcb()
 		kprintf("!!!PANIC : System out of processes memory!!!");
 		while (1);
 	}
+
 	l_pcb->pid = ++PID;
 	return l_pcb;
 }
