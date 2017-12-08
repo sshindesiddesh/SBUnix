@@ -721,7 +721,7 @@ void kkill(uint64_t pid)
 	kprintf("Kill for PID %d from PID %d\n", pid, cur_pcb->pid);
 #endif
 	pcb_t *l_pcb = get_pcb_from_pid(pid);
-	if (l_pcb == 0) {
+	if ((l_pcb == 0) || (cur_pcb == 0)) {
 		return;
 	}
 
@@ -737,7 +737,7 @@ void kkill(uint64_t pid)
 	l_pcb->state = ZOMBIE;
 
 	/* If parent is in wait state, make it ready */
-	if (l_pcb->parent->state == WAIT) {
+	if (l_pcb->parent && (l_pcb->parent->state == WAIT)) {
 		/* If it calls wait or waitpid on child pid */
 		/* 0 and 1 both are included as hack. TODO : Cleanup */
 		if ((l_pcb->parent->wait_pid == -1) || (l_pcb->parent->wait_pid == l_pcb->pid)
