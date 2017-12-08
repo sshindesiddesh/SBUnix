@@ -8,7 +8,7 @@ int main(int argc, char *argv[], char *envp[])
 {
 	int i = 0;
 	char *a, *b, *c;
-	while(i < 500000) {
+	while(i < 500) {
 		a = (char *)malloc(900000);
 		strcpy(a+80000, "h");
 		b = (char *)malloc(1000);
