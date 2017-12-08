@@ -41,6 +41,8 @@ extern uint64_t phys_end;
 pte_t *get_pte_from_pml_unmap(pml_t *pml, va_t va, uint64_t perm);
 
 
+void kkill(uint64_t pid);
+
 void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 {
 #ifdef	VMA_DEBUG
@@ -51,14 +53,27 @@ void __page_fault_handler(uint64_t faultAddr, uint64_t err_code)
 	}
 #endif
 	if (!cur_pcb) {
-		kprintf("!!!Segmentation Fault!!!");
-		while (1);
+		kprintf("\n!!!Segmentation Fault!!!\n");
+		if (cur_pcb->pid > 1) {
+			kprintf("User ULIMITS violation. User Process Killed\n");
+			kkill(cur_pcb->pid);
+		} else {
+			kprintf("Abrupt Kernel Shutdown!!!");
+			while (1);
+		}
 	}
 
 	vma_t *vma = check_addr_in_vma_list(faultAddr, cur_pcb->mm->head);
 	if (!vma) {
-		kprintf("!!!Segmentation Fault!!!");
-		while (1);
+		kprintf("\n!!!Segmentation Fault!!!\n");
+		if (cur_pcb->pid > 1) {
+			kprintf("User ULIMITS violation. User Process Killed\n");
+			kkill(cur_pcb->pid);
+
+		} else {
+			kprintf("Abrupt Kernel Shutdown!!!");
+			while (1);
+		}
 	}
 
 	faultAddr = faultAddr/PG_SIZE*PG_SIZE;
