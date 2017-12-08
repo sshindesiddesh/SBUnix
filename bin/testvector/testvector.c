@@ -22,7 +22,8 @@ int main(int argc, char *argv[], char *env[])
 	f = open("/rootfs/bin/abc.txt", O_RDONLY, 444);
 
 	if (f < 0) {
-		write(1, "\nCould not open the file", 30);
+		write(1, "\nCould not open the file:", 30);
+		write(1, "/rootfs/bin/abc.txt\n", 30);
 	} else {
 		printf("content of abc.txt:\n");
 		while (x != 0) {
@@ -35,27 +36,27 @@ int main(int argc, char *argv[], char *env[])
 	/* Opendir Readdir Closedir */
 	DIR * dir = opendir("/rootfs/etc1/");
 	if(dir == NULL) {
-		puts("Directory does not exist");
+		puts("Directory does not exist\n");
 	} else {
-    		puts("Directory exists");
+		puts("Directory exists\n");
 	}
 
 	dir = opendir("/rootfs/bin/");
 	if(dir == NULL) {
-		puts("Directory does not exist");
+		puts("Directory does not exist\n");
 	} else {
-		puts("Directory exists");
+		puts("Directory exists\n");
 	}
 
 	struct dirent* cur_dir = NULL;
 		while((cur_dir = readdir(dir)) != NULL) {
 			puts(cur_dir->d_name);
 			puts(" ");
-    		}
+		}
 	closedir(dir);
 
 	/* testing stdin stdout read write */
-	write(1, "Please type:", 15);
+	write(1, "\ntype:", 15);
 	read(0, buffer, 128);
 	write(1, buffer, sizeof(buffer));
 	
@@ -64,7 +65,6 @@ int main(int argc, char *argv[], char *env[])
 	char *p;
 	while(c < 10000) {
 		p = (char *)malloc(2000);
-		//puts("A");
 		free(p);
 		c++;
 	}
@@ -72,11 +72,10 @@ int main(int argc, char *argv[], char *env[])
 	/* testing gets puts putchar */
 
 	char *s = buffer;
-	puts("Tested malloc and free\n");
-	putchar('X');
-	puts("\ntesting gets, type:");
+	puts("\nTested malloc and free\n");
+	puts("testing gets, type:");
 	gets(s);
-	puts("\n content you tyyped:");
+	puts("\n content typed is:");
 	puts(s);
 
 	/* testing seg fault */
