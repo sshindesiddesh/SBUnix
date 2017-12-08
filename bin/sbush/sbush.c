@@ -26,6 +26,7 @@ extern char *usr_env_p[50];
 int putc(int c, int fd);
 
 void get_all_env();
+int setenv(const char *name, const char *value);
 
 size_t get_line(int fp, char *buf)
 {
@@ -173,7 +174,7 @@ int main(int argc, char* argv[], char *envp[])
 		 * Only then we will execute the file.
 		 */
 		size_t tmp = 0;
-		int f = open(argv[1], O_RDONLY, 444);
+		int f = open(argv[1], O_RDONLY);
 		int bufsize = 1;
 
 		if (f > 2) {

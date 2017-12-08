@@ -11,7 +11,7 @@
 
 ssize_t write(int fd, const void *buf, size_t count);
 ssize_t read(int fd, void *buf, size_t count);
-int open(const char *pathname, int flags, uint64_t);
+int open(const char *pathname, int flags);
 int close(int fd);
 pid_t fork();
 void yield();
@@ -24,8 +24,6 @@ char *getcwd(char *buf, size_t size);
 void exit(int status);
 int dup2(int oldfd, int newfd);
 uint64_t getdents(unsigned int fd, char *dir, unsigned int count);
-char *getenv(const char *name);
-int setenv(const char *name, const char *value);
 //uint64_t opendir(const char *pathname);
 uint64_t listdir(void *buf, uint64_t dir);
 //uint64_t closedir(uint64_t dir);

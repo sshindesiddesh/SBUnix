@@ -11,7 +11,7 @@ int main(int argc, char *argv[], char *env[])
 {
 	/* test for open, read, close in a file, assuming /rootfs/bin/cat already present */
 	int f, x = 1, c = 0;
-	f = open("/rootfs/bin/cat", O_RDONLY, 444);
+	f = open("/rootfs/bin/cat", O_RDONLY);
 
 	if (f < 0) {
 		write(1, "\nCould not open the file", 30);

@@ -1,6 +1,6 @@
 #ifndef _IDT_H
 #define _IDT_H
-
+#include <sys/process.h>
 
 #define NO_OF_INT	256
 
@@ -43,6 +43,8 @@ typedef struct IDTR {
 } __attribute__((packed)) idtr_t;
 
 void init_idt();
+extern pcb_t *cur_pcb;
+void kkill(uint64_t pid);
 
 void isr20(void);
 void isr21(void);
@@ -85,8 +87,10 @@ WEAK void isr27(void)
 
 WEAK void excp0(void)
 {
-	kprintf("Exception 0\n");
-	while (1);
+	kprintf("\nUser Application Triggered Devide By Zero Exception\n");
+	kprintf("\nKilled User Process...\n");
+	kkill(cur_pcb->pid);
+	//while (1);
 }
 WEAK void excp1(void)
 {
@@ -148,6 +152,7 @@ WEAK void excpC(void)
 	kprintf("Exception C\n");
 	while (1);
 }
+
 WEAK void excpD(void)
 {
 	kprintf("Exception D\n");

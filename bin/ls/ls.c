@@ -50,7 +50,7 @@ void printdir(char *path)
 void printdir1(char *path)
 {
 	write(1, "\n", 2);
-	int dir = open(path, O_RDONLY, 444);
+	int dir = open(path, O_RDONLY);
 
 	if (dir < 0) {
 		write(1, "Invalid path", 20);

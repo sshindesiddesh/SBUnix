@@ -19,7 +19,7 @@ int main(int argc, char *argv[], char *env[])
 
 	/* test for open, read, close in a file, assuming /rootfs/bin/abc.txt already present */
 	int f, x = 1, c = 0;
-	f = open("/rootfs/bin/abc.txt", O_RDONLY, 444);
+	f = open("/rootfs/bin/abc.txt", O_RDONLY);
 
 	if (f < 0) {
 		write(1, "\nCould not open the file", 30);
