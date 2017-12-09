@@ -26,12 +26,12 @@ uint64_t mmap(uint64_t va_start, uint64_t size, uint64_t flags, uint64_t type)
 		"int $0x80\n"
 		/* Output of the system call */
 		"movq %%rax, %0\n"
-		: "=m"(out)/* output parameters, we aren't outputting anything, no none */
+		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"m" (va_start), "m" (size), "m" (flags), "m" (type)
+		"r" (va_start), "r" (size), "r" (flags), "r" (type)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
+		"rax", "rdi", "rsi", "rdx", "r10"
 	);
 	return out;
 }

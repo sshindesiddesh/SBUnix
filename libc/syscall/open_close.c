@@ -4,7 +4,7 @@
 
 int open(const char *pathname, int flags)
 {
-	size_t out;
+	int64_t out;
 	__asm__ (
 		/* System Call Number */
 		"movq $2, %%rax\n"
@@ -26,19 +26,19 @@ int open(const char *pathname, int flags)
 		"int $0x80\n"
 		/* Output of the system call */
 		"movq %%rax, %0\n"
-		: "=m"(out)/* output parameters, we aren't outputting anything, no none */
+		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"m" (pathname), "m" (flags)
+		"r" (pathname), "r" ((int64_t)flags)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
+		"rax", "rdi", "rsi"
 	);
 	return out;
 }
 
 int close(int fd)
 {
-	size_t out;
+	int64_t out;
 	__asm__ (
 		/* System Call Number */
 		"movq $3, %%rax\n"
@@ -60,10 +60,10 @@ int close(int fd)
 		"int $0x80\n"
 		/* Output of the system call */
 		"movq %%rax, %0\n"
-		: "=m"(out)/* output parameters, we aren't outputting anything, no none */
+		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"m" (fd)
+		"r" ((int64_t)fd)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax", "rdi"
 	);

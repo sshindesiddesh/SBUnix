@@ -4,7 +4,7 @@
 
 uint64_t munmap(uint64_t va_start, uint64_t size)
 {
-	size_t out;
+	int64_t out;
 	__asm__ (
 		/* System Call Number */
 		"movq $11, %%rax\n"
@@ -26,12 +26,12 @@ uint64_t munmap(uint64_t va_start, uint64_t size)
 		"int $0x80\n"
 		/* Output of the system call */
 		"movq %%rax, %0\n"
-		: "=m"(out)/* output parameters, we aren't outputting anything, no none */
+		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"m" (va_start), "m" (size)
+		"r" (va_start), "r" (size)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
+		"rax", "rdi", "rsi"
 	);
 	return out;
 }

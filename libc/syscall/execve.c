@@ -28,12 +28,12 @@ int execve(const char *file, char *const argv[], char *const envp[])
 		"int $0x80\n"
 		/* Output of the system call */
 		"movq %%rax, %0\n"
-		: "=m"(out)/* output parameters, we aren't outputting anything, no none */
+		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"m" (file), "m" (argv), "m" (envp)
+		"r" (file), "r" (argv), "r" (envp)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
+		"rax", "rdi", "rsi", "rdx"
 	);
 	return out;
 }

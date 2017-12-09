@@ -4,7 +4,7 @@
 
 pid_t fork()
 {
-	size_t out;
+	int64_t out;
 	__asm__ (
 		/* System Call Number */
 		"movq $57, %%rax\n"
@@ -25,11 +25,11 @@ pid_t fork()
 		"int $0x80\n"
 		/* Output of the system call */
 		"movq %%rax, %0\n"
-		: "=m"(out)/* output parameters, we aren't outputting anything, no none */
+		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
+		"rax"
 	);
 	return out;
 }

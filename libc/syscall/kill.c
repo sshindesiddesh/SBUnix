@@ -30,7 +30,7 @@ uint64_t kill(uint64_t pid)
 		: /* input parameters mapped to %0 and %1, repsectively */
 		"r" (pid)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
+		"rax", "rdi"
 	);
 	return out;
 }

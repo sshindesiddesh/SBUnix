@@ -4,7 +4,7 @@
 
 ssize_t write(int fd, const void *buf, size_t nbytes)
 {
-	size_t out;
+	int64_t out;
 	__asm__ (
 		/* System Call Number */
 		"movq $1, %%rax\n"
@@ -26,12 +26,12 @@ ssize_t write(int fd, const void *buf, size_t nbytes)
 		"int $0x80\n"
 		/* Output of the system call */
 		"movq %%rax, %0\n"
-		: "=m"(out)/* output parameters, we aren't outputting anything, no none */
+		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"r" ((uint64_t)fd), "r" (buf), "r" (nbytes)
+		"r" ((int64_t)fd), "r" (buf), "r" (nbytes)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
+		"rax", "rdi", "rsi", "rdx"
 	);
 	return out;
 }

@@ -4,7 +4,7 @@
 
 pid_t getpid(void)
 {
-	uint64_t out;
+	int64_t out;
 	__asm__ (
 		/* System Call Number */
 		"movq $39, %%rax;"
@@ -30,14 +30,14 @@ pid_t getpid(void)
 		"=r" (out)
 		: /* input parameters mapped to %0 and %1, repsectively */
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
+		"rax"
 	);
 	return (pid_t)out;
 }
 
 pid_t getppid(void)
 {
-	uint64_t out;
+	int64_t out;
 	__asm__ (
 		/* System Call Number */
 		"movq $110, %%rax;"
@@ -63,7 +63,7 @@ pid_t getppid(void)
 		"=r" (out)
 		: /* input parameters mapped to %0 and %1, repsectively */
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rdi", "rsi"
+		"rax"
 	);
 	return (pid_t)out;
 }

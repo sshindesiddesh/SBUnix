@@ -33,7 +33,7 @@ uint64_t getdents(unsigned int fd, char* dir, unsigned int count)
 		: /* input parameters mapped to %0 and %1, repsectively */
 		"r" ((uint64_t)fd), "r" (dir), "r" ((uint64_t)count)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
+		"rax", "rdi", "rsi", "rdx"
 	);
 	return out;
 }

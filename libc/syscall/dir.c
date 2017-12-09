@@ -27,12 +27,12 @@ DIR *opendir_sys(const char *pathname, DIR *dir)
 		"int $0x80\n"
 		/* Output of the system call */
 		"movq %%rax, %0\n"
-		: "=m"(out)/* output parameters, we aren't outputting anything, no none */
+		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"m" (pathname), "m" (dir)
+		"r" (pathname), "r" (dir)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
+		"rax", "rdi", "rsi"
 	);
 	return (DIR *)out;
 }
@@ -64,9 +64,9 @@ struct dirent *readdir_sys(DIR *dirp, struct dirent *dir)
 		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"r"(dirp), "m"(dir)
+		"r"(dirp), "r"(dir)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
+		"rax", "rdi", "rsi"
 	);
 	return (struct dirent *)out;
 }

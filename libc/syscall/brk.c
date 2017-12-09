@@ -25,11 +25,11 @@ uint64_t brk(uint64_t npages)
 		"int $0x80\n"
 		/* Output of the system call */
 		"movq %%rax, %0\n"
-		: "=m"(out)/* output parameters, we aren't outputting anything, no none */
+		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"m" (npages)
+		"r" (npages)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
-		"rax", "rbx", "rcx", "rdx", "rdi", "rsi", "r8", "r9", "r10", "r11", "r12", "rbp"
+		"rax", "rdi"
 	);
 	return out;
 }
