@@ -233,6 +233,8 @@ int main(int argc, char* argv[], char *envp[])
 			p_str++;
 			p_name_size = strlen(p_name);
 			p_name[p_name_size] = '$';
+			p_name_size++;
+			p_name[p_name_size] = '\0';
 		}
 		puts("\n");
 		puts(p_name);
