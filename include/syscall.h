@@ -38,7 +38,7 @@ static inline uint64_t __libc_syscall__0(uint64_t sys_no)
 		"int $0x80;"
 		: "=a" (out)
 		: [no]"a"(sys_no)
-		: "%rbx", "%rcx", "%rdx", "%rbp", "%rsi", "%rdi", "r8", "r9", "r10", "r11", "%r12", "%r13", "%r14", "%r15"
+		: "%rbx", "%rcx", "%rdx", "%rbp", "%rsi", "%rdi", "%r12", "%r13", "%r14", "%r15"
 	);
 	return out;
 }
@@ -52,7 +52,7 @@ static inline uint64_t __libc_syscall__1(uint64_t sys_no, uint64_t input_1)
 		"int $0x80;"
 		: "=a" (out)
 		: [no]"a"(sys_no), [input_1]"g"(input_1)
-		: "%rbx", "%rcx", "%rdx", "%rbp", "%rsi", "%rdi", "r8", "r9", "r10", "r11", "%r12", "%r13", "%r14", "%r15"
+		: "%rbx", "%rcx", "%rdx", "%rbp", "%rsi", "%rdi", "%r12", "%r13", "%r14", "%r15"
 	);
 	return out;
 }
@@ -67,7 +67,7 @@ static inline uint64_t __libc_syscall__2(uint64_t sys_no, uint64_t input_1, uint
 		"int $0x80;"
 		: "=a" (out)
 		: [no]"a"(sys_no), [input_1]"g"(input_1), [input_2]"g"(input_2)
-		: "%rbx", "%rcx", "%rdx", "%rbp", "%rsi", "%rdi", "r8", "r9", "r10", "r11", "%r12", "%r13", "%r14", "%r15"
+		: "%rbx", "%rcx", "%rdx", "%rbp", "%rsi", "%rdi", "%r12", "%r13", "%r14", "%r15"
 	);
 	return out;
 }
@@ -83,7 +83,7 @@ static inline uint64_t __libc_syscall__3(uint64_t sys_no, uint64_t input_1, uint
 		"int $0x80;"
 		: "=a" (out)
 		: [no]"a"(sys_no), [input_1]"g"(input_1), [input_2]"g"(input_2), [input_3]"g"(input_3)
-		: "%rbx", "%rcx", "%rdx", "%rbp", "%rsi", "%rdi", "r8", "r9", "r10", "r11", "%r12", "%r13", "%r14", "%r15"
+		: "%rbx", "%rcx", "%rdx", "%rbp", "%rsi", "%rdi", "%r12", "%r13", "%r14", "%r15"
 	);
 	return out;
 }
