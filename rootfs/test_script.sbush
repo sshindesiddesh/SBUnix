@@ -28,7 +28,7 @@ cat /rootfs/bin/abc.txt
 cat
 cat roots/bin/
 echo content of cat:
-cat /rootfs/bin/cat
+cat /rootfs/etc/rc
 echo "testing env vars:"
 export NEWVAR=/pqr/trd/
 env
