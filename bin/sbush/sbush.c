@@ -21,7 +21,6 @@ char *s[MAX_PARAM_SUPP];
 char p_name[70];
 int ps_flag = 0;
 char cur_dir[50];
-char *prompt_name = p_name;
 extern char *usr_env_p[50];
 int putc(int c, int fd);
 
@@ -135,7 +134,7 @@ void exec_cmd(const char *buf, char *argv[])
 		parse_env_var(argv[1], ls);
 		if (!strcmp("PS1", ls[0])) {
 			if(ls[1]) {
-				prompt_name = strcpy(prompt_name, ls[1]);
+				strcpy(p_name, ls[1]);
 				ps_flag = 1;
 			}
 			return;
@@ -236,7 +235,7 @@ int main(int argc, char* argv[], char *envp[])
 			p_name[p_name_size] = '$';
 		}
 		puts("\n");
-		puts(prompt_name);
+		puts(p_name);
 		bufsize = read(0, line, 1);
 		parse_cmd(line, s);
 		if (bufsize > 1)
