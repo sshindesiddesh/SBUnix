@@ -116,5 +116,5 @@ DIR *opendir_sys(const char *pathname, DIR *dir)
 
 struct dirent *readdir_sys(DIR *dirp, struct dirent *dir)
 {
-	return (struct dirent *)__libc_syscall__2(SYSCALL_OPENDIR, (uint64_t)dirp, (uint64_t)dir);
+	return (struct dirent *)__libc_syscall__2(SYSCALL_READDIR, (uint64_t)dirp, (uint64_t)dir);
 }
