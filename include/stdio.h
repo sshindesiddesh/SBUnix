@@ -22,6 +22,7 @@
 static const int EOF = -1;
 
 int putc(int c, int fd);
+int putchar(int c);
 int puts(const char *s);
 int printf(const char *format, ...);
 

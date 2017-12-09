@@ -19,26 +19,26 @@ int execvpe(const char *file, char *const argv[], char *const envp[]);
 int execve(const char *file, char *const argv[], char *const envp[]);
 // OPTIONAL: implement for ``signals and pipes (+10 pts)''
 int pipe(int pipefd[2]);
-uint64_t chdir(const char *path);
+int chdir(const char *path);
 char *getcwd(char *buf, size_t size);
 void exit(int status);
 int dup2(int oldfd, int newfd);
-uint64_t getdents(unsigned int fd, char *dir, unsigned int count);
+int64_t getdents(unsigned int fd, char *dir, unsigned int count);
 //uint64_t opendir(const char *pathname);
 uint64_t listdir(void *buf, uint64_t dir);
 //uint64_t closedir(uint64_t dir);
 //struct dirent *readdir(uint64_t dir);
 uint64_t mmap(uint64_t va_start, uint64_t size, uint64_t flags, uint64_t type);
 uint64_t munmap(uint64_t va_start, uint64_t size);
-uint64_t brk(uint64_t npages);
+uint64_t brk(int64_t npages);
 pid_t getpid(void);
 pid_t getppid(void);
-uint64_t ps(void);
-uint64_t kill(uint64_t pid);
+void ps(void);
+int64_t kill(int64_t pid);
 unsigned int sleep(unsigned int seconds);
 int waitpid(int pid, int *status);
 pid_t wait(int *status);
-uint64_t shutdown(void);
+void shutdown(void);
 
 #if 0
 int unlink(const char *pathname);

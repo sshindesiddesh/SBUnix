@@ -2,9 +2,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-uint64_t shutdown(void)
+void shutdown(void)
 {
-	uint64_t out;
 	__asm__ (
 		/* System Call Number */
 		"movq $48, %%rax;"
@@ -25,12 +24,9 @@ uint64_t shutdown(void)
 #endif
 		"int $0x80\n"
 		/* Output of the system call */
-		"movq %%rax, %0;"
 		: /* output parameters, we aren't outputting anything, no none */
-		"=r" (out)
 		: /* input parameters mapped to %0 and %1, repsectively */
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax"
 	);
-	return out;
 }

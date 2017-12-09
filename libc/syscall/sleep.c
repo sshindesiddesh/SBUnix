@@ -28,7 +28,7 @@ unsigned int sleep(unsigned int seconds)
 		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"r" ((int64_t)seconds)
+		"r" ((uint64_t)seconds)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax", "rdi"
 	);

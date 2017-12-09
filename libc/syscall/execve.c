@@ -7,7 +7,7 @@ extern char env_p[30][100];
 
 int execve(const char *file, char *const argv[], char *const envp[])
 {
-	size_t out;
+	int64_t out;
 	__asm__ (
 		/* System Call Number */
 		"movq $59, %%rax\n"

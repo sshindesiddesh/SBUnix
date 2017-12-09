@@ -4,7 +4,7 @@
 
 
 //int getdents(unsigned int fd, struct dirent *dir, unsigned int count)
-uint64_t getdents(unsigned int fd, char* dir, unsigned int count)
+int64_t getdents(unsigned int fd, char* dir, unsigned int count)
 {
 	int64_t out;
 	__asm__ (
@@ -31,7 +31,7 @@ uint64_t getdents(unsigned int fd, char* dir, unsigned int count)
 		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"r" ((uint64_t)fd), "r" (dir), "r" ((uint64_t)count)
+		"r" ((uint64_t)fd), "r" ((uint64_t)dir), "r" ((uint64_t)count)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax", "rdi", "rsi", "rdx"
 	);

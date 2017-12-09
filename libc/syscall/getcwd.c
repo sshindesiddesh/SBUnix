@@ -4,7 +4,7 @@
 
 char *getcwd(char *buf, size_t size)
 {
-	char *out;
+	uint64_t out;
 	__asm__ (
 		/* System Call Number */
 		"movq $79, %%rax;"
@@ -29,9 +29,9 @@ char *getcwd(char *buf, size_t size)
 		: /* output parameters, we aren't outputting anything, no none */
 		"=r" (out)
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"r" (buf), "r" (size)
+		"r" ((uint64_t)buf), "r" (size)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax", "rdi", "rsi"
 	);
-	return out;
+	return (char *)out;
 }

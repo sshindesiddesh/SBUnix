@@ -29,7 +29,7 @@ int open(const char *pathname, int flags)
 		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"r" (pathname), "r" ((int64_t)flags)
+		"r" ((uint64_t)pathname), "r" ((int64_t)flags)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax", "rdi", "rsi"
 	);

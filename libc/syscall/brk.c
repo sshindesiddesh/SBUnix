@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-uint64_t brk(uint64_t npages)
+uint64_t brk(int64_t npages)
 {
 	uint64_t out;
 	__asm__ (

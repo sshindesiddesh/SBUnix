@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-uint64_t chdir(const char *path)
+int chdir(const char *path)
 {
-	uint64_t out;
+	int64_t out;
 	__asm__ (
 		/* system call number */
 		"movq $80, %%rax\n"

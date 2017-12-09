@@ -13,7 +13,6 @@ char *strcat(char *dst, const char *src);
 char *strtok(char *str, const char *delim);
 void zero_out(void *buf, int b);
 uint64_t stoi(const char *s);
-void putchar(int c);
 char *gets(char *s);
 int puts(const char *str);
 void *memcpy(void *dest, const void *src, int n);

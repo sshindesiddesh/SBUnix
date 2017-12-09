@@ -31,5 +31,5 @@ pid_t fork()
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax"
 	);
-	return out;
+	return (pid_t)out;
 }

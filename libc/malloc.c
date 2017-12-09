@@ -32,13 +32,14 @@ void *allocate_new_block(int new_size)
 {
 	char *address;
 	header_p p_block;
-	uint64_t header_size, n_pages = 0;
+	uint64_t header_size;
+	int64_t n_pages = 0;
 
 	header_size = sizeof(header_t);
 	n_pages = (new_size + header_size) / (PG_SIZE + 1) + 1;
 
 	/* Get pages from the kernel */
-	address = (char*)brk(n_pages);
+	address = (char *)brk(n_pages);
 
 	/* Store memory start address for future reference */
 	if (proc_heap_end == 0 || proc_heap_start == 0) {

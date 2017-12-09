@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-uint64_t kill(uint64_t pid)
+int64_t kill(int64_t pid)
 {
-	uint64_t out;
+	int64_t out;
 	__asm__ (
 		/* System Call Number */
 		"movq $62, %%rax\n"

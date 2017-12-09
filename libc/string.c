@@ -24,9 +24,9 @@ void *memset(void *ptr, int value, size_t len)
 	return ptr;
 }
 
-void putchar(int c)
+int putchar(int c)
 {
-	write(1, &c, 1);
+	return write(1, &c, 1);
 }
 
 int puts(const char *str)

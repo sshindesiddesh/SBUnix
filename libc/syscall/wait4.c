@@ -29,7 +29,7 @@ int waitpid(int pid, int *status)
 		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"r" ((int64_t)pid), "r" ((int64_t)status)
+		"r" ((int64_t)pid), "r" ((uint64_t)status)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax", "rdi", "rsi"
 	);

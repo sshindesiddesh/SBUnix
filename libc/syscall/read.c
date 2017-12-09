@@ -29,7 +29,7 @@ ssize_t read(int fd, void *buf, size_t count)
 		: "=r"(out)/* output parameters, we aren't outputting anything, no none */
 		/* (none) */
 		: /* input parameters mapped to %0 and %1, repsectively */
-		"r" ((int64_t)fd), "r" (buf), "r" (count)
+		"r" ((int64_t)fd), "r" ((uint64_t)buf), "r" (count)
 		: /* registers that we are "clobbering", unneeded since we are calling exit */
 		"rax", "rdi", "rsi", "rdx"
 	);

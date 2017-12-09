@@ -200,7 +200,7 @@ struct dirent *tarfs_readdir(uint64_t *dir1)
 }
 
 /* getdents from given directory using fd */
-uint64_t tarfs_getdents(uint64_t fd, uint64_t buf, uint64_t count)
+int64_t tarfs_getdents(uint64_t fd, uint64_t buf, uint64_t count)
 {
 	if (cur_pcb->fd[fd] != NULL) {
 		dirent *dir;
