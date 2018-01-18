@@ -6,8 +6,15 @@ Process Subsystem - Kernel threads, Context Switch, Scheduler
 User Level Subsystem - VMAs, switch to ring3 and back to ring0, Page Faults
 I/O Subsystem - System Calls, Terminals, Virtual File System, tarfs file access
 
+A Shell that supports:
+- Changing directories
+- Executing binaries interactively
+- Executing Scripts
+- Set and use PATH/PS1 or user defined environment variables
+- Launch background procescess
+- Launch pipes
 
-
+Shell Commands :
 ------------------- SBUSH Commands' Help -----------------
 ps              Display the consise snapshot of the current processes
 pwd             Print name of current working directory
