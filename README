@@ -1,3 +1,29 @@
+Designed and Implemented a preemptive multitasking kernel 
+
+Components :
+Memory Subsystem - Page descriptors, Free pages, Page tables, Kernel malloc
+Process Subsystem - Kernel threads, Context Switch, Scheduler
+User Level Subsystem - VMAs, switch to ring3 and back to ring0, Page Faults
+I/O Subsystem - System Calls, Terminals, Virtual File System, tarfs file access
+
+
+
+------------------- SBUSH Commands' Help -----------------
+ps              Display the consise snapshot of the current processes
+pwd             Print name of current working directory
+cd              Change directory
+cat [file_path] Output file's content. Absolute/relative file path accepted
+ls [Directory]  List directory content. Absolute/relative path accepted
+sleep [sec]     Suspend shell execution for an interval specified in seconds
+[process] &     Start process in background Eg. sleep 20 &
+echo [string]   Echo string(s) or env variables to std out Eg. Echo $PATH
+env             Display key=value pairs of all current environment variables
+export [k]=[v]  Set custom value to shell vars Eg. export PATH=/rootfs/bin/
+sbush [file]    Execute cmds line by line (Mandatory first line : #!sbush)
+shutdown        Bring the system down by killing all current processes
+
+
+Get Started :
 * The provided Makefile:
   1) builds a kernel
   2) copies it into rootfs/boot/kernel/kernel
@@ -21,3 +47,11 @@ gdb ./kernel
 
 At the (gdb) prompt, connect with:
 target remote localhost:9999
+
+
+References :
+https://compas.cs.stonybrook.edu/courses/cse506-operating-systems-fall-17/
+http://wiki.osdev.org/Expanded_Main_Page
+https://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-software-developer-vol-3a-part-1-manual.html
+https://eli.thegreenplace.net/2011/09/06/stack-frame-layout-on-x86-64/
+https://eli.thegreenplace.net/2012/08/13/how-statically-linked-programs-run-on-linux/
