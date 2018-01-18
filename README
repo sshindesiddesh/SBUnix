@@ -1,7 +1,7 @@
-Designed and implemented a preemptive multitasking kernel
+#Designed and implemented a preemptive multitasking kernel
 
-Course : CSE506
-Professor : Mike Ferdman
+##Course : CSE506
+Professor : [Mike Ferdman](http://compas.cs.stonybrook.edu/~mferdman/)
 
 Components :
 Memory Subsystem - Page descriptors, Free pages, Page tables, Kernel malloc
