@@ -153,7 +153,7 @@ void exec_cmd(const char *buf, char *argv[])
 	/* bg flag is used to check if a background process is requested. */
 	size_t i = 0, bg = 0;
 	/* -=2  signifies that the loop is at NULL + 1 after it exits. */
-	while (argv[i++]); i -= 2;
+	while (argv[i++]) i -= 2;
 
 	/* Assumed that & is always at the end of the complete command. */
 	if (!strcmp(argv[i], "&")) {
